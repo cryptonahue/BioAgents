@@ -21,6 +21,22 @@
     <meta name="twitter:description" content="{{SEO_DESCRIPTION}}">
     <meta name="twitter:image" content="{{OG_IMAGE_URL}}">
     <link rel="stylesheet" href="/index.css">
+    <script>
+      (function () {
+        var c = globalThis.crypto;
+        if (!c || typeof c.randomUUID === 'function') return;
+        c.randomUUID = function () {
+          var bytes = new Uint8Array(16);
+          c.getRandomValues(bytes);
+          bytes[6] = (bytes[6] & 0x0f) | 0x40;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          var hex = Array.from(bytes, function (b) {
+            return b.toString(16).padStart(2, '0');
+          }).join('');
+          return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
+        };
+      })();
+    </script>
 </head>
 <body>
     <div id="app"></div>

@@ -6,7 +6,7 @@
  * Supports watch mode with --watch flag
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, watch } from 'fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, watch } from 'fs';
 import { join, resolve } from 'path';
 
 const clientDir = import.meta.dir;
@@ -47,6 +47,8 @@ async function build() {
       'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY || ''),
       'import.meta.env.CDP_PROJECT_ID': JSON.stringify(process.env.CDP_PROJECT_ID || 'your-project-id-here'),
+      'import.meta.env.PRIVY_APP_ID': JSON.stringify(process.env.PRIVY_APP_ID || ''),
+      'import.meta.env.CORALGPT_HERO_VIDEO_URL': JSON.stringify(process.env.CORALGPT_HERO_VIDEO_URL || ''),
     },
     plugins: [
       {
@@ -95,6 +97,13 @@ async function build() {
   // No need to inject it here
 
   writeFileSync(htmlDest, htmlContent);
+
+  // Copy static assets (images, etc.) from public/ to dist/
+  const publicImagesDir = join(clientDir, 'public', 'images');
+  const distImagesDir = join(distDir, 'images');
+  if (existsSync(publicImagesDir)) {
+    cpSync(publicImagesDir, distImagesDir, { recursive: true });
+  }
 
   const buildTime = Date.now() - startTime;
   console.log(`✅ Build complete in ${buildTime}ms!`);

@@ -17,6 +17,7 @@ export { useEmbeddedWallet } from './useEmbeddedWallet';
 export { useEmbeddedWalletClient } from './useEmbeddedWalletClient';
 export { useStates } from './useStates';
 export { useWebSocket } from './useWebSocket';
+export { useLandingScroll } from './useLandingScroll';
 
 export type { Message, Session, UseSessionsReturn } from './useSessions';
 export type { UseWebSocketReturn, WebSocketMessage } from './useWebSocket';

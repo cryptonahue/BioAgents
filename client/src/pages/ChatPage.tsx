@@ -36,13 +36,19 @@ import { generateConversationId, walletAddressToUUID } from "../utils/helpers";
 interface ChatPageProps {
   path?: string;
   sessionId?: string;
+  coralGptMode?: boolean;
+  privyLogout?: () => Promise<void>;
 }
 
 /**
  * Main chat page component
  * Handles conversation display, messaging, and research state
  */
-export function ChatPage({ sessionId: urlSessionId }: ChatPageProps) {
+export function ChatPage({
+  sessionId: urlSessionId,
+  coralGptMode = false,
+  privyLogout,
+}: ChatPageProps) {
   // Toast notifications
   const toast = useToast();
 
@@ -835,6 +841,8 @@ export function ChatPage({ sessionId: urlSessionId }: ChatPageProps) {
           onDeleteSession={deleteSession}
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
+          coralGptMode={coralGptMode}
+          privyLogout={privyLogout}
         />
 
         <div className="main-content">
@@ -973,7 +981,10 @@ export function ChatPage({ sessionId: urlSessionId }: ChatPageProps) {
             ) : (
               <>
                 {messages.length === 0 && !isCurrentConversationLoading && (
-                  <WelcomeScreen onExampleClick={(text) => setInputValue(text)} />
+                  <WelcomeScreen
+                    coralGptMode={coralGptMode}
+                    onExampleClick={(text) => setInputValue(text)}
+                  />
                 )}
 
                 {messages.map((msg) => (
@@ -1001,7 +1012,13 @@ export function ChatPage({ sessionId: urlSessionId }: ChatPageProps) {
             onChange={setInputValue}
             onSend={handleSend}
             disabled={isCurrentConversationLoading || isUploading}
-            placeholder={isUploading ? "Uploading files..." : "Type your message..."}
+            placeholder={
+              isUploading
+                ? "Uploading files..."
+                : coralGptMode
+                  ? "Ask about coral reefs, bleaching, restoration..."
+                  : "Type your message..."
+            }
             selectedFile={selectedFile}
             selectedFiles={selectedFiles}
             onFileSelect={(fileOrFiles: File | File[]) => {

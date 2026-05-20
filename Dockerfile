@@ -45,6 +45,17 @@ COPY . .
 # Fix permissions on source files only (not node_modules)
 RUN chmod -R 755 /app/src /app/client
 
+# Browser bundle embeds these at build time (client/build.ts). The repo .env is not
+# copied into the image (.dockerignore), so pass them as build-args from compose/host.
+ARG SUPABASE_URL
+ARG SUPABASE_ANON_KEY
+ARG PRIVY_APP_ID
+ARG CORALGPT_HERO_VIDEO_URL
+ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+ENV PRIVY_APP_ID=${PRIVY_APP_ID}
+ENV CORALGPT_HERO_VIDEO_URL=${CORALGPT_HERO_VIDEO_URL}
+
 # Build the client
 RUN cd client && bun run build
 

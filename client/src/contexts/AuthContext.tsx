@@ -3,24 +3,26 @@ import { useContext, useState, useEffect } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 
 const AUTH_TOKEN_KEY = 'bioagents_auth_token';
+const USER_EMAIL_KEY = 'bioagents_user_email';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isAuthRequired: boolean;
   isChecking: boolean;
   isLoggingOut: boolean;
+  coralGptEnabled: boolean;
+  privyAppId: string | null;
   token: string | null;
   userId: string | null;
+  userEmail: string | null;
   login: (password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  exchangePrivyToken: (accessToken: string) => Promise<{ whitelisted: boolean }>;
   getAuthToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/**
- * Get stored auth token from localStorage
- */
 function getStoredToken(): string | null {
   try {
     return localStorage.getItem(AUTH_TOKEN_KEY);
@@ -29,9 +31,14 @@ function getStoredToken(): string | null {
   }
 }
 
-/**
- * Store auth token in localStorage
- */
+function getStoredEmail(): string | null {
+  try {
+    return localStorage.getItem(USER_EMAIL_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function storeToken(token: string): void {
   try {
     localStorage.setItem(AUTH_TOKEN_KEY, token);
@@ -40,53 +47,48 @@ function storeToken(token: string): void {
   }
 }
 
-/**
- * Clear auth token from localStorage
- */
+function storeEmail(email: string): void {
+  try {
+    localStorage.setItem(USER_EMAIL_KEY, email);
+  } catch (error) {
+    console.error('Failed to store user email:', error);
+  }
+}
+
 function clearStoredToken(): void {
   try {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(USER_EMAIL_KEY);
   } catch (error) {
     console.error('Failed to clear auth token:', error);
   }
 }
 
-/**
- * Decode JWT payload (without verification - just for reading userId)
- * The server verifies the token, we just need to read the payload
- */
-function decodeJWTPayload(token: string): { sub?: string } | null {
+function decodeJWTPayload(token: string): { sub?: string; email?: string } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return payload;
+    return JSON.parse(atob(parts[1]));
   } catch {
     return null;
   }
 }
 
-/**
- * AuthProvider component that provides authentication state to all children
- * Uses JWT tokens for authentication - tokens are stored in localStorage
- * and sent via Authorization header to the API
- */
 export function AuthProvider({ children }: { children: ComponentChildren }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [coralGptEnabled, setCoralGptEnabled] = useState(false);
+  const [privyAppId, setPrivyAppId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(getStoredToken());
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(getStoredEmail());
 
   useEffect(() => {
     checkAuthStatus();
   }, []);
 
-  /**
-   * Check authentication status with server
-   * Sends JWT token in Authorization header if available
-   */
   const checkAuthStatus = async () => {
     try {
       const storedToken = getStoredToken();
@@ -96,31 +98,32 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
         headers['Authorization'] = `Bearer ${storedToken}`;
       }
 
-      const response = await fetch('/api/auth/status', {
-        headers,
-      });
+      const response = await fetch('/api/auth/status', { headers });
 
       if (response.ok) {
         const data = await response.json();
+        setCoralGptEnabled(data.coralGptEnabled === true);
+        setPrivyAppId(data.privyAppId || null);
         setIsAuthRequired(data.isAuthRequired);
         setIsAuthenticated(data.isAuthenticated);
 
-        // Set userId from server response
         if (data.userId) {
           setUserId(data.userId);
         } else if (storedToken) {
-          // Fallback: decode userId from JWT payload
           const payload = decodeJWTPayload(storedToken);
           if (payload?.sub) {
             setUserId(payload.sub);
           }
+          if (payload?.email) {
+            setUserEmail(payload.email);
+          }
         }
 
-        // If token was invalid, clear it
         if (!data.isAuthenticated && storedToken) {
           clearStoredToken();
           setToken(null);
           setUserId(null);
+          setUserEmail(null);
         }
       }
     } catch (error) {
@@ -132,28 +135,20 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
     }
   };
 
-  /**
-   * Login with password - receives JWT token from server
-   */
   const login = async (password: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Store the JWT token
           if (data.token) {
             storeToken(data.token);
             setToken(data.token);
-
-            // Decode and set userId from token
             const payload = decodeJWTPayload(data.token);
             if (payload?.sub) {
               setUserId(payload.sub);
@@ -170,32 +165,55 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
     }
   };
 
-  /**
-   * Logout - clears stored JWT token
-   */
+  const exchangePrivyToken = async (
+    accessToken: string,
+  ): Promise<{ whitelisted: boolean }> => {
+    const response = await fetch('/api/auth/privy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success && data.token) {
+      storeToken(data.token);
+      setToken(data.token);
+      setUserId(data.userId);
+      setIsAuthenticated(true);
+
+      if (data.email) {
+        storeEmail(data.email);
+        setUserEmail(data.email);
+      }
+
+      return { whitelisted: true };
+    }
+
+    if (data.email) {
+      setUserEmail(data.email);
+    }
+
+    return { whitelisted: false };
+  };
+
   const logout = async (): Promise<void> => {
     setIsLoggingOut(true);
 
     try {
-      // Notify server (optional, JWT is stateless)
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
+      await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Logout request failed:', error);
     }
 
-    // Clear token and state regardless of server response
     clearStoredToken();
     setToken(null);
     setUserId(null);
+    setUserEmail(null);
     setIsAuthenticated(false);
     setIsLoggingOut(false);
   };
 
-  /**
-   * Get the current auth token for API calls
-   */
   const getAuthToken = (): string | null => {
     return token || getStoredToken();
   };
@@ -207,10 +225,14 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
         isAuthRequired,
         isChecking,
         isLoggingOut,
+        coralGptEnabled,
+        privyAppId,
         token,
         userId,
+        userEmail,
         login,
         logout,
+        exchangePrivyToken,
         getAuthToken,
       }}
     >
@@ -219,10 +241,6 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   );
 }
 
-/**
- * Hook to access auth context
- * Must be used within an AuthProvider
- */
 export function useAuthContext(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
@@ -231,10 +249,6 @@ export function useAuthContext(): AuthContextType {
   return context;
 }
 
-/**
- * Utility function to get auth token outside of React components
- * Useful for API calls in utility functions
- */
 export function getAuthTokenFromStorage(): string | null {
   return getStoredToken();
 }

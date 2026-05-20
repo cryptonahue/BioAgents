@@ -137,16 +137,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-color);
+  background: transparent;
   border-radius: 8px;
-  color: #000000;
   flex-shrink: 0;
-  box-shadow: 0 0 12px var(--accent-glow);
+  overflow: hidden;
 }
 
-.logo-icon svg {
-  width: 18px;
-  height: 18px;
+.logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .logo-text {
@@ -920,13 +921,47 @@ body {
 
 /* Welcome screen */
 .welcome-screen {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   padding: 48px 64px;
   animation: fadeIn 0.6s ease-out;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.welcome-screen-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+.welcome-screen-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 12, 18, 0.72) 0%,
+    rgba(8, 12, 18, 0.55) 45%,
+    rgba(8, 12, 18, 0.82) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.welcome-screen-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
 @keyframes fadeIn {
@@ -950,15 +985,21 @@ body {
 .welcome-logo-icon {
   width: 64px;
   height: 64px;
-  background: var(--accent-color);
+  background: transparent;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
   margin-bottom: 24px;
-  box-shadow: 0 8px 24px var(--accent-glow);
+  overflow: hidden;
   animation: pulse 2s ease-in-out infinite;
+}
+
+.welcome-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 @keyframes pulse {
@@ -988,14 +1029,14 @@ body {
 }
 
 .welcome-title-agents {
-  color: var(--text-primary);
+  color: #ffffff;
   font-weight: 400;
 }
 
 .welcome-subtitle {
   font-size: 16px;
   font-weight: 400;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.82);
   text-align: center;
   letter-spacing: -0.01em;
 }
@@ -1008,7 +1049,7 @@ body {
 .welcome-section-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 20px;
@@ -1024,11 +1065,13 @@ body {
 
 .example-prompt {
   padding: 20px;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: var(--bg-secondary);
+  background: rgba(12, 18, 28, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   gap: 16px;
   align-items: flex-start;
@@ -1049,7 +1092,7 @@ body {
 }
 
 .example-prompt:hover {
-  background: var(--bg-tertiary);
+  background: rgba(16, 24, 36, 0.88);
   border-color: var(--accent-color);
   transform: translateY(-4px);
   box-shadow: var(--shadow-green);
@@ -1090,14 +1133,14 @@ body {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 6px;
-  color: var(--text-primary);
+  color: #ffffff;
   letter-spacing: -0.01em;
 }
 
 .example-prompt-text {
   font-size: 13px;
   font-weight: 400;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.72);
   line-height: 1.5;
   letter-spacing: -0.005em;
   display: -webkit-box;
@@ -1130,15 +1173,21 @@ body {
 .login-logo-icon {
   width: 64px;
   height: 64px;
-  background: var(--accent-color);
+  background: transparent;
   border-radius: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
   margin-bottom: 24px;
-  box-shadow: 0 8px 24px var(--accent-glow);
+  overflow: hidden;
   animation: pulse 2s ease-in-out infinite;
+}
+
+.login-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .login-title {

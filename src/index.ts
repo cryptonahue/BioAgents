@@ -26,6 +26,7 @@ import logger from "./utils/logger";
 import { isJobQueueEnabled, closeConnections } from "./services/queue/connection";
 import { websocketHandler, cleanupDeadConnections } from "./services/websocket/handler";
 import { startRedisSubscription, stopRedisSubscription } from "./services/websocket/subscribe";
+import { waitlistRoute } from "./routes/waitlist";
 import { createQueueDashboard } from "./routes/admin/queue-dashboard";
 import { adminJobsRoute } from "./routes/admin/jobs";
 
@@ -145,6 +146,7 @@ const app = new Elysia()
 
   // Mount auth routes (no protection needed for auth endpoints)
   .use(authRoute)
+  .use(waitlistRoute)
 
   // Note: We always serve UI files regardless of auth status
   // The frontend (useAuth hook) will check /api/auth/status and show login screen if needed
@@ -156,10 +158,15 @@ const app = new Elysia()
     let htmlContent = await htmlFile.text();
 
     // Inject SEO metadata from environment variables
-    const seoTitle = process.env.SEO_TITLE || "BioAgents Chat";
+    const seoTitle =
+      process.env.SEO_TITLE ||
+      (process.env.PRIVY_APP_ID ? "CoralGPT — AI Scientist for Coral Reefs" : "BioAgents Chat");
     const seoDescription =
-      process.env.SEO_DESCRIPTION || "AI-powered chat interface";
-    const faviconUrl = process.env.FAVICON_URL || "/favicon.ico";
+      process.env.SEO_DESCRIPTION ||
+      (process.env.PRIVY_APP_ID
+        ? "Ask questions, run deep research, and discover evidence-backed insights about coral health, bleaching, and restoration. BioAgent powered by $CRLAI."
+        : "AI-powered chat interface");
+    const faviconUrl = process.env.FAVICON_URL || "/images/token.png";
     const ogImageUrl =
       process.env.OG_IMAGE_URL || "https://bioagents.xyz/og-image.png";
 
@@ -192,6 +199,26 @@ const app = new Elysia()
         "Content-Type": "text/css",
       },
     });
+  })
+
+  // Serve static UI images (welcome background, etc.)
+  .get("/images/*", async ({ request }) => {
+    const url = new URL(request.url);
+    const filePath = `client/dist${url.pathname}`;
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) {
+      return new Response("Not Found", { status: 404 });
+    }
+    const ext = url.pathname.split(".").pop()?.toLowerCase();
+    const contentType =
+      ext === "png"
+        ? "image/png"
+        : ext === "jpg" || ext === "jpeg"
+          ? "image/jpeg"
+          : ext === "webp"
+            ? "image/webp"
+            : "application/octet-stream";
+    return new Response(file, { headers: { "Content-Type": contentType } });
   })
 
   // Serve source map for debugging
@@ -350,10 +377,15 @@ app
     let htmlContent = await htmlFile.text();
 
     // Inject SEO metadata from environment variables
-    const seoTitle = process.env.SEO_TITLE || "BioAgents Chat";
+    const seoTitle =
+      process.env.SEO_TITLE ||
+      (process.env.PRIVY_APP_ID ? "CoralGPT — AI Scientist for Coral Reefs" : "BioAgents Chat");
     const seoDescription =
-      process.env.SEO_DESCRIPTION || "AI-powered chat interface";
-    const faviconUrl = process.env.FAVICON_URL || "/favicon.ico";
+      process.env.SEO_DESCRIPTION ||
+      (process.env.PRIVY_APP_ID
+        ? "Ask questions, run deep research, and discover evidence-backed insights about coral health, bleaching, and restoration. BioAgent powered by $CRLAI."
+        : "AI-powered chat interface");
+    const faviconUrl = process.env.FAVICON_URL || "/images/token.png";
     const ogImageUrl =
       process.env.OG_IMAGE_URL || "https://bioagents.xyz/og-image.png";
 

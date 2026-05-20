@@ -35,11 +35,13 @@ export function LoginScreen({ onLogin }) {
       <div className="login-container">
         <div className="login-header">
           <div className="login-logo-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C12 2 8 4 8 8C8 10 9 11 10 12C9 13 8 14 8 16C8 20 12 22 12 22C12 22 16 20 16 16C16 14 15 13 14 12C15 11 16 10 16 8C16 4 12 2 12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="12" cy="8" r="1.5" fill="currentColor"/>
-              <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
-            </svg>
+            <img
+              src="/images/token.png"
+              alt="BioAgents"
+              width={48}
+              height={48}
+              decoding="async"
+            />
           </div>
           <h1 className="login-title">
             <span className="login-title-bio">BIO</span>

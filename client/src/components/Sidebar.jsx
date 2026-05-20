@@ -3,13 +3,16 @@ import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
 import { useAuth } from '../hooks';
 
-export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose }) {
+export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { logout, isLoggingOut } = useAuth();
 
   const handleLogout = async () => {
+    if (coralGptMode && privyLogout) {
+      await privyLogout();
+    }
     await logout();
-    route('/login', true);
+    route(coralGptMode ? '/' : '/login', true);
   };
 
   // Group sessions by time period
@@ -50,15 +53,26 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             <div className="sidebar-branding">
               <div className="sidebar-logo">
                 <div className="logo-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C12 2 8 4 8 8C8 10 9 11 10 12C9 13 8 14 8 16C8 20 12 22 12 22C12 22 16 20 16 16C16 14 15 13 14 12C15 11 16 10 16 8C16 4 12 2 12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="12" cy="8" r="1.5" fill="currentColor"/>
-                    <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
-                  </svg>
+                  <img
+                    src="/images/token.png"
+                    alt=""
+                    width={24}
+                    height={24}
+                    decoding="async"
+                  />
                 </div>
                 <div className="logo-text">
-                  <span className="logo-bio">BIO</span>
-                  <span className="logo-agents">AGENTS</span>
+                  {coralGptMode ? (
+                    <>
+                      <span className="logo-bio">CORAL</span>
+                      <span className="logo-agents">GPT</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="logo-bio">BIO</span>
+                      <span className="logo-agents">AGENTS</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="sidebar-header-actions">

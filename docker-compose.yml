@@ -21,7 +21,15 @@ services:
   # Database migrations (one-off job if you're using Supabase)
   # ==========================================================================
   migrate:
-    build: .
+    profiles:
+      - migrate
+    build:
+      context: .
+      args:
+        SUPABASE_URL: ${SUPABASE_URL}
+        SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+        PRIVY_APP_ID: ${PRIVY_APP_ID:-}
+        CORALGPT_HERO_VIDEO_URL: ${CORALGPT_HERO_VIDEO_URL:-}
     container_name: bioagents-migrate
     env_file:
       - .env
@@ -43,25 +51,28 @@ services:
   # API Server - Handles HTTP requests and WebSocket connections
   # ==========================================================================
   bioagents:
-    build: .
+    build:
+      context: .
+      args:
+        SUPABASE_URL: ${SUPABASE_URL}
+        SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+        PRIVY_APP_ID: ${PRIVY_APP_ID:-}
+        CORALGPT_HERO_VIDEO_URL: ${CORALGPT_HERO_VIDEO_URL:-}
     container_name: bioagents-api
     expose:
       - "${PORT:-3000}"
 
     volumes:
-      - bioagents-docs:/app/docs
+      # Bind mount so local papers in ./docs (gitignored) are visible in the container
+      - ./docs:/app/docs
       - bioagents-images:/app/client/public/images
 
     ports:
       - "${PORT:-3000}:3000"
 
     environment:
-      # Required: LLM API Keys
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      # LLM / embedding API keys: use env_file (.env) only — listing them here with
+      # ${VAR:-} overrides env_file with an empty value when Compose substitution fails.
 
       # Agent LLM Configuration
       - OPENSCHOLAR_API_URL=${OPENSCHOLAR_API_URL:-}
@@ -98,10 +109,9 @@ services:
       - BIOAGENTS_SECRET=${BIOAGENTS_SECRET:-}
       - AUTH_MODE=${AUTH_MODE:-none}
       - UI_PASSWORD=${UI_PASSWORD:-}
-
-      # Optional: Supabase (for app runtime)
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - PRIVY_APP_ID=${PRIVY_APP_ID:-}
+      - PRIVY_APP_SECRET=${PRIVY_APP_SECRET:-}
+      - CORALGPT_HERO_VIDEO_URL=${CORALGPT_HERO_VIDEO_URL:-}
 
       # Server Configuration
       - PORT=3000
@@ -150,6 +160,24 @@ services:
       start_period: 40s
 
   # ==========================================================================
+  # Caddy - HTTPS reverse proxy (required by Privy outside localhost)
+  # Access CoralGPT at https://<your-server-ip>  (accept self-signed cert in dev)
+  # HTTP on :3000 still works for http://localhost only
+  # ==========================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: bioagents-caddy
+    ports:
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - bioagents
+    restart: unless-stopped
+
+  # ==========================================================================
   # Redis - Message broker for BullMQ job queue
   # ==========================================================================
   # NOTE: If using external Redis (set REDIS_URL in .env), this local redis
@@ -174,9 +202,11 @@ services:
 volumes:
   supabase_tmp:
     driver: local
-  bioagents-docs:
-    driver: local
   bioagents-images:
     driver: local
   redis-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
     driver: local

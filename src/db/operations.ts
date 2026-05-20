@@ -10,7 +10,9 @@ export interface User {
   id?: string;
   username: string;
   email: string;
+  user_id?: string; // Privy DID
   wallet_address?: string; // For x402 payment users identified by wallet
+  access_type?: string | null;
   used_invite_code?: string;
   points?: number;
   has_completed_invite_flow?: boolean;
@@ -102,6 +104,93 @@ export async function getUserByWallet(walletAddress: string) {
     throw error;
   } // PGRST116 = not found
   return data;
+}
+
+/**
+ * Get user by Privy DID (stored in users.user_id)
+ */
+export async function getUserByPrivyId(privyUserId: string) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("user_id", privyUserId)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    logger.error(
+      `[getUserByPrivyId] Error getting user by Privy ID: ${error.message}`,
+    );
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Get or create a user from Privy authentication
+ */
+export async function getOrCreatePrivyUser(params: {
+  privyUserId: string;
+  email?: string;
+  walletAddress?: string;
+}): Promise<{ user: any; isNew: boolean }> {
+  const existing = await getUserByPrivyId(params.privyUserId);
+  if (existing) {
+    const updates: Record<string, string> = {};
+    if (params.email && params.email !== existing.email) {
+      updates.email = params.email;
+    }
+    if (
+      params.walletAddress &&
+      params.walletAddress.toLowerCase() !== existing.wallet_address?.toLowerCase()
+    ) {
+      updates.wallet_address = params.walletAddress.toLowerCase();
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { data, error } = await supabase
+        .from("users")
+        .update(updates)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+
+      if (error) {
+        logger.error(
+          `[getOrCreatePrivyUser] Error updating user: ${error.message}`,
+        );
+        return { user: existing, isNew: false };
+      }
+      return { user: data, isNew: false };
+    }
+
+    return { user: existing, isNew: false };
+  }
+
+  const usernameBase = params.email
+    ? params.email.split("@")[0]
+    : `user_${params.privyUserId.slice(-8)}`;
+  const username = `${usernameBase}_${params.privyUserId.slice(-6)}`.slice(0, 50);
+
+  const { data, error } = await supabase
+    .from("users")
+    .insert({
+      username,
+      email: params.email || null,
+      user_id: params.privyUserId,
+      wallet_address: params.walletAddress?.toLowerCase() || null,
+      access_type: null,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    logger.error(
+      `[getOrCreatePrivyUser] Error creating user: ${error.message}`,
+    );
+    throw error;
+  }
+
+  return { user: data, isNew: true };
 }
 
 /**

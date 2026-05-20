@@ -1,0 +1,11 @@
+# HTTPS reverse proxy for CoralGPT / Privy (requires secure context)
+# Access: https://<your-host>:8443  (accept the self-signed cert warning in dev)
+
+{
+	auto_https disable_redirects
+}
+
+:443 {
+	tls internal
+	reverse_proxy bioagents:3000
+}

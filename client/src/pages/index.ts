@@ -5,3 +5,5 @@
 
 export { LoginPage } from './LoginPage';
 export { ChatPage } from './ChatPage';
+export { LandingPage } from './LandingPage';
+export { AccessPendingPage } from './AccessPendingPage';

@@ -1,69 +1,63 @@
+import './utils/crypto-polyfill';
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import Router, { route } from 'preact-router';
+import { usePrivy } from '@privy-io/react-auth';
 import { CDPProvider } from './providers/CDPProvider';
+import { CoralPrivyProvider } from './providers/PrivyProvider';
 import { AuthProvider } from './contexts';
-import { LoginPage, ChatPage } from './pages';
+import { LoginPage, ChatPage, LandingPage, AccessPendingPage } from './pages';
 import { useAuth } from './hooks';
 import './styles/global.css';
+import './styles/coralgpt.css';
 
-/**
- * App Shell component that handles routing
- * Includes auth check and redirects
- */
-function AppShell() {
+function LoadingScreen() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      background: 'var(--bg-primary, #0a0a0a)',
+      color: 'var(--text-secondary, #a1a1a1)',
+    }}>
+      Loading...
+    </div>
+  );
+}
+
+function LegacyAppShell() {
   const { isAuthenticated, isAuthRequired, isChecking, isLoggingOut } = useAuth();
 
-  // Handle auth redirects
   useEffect(() => {
-    // Skip during initial auth check or during logout
     if (isChecking || isLoggingOut) return;
 
     const currentPath = window.location.pathname;
 
-    // If auth is required and user is not authenticated, redirect to login
     if (isAuthRequired && !isAuthenticated && currentPath !== '/login') {
       route('/login', true);
     }
 
-    // If authenticated and on login page, redirect to chat
     if (isAuthenticated && currentPath === '/login') {
       route('/chat', true);
     }
   }, [isAuthenticated, isAuthRequired, isChecking, isLoggingOut]);
 
-  // Handle route changes for auth protection
   const handleRouteChange = (e) => {
     const { url } = e;
-
-    // Skip during auth check or logout
     if (isChecking || isLoggingOut) return;
 
-    // If auth is required and user is not authenticated, redirect to login
     if (isAuthRequired && !isAuthenticated && url !== '/login') {
       route('/login', true);
     }
 
-    // If authenticated and on login page, redirect to chat
     if (isAuthenticated && url === '/login') {
       route('/chat', true);
     }
   };
 
-  // Show loading state while checking auth
   if (isChecking) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'var(--bg-primary, #0a0a0a)',
-        color: 'var(--text-secondary, #a1a1a1)',
-      }}>
-        Loading...
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -71,14 +65,52 @@ function AppShell() {
       <LoginPage path="/login" />
       <ChatPage path="/chat/:sessionId?" />
       <Redirect path="/" to="/chat" />
-      <NotFound default />
+      <NotFound default redirectTo="/chat" />
     </Router>
   );
 }
 
-/**
- * Redirect component for routes
- */
+function CoralAppShell() {
+  const { isAuthenticated, isChecking, isLoggingOut } = useAuth();
+  const { logout: privyLogout } = usePrivy();
+
+  useEffect(() => {
+    document.body.classList.add('coralgpt-theme');
+    return () => document.body.classList.remove('coralgpt-theme');
+  }, []);
+
+  useEffect(() => {
+    if (isChecking || isLoggingOut) return;
+
+    const currentPath = window.location.pathname;
+    if (currentPath.startsWith('/chat') && !isAuthenticated) {
+      route('/', true);
+    }
+  }, [isAuthenticated, isChecking, isLoggingOut]);
+
+  const handleRouteChange = (e) => {
+    const { url } = e;
+    if (isChecking || isLoggingOut) return;
+
+    if (url.startsWith('/chat') && !isAuthenticated) {
+      route('/', true);
+    }
+  };
+
+  if (isChecking) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <Router onChange={handleRouteChange}>
+      <LandingPage path="/" />
+      <AccessPendingPage path="/access-pending" />
+      <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
+      <NotFound default redirectTo="/" />
+    </Router>
+  );
+}
+
 function Redirect({ to }) {
   useEffect(() => {
     route(to, true);
@@ -86,52 +118,45 @@ function Redirect({ to }) {
   return null;
 }
 
-/**
- * 404 Not Found component - redirects to chat
- */
-function NotFound() {
+function NotFound({ redirectTo }) {
   useEffect(() => {
-    route('/chat', true);
-  }, []);
+    route(redirectTo, true);
+  }, [redirectTo]);
   return null;
 }
 
-/**
- * Root component that conditionally wraps App with CDPProvider
- * Only loads CDP provider when x402 is enabled
- */
 function Root() {
   const [x402Enabled, setX402Enabled] = useState(null);
+  const [authConfig, setAuthConfig] = useState(null);
 
   useEffect(() => {
-    fetch('/api/x402/config')
-      .then(res => res.ok ? res.json() : { enabled: false })
-      .then(config => {
-        setX402Enabled(config.enabled === true);
-        if (config.enabled) {
-          console.log('[Root] x402 enabled, loading CDP provider');
-        } else {
-          console.log('[Root] x402 disabled, skipping CDP provider');
-        }
-      })
-      .catch(() => {
-        console.log('[Root] Failed to fetch x402 config, disabling CDP provider');
-        setX402Enabled(false);
-      });
+    Promise.all([
+      fetch('/api/x402/config')
+        .then((res) => (res.ok ? res.json() : { enabled: false }))
+        .catch(() => ({ enabled: false })),
+      fetch('/api/auth/config')
+        .then((res) => (res.ok ? res.json() : { coralGptEnabled: false }))
+        .catch(() => ({ coralGptEnabled: false })),
+    ]).then(([x402Config, authCfg]) => {
+      setX402Enabled(x402Config.enabled === true);
+      setAuthConfig(authCfg);
+    });
   }, []);
 
-  if (x402Enabled === null) {
+  if (x402Enabled === null || authConfig === null) {
+    return <LoadingScreen />;
+  }
+
+  const coralGptEnabled = authConfig.coralGptEnabled === true;
+  const privyAppId = authConfig.privyAppId;
+
+  if (coralGptEnabled && privyAppId) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'var(--bg-primary, #0a0a0a)',
-        color: 'var(--text-secondary, #a1a1a1)',
-      }}>
-        Loading...
-      </div>
+      <AuthProvider>
+        <CoralPrivyProvider appId={privyAppId}>
+          <CoralAppShell />
+        </CoralPrivyProvider>
+      </AuthProvider>
     );
   }
 
@@ -139,7 +164,7 @@ function Root() {
     return (
       <AuthProvider>
         <CDPProvider>
-          <AppShell />
+          <LegacyAppShell />
         </CDPProvider>
       </AuthProvider>
     );
@@ -147,7 +172,7 @@ function Root() {
 
   return (
     <AuthProvider>
-      <AppShell />
+      <LegacyAppShell />
     </AuthProvider>
   );
 }
