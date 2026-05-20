@@ -468,9 +468,18 @@ async function processWithAgentLoop(
   await notifyJobProgress(job.id!, conversationId, "planning", 10);
 
   // Misconfigured API key won't self-heal between retries — fail fast
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const chatProvider = (process.env.CHAT_AGENT_LLM_PROVIDER || "anthropic").toLowerCase();
+  const chatApiKeyMissing =
+    chatProvider === "openrouter"
+      ? !process.env.OPENROUTER_API_KEY
+      : !process.env.ANTHROPIC_API_KEY;
+  if (chatApiKeyMissing) {
     const { UnrecoverableError } = await import("bullmq");
-    throw new UnrecoverableError("Anthropic API key is not configured");
+    throw new UnrecoverableError(
+      chatProvider === "openrouter"
+        ? "OPENROUTER_API_KEY is not configured"
+        : "Anthropic API key is not configured",
+    );
   }
 
   const { runChatAgent } = await import("../../../chat-agent/runner");

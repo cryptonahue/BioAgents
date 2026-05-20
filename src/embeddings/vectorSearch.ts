@@ -158,7 +158,11 @@ export class VectorSearchWithReranker {
 
     let finalResults: Document[];
 
-    if (useReranking && vectorResults.length > 1) {
+    if (
+      useReranking &&
+      CONFIG.COHERE_API_KEY &&
+      vectorResults.length > 1
+    ) {
       // Stage 2: Rerank with Cohere
       finalResults = await this.rerank(query, vectorResults, finalLimit);
     } else {

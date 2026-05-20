@@ -81,13 +81,24 @@ export async function runChatAgent(
   await import("./tools/literature-search");
 
   // --- 2. Read env config (inside function, not module-level) ---
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
+  const provider = (process.env.CHAT_AGENT_LLM_PROVIDER || "anthropic").toLowerCase();
+
+  let apiKey: string;
+  if (provider === "openrouter") {
+    apiKey = process.env.OPENROUTER_API_KEY || "";
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
+    }
+  } else {
+    apiKey = process.env.ANTHROPIC_API_KEY || "";
+    if (!apiKey) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
+    }
   }
 
   const model =
-    process.env.CHAT_AGENT_MODEL || "claude-sonnet-4-6";
+    process.env.CHAT_AGENT_MODEL ||
+    (provider === "openrouter" ? "qwen/qwen3.6-plus" : "claude-sonnet-4-6");
   const maxToolCalls =
     parseInt(process.env.CHAT_AGENT_MAX_TOOL_CALLS || "") || 10;
   const maxTokens =
@@ -166,20 +177,35 @@ export async function runChatAgent(
   }
 
   // --- 5. Run the agent loop ---
-  const { runAgentLoop } = await import("./loop");
+  const loopConfig = {
+    model,
+    systemPrompt,
+    maxToolCalls,
+    maxTokens,
+    apiKey,
+    onToolResult: params.onToolResult,
+  };
 
-  const agentResult = await runAgentLoop(
-    userMessage,
-    {
-      model,
-      systemPrompt,
-      maxToolCalls,
-      maxTokens,
-      apiKey,
-      onToolResult: params.onToolResult,
-    },
-    conversationHistory.length > 0 ? conversationHistory : undefined,
-  );
+  const openRouterHistory =
+    conversationHistory.length > 0
+      ? conversationHistory.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: typeof m.content === "string" ? m.content : "",
+        }))
+      : undefined;
+
+  const agentResult =
+    provider === "openrouter"
+      ? await (
+          await import("./loop-openrouter")
+        ).runAgentLoopOpenRouter(userMessage, loopConfig, openRouterHistory)
+      : await (
+          await import("./loop")
+        ).runAgentLoop(
+          userMessage,
+          loopConfig,
+          conversationHistory.length > 0 ? conversationHistory : undefined,
+        );
 
   // --- 6. Return unified result ---
   return {
