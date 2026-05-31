@@ -50,6 +50,7 @@ export async function getConversationsByUser(userId: string) {
     .from("conversations")
     .select("*")
     .eq("user_id", userId)
+    .is("library_doc_id", null) // exclude per-paper library chats from the general sidebar
     .order("created_at", { ascending: false });
 
   if (error) {

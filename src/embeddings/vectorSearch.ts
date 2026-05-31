@@ -64,21 +64,69 @@ export class VectorSearchWithReranker {
   }
 
   // Vector search (first stage)
-  async vectorSearch(query: string, limit = 20): Promise<Document[]> {
-    logger.info(`🔍 Vector search for: "${query}" (limit: ${limit})`);
+  // When filterTitle is provided, results are scoped to a single document.
+  // matchThreshold overrides the global similarity threshold (useful for
+  // per-document RAG, where we want the best top-k chunks regardless of the
+  // absolute score — e.g. cross-lingual queries against an English paper).
+  async vectorSearch(
+    query: string,
+    limit = 20,
+    filterTitle?: string,
+    matchThreshold?: number,
+  ): Promise<Document[]> {
+    const threshold =
+      matchThreshold != null ? matchThreshold : CONFIG.SIMILARITY_THRESHOLD;
+
+    logger.info(
+      `🔍 Vector search for: "${query}" (limit: ${limit}, threshold: ${threshold}${filterTitle ? `, title: "${filterTitle}"` : ""})`,
+    );
 
     const queryEmbedding =
       await this.embeddingProvider.generateEmbedding(query);
 
-    const { data, error } = await supabase.rpc("match_documents", {
-      query_embedding: queryEmbedding,
-      match_threshold: CONFIG.SIMILARITY_THRESHOLD,
-      match_count: limit,
-    });
+    let data: any[] | null = null;
 
-    if (error) throw error;
+    if (filterTitle) {
+      // Preferred path: filtered RPC (added in 20260531120000 migration).
+      const filtered = await supabase.rpc("match_documents_filtered", {
+        query_embedding: queryEmbedding,
+        match_threshold: threshold,
+        match_count: limit,
+        filter_title: filterTitle,
+      });
 
-    const results = data.map((doc: any) => ({
+      if (filtered.error) {
+        // Fallback for databases where the migration has not run yet:
+        // query unfiltered, then filter by title in-process.
+        logger.warn(
+          `match_documents_filtered unavailable (${filtered.error.message}); falling back to match_documents + in-memory title filter`,
+        );
+        const fallback = await supabase.rpc("match_documents", {
+          query_embedding: queryEmbedding,
+          match_threshold: threshold,
+          match_count: Math.max(limit * 20, 200),
+        });
+        if (fallback.error) throw fallback.error;
+        data = (fallback.data || [])
+          .filter((doc: any) => doc.title === filterTitle)
+          .slice(0, limit);
+      } else {
+        data = filtered.data;
+      }
+    } else {
+      const { data: unfiltered, error } = await supabase.rpc(
+        "match_documents",
+        {
+          query_embedding: queryEmbedding,
+          match_threshold: threshold,
+          match_count: limit,
+        },
+      );
+      if (error) throw error;
+      data = unfiltered;
+    }
+
+    const results = (data || []).map((doc: any) => ({
       id: doc.id,
       title: doc.title,
       content: doc.content,
@@ -133,15 +181,19 @@ export class VectorSearchWithReranker {
       vectorLimit?: number;
       finalLimit?: number;
       useReranking?: boolean;
+      filterTitle?: string;
+      matchThreshold?: number;
     } = {},
   ): Promise<Document[]> {
     const {
       vectorLimit = CONFIG.VECTOR_SEARCH_LIMIT,
       finalLimit = CONFIG.RERANK_FINAL_LIMIT,
       useReranking = CONFIG.USE_RERANKING,
+      filterTitle,
+      matchThreshold,
     } = options;
 
-    const cacheKey = `search_${query}_${vectorLimit}_${finalLimit}_${useReranking}`;
+    const cacheKey = `search_${query}_${vectorLimit}_${finalLimit}_${useReranking}_${filterTitle || ""}_${matchThreshold ?? ""}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
@@ -149,7 +201,12 @@ export class VectorSearchWithReranker {
     const startTime = Date.now();
 
     // Stage 1: Vector search
-    const vectorResults = await this.vectorSearch(query, vectorLimit);
+    const vectorResults = await this.vectorSearch(
+      query,
+      vectorLimit,
+      filterTitle,
+      matchThreshold,
+    );
 
     if (vectorResults.length === 0) {
       logger.info("❌ No vector search results found");

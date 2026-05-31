@@ -4,6 +4,7 @@ import "./utils/canvas-polyfill";
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 import { artifactsRoute } from "./routes/artifacts";
+import { libraryRoute } from "./routes/library";
 import { authRoute } from "./routes/auth";
 import { chatRoute } from "./routes/chat";
 import { clarificationRoute } from "./routes/clarification";
@@ -293,6 +294,7 @@ const app = new Elysia()
   .use(deepResearchBranchRoute) // POST /api/deep-research/branch to fork a conversation with copied state
   .use(deepResearchPaperRoute) // POST /api/deep-research/conversations/:conversationId/paper for paper generation
   .use(artifactsRoute) // GET /api/artifacts/download for artifact downloads
+  .use(libraryRoute) // GET/POST /api/library/* for paper library + per-paper Q&A
   .use(filesRoute) // POST /api/files/* for direct S3 file uploads
 
   // x402 payment routes - Base (USDC)

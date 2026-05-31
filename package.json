@@ -75,6 +75,7 @@
     "build:client": "bun run client/build.ts",
     "build": "bun run build:client",
     "migrate": "supabase migration up",
-    "migrate:new": "supabase migration new"
+    "migrate:new": "supabase migration new",
+    "redeploy": "docker compose build bioagents && docker compose up -d --force-recreate bioagents"
   }
 }

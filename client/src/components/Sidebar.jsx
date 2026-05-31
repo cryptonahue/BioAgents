@@ -111,6 +111,14 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               New Chat
             </Button>
+            <Button
+              variant="ghost"
+              icon="bookOpen"
+              onClick={() => route('/library')}
+              className="sidebar-library-btn"
+            >
+              Library
+            </Button>
           </>
         )}
         {isCollapsed && (

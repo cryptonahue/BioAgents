@@ -6,10 +6,11 @@ import { usePrivy } from '@privy-io/react-auth';
 import { CDPProvider } from './providers/CDPProvider';
 import { CoralPrivyProvider } from './providers/PrivyProvider';
 import { AuthProvider } from './contexts';
-import { LoginPage, ChatPage, LandingPage, AccessPendingPage } from './pages';
+import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage } from './pages';
 import { useAuth } from './hooks';
 import './styles/global.css';
 import './styles/coralgpt.css';
+import './styles/library.css';
 
 function LoadingScreen() {
   return (
@@ -64,6 +65,8 @@ function LegacyAppShell() {
     <Router onChange={handleRouteChange}>
       <LoginPage path="/login" />
       <ChatPage path="/chat/:sessionId?" />
+      <LibraryPage path="/library" />
+      <PaperPage path="/library/:docId" />
       <Redirect path="/" to="/chat" />
       <NotFound default redirectTo="/chat" />
     </Router>
@@ -106,6 +109,8 @@ function CoralAppShell() {
       <LandingPage path="/" />
       <AccessPendingPage path="/access-pending" />
       <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
+      <LibraryPage path="/library" coralGptMode />
+      <PaperPage path="/library/:docId" coralGptMode />
       <NotFound default redirectTo="/" />
     </Router>
   );

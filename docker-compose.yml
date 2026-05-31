@@ -68,7 +68,7 @@ services:
       - bioagents-images:/app/client/public/images
 
     ports:
-      - "${PORT:-3000}:3000"
+      - "0.0.0.0:${PORT:-3000}:3000"
 
     environment:
       # LLM / embedding API keys: use env_file (.env) only — listing them here with
@@ -168,7 +168,7 @@ services:
     image: caddy:2-alpine
     container_name: bioagents-caddy
     ports:
-      - "${HTTPS_PORT:-8443}:443"
+      - "0.0.0.0:${HTTPS_PORT:-8443}:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -190,7 +190,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "0.0.0.0:${REDIS_PORT:-6379}:6379"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

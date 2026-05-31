@@ -1,0 +1,88 @@
+# ============================================================================
+# BioAgents / CoralGPT - Dockerfile optimizado para Coolify
+# ============================================================================
+#
+# Cómo usarlo en Coolify:
+#   1. New Resource -> Application -> tu repositorio Git
+#   2. Build Pack: "Dockerfile"
+#   3. Dockerfile Location: /Dockerfile.coolify
+#   4. Ports Exposes: 3000
+#   5. Asigná tu dominio en la pestaña del servicio (Coolify pone el TLS/HTTPS
+#      automáticamente con su proxy Traefik + Let's Encrypt). NO hace falta Caddy.
+#
+# IMPORTANTE - variables que se hornean en el bundle del navegador:
+#   SUPABASE_URL, SUPABASE_ANON_KEY, PRIVY_APP_ID y CORALGPT_HERO_VIDEO_URL se
+#   incrustan en el JS del cliente DURANTE EL BUILD (client/build.ts).
+#   En Coolify, en Environment Variables, cargá esas 4 y marcá la casilla
+#   "Build Variable / Available at buildtime". Si no, el bundle sale con valores
+#   vacíos y la app queda en pantalla negra (Loading...).
+# ============================================================================
+
+FROM oven/bun:latest AS base
+
+WORKDIR /app
+
+# Dependencias del sistema: ca-certificates + LaTeX/Pandoc (generación de papers).
+# XeLaTeX da soporte Unicode nativo (β, ′, acentos, etc.).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ca-certificates \
+  texlive-latex-base \
+  texlive-latex-extra \
+  texlive-fonts-recommended \
+  texlive-bibtex-extra \
+  texlive-xetex \
+  latexmk \
+  pandoc \
+  lmodern \
+  fonts-linuxlibertine \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Supabase CLI (para migraciones, si las corrés desde el contenedor).
+ADD https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz /tmp/supabase.tar.gz
+RUN tar -xzf /tmp/supabase.tar.gz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/supabase && \
+    rm /tmp/supabase.tar.gz
+
+# Instalar dependencias (todas, necesarias para el build del cliente).
+COPY package.json bun.lock* ./
+RUN bun install
+
+# Copiar el código fuente.
+COPY . .
+RUN chmod -R 755 /app/src /app/client
+
+# --- Variables horneadas en el bundle del navegador (build-time) ---
+# En Coolify, marcá estas como "Build Variable" para que lleguen acá.
+ARG SUPABASE_URL
+ARG SUPABASE_ANON_KEY
+ARG PRIVY_APP_ID
+ARG CORALGPT_HERO_VIDEO_URL
+ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+ENV PRIVY_APP_ID=${PRIVY_APP_ID}
+ENV CORALGPT_HERO_VIDEO_URL=${CORALGPT_HERO_VIDEO_URL}
+
+# Build del cliente (Preact -> client/dist).
+RUN cd client && bun run build
+
+# Quitar dev dependencies para achicar la imagen final.
+RUN bun install --production
+
+EXPOSE 3000
+
+# Entorno de runtime. El resto de las variables las inyecta Coolify desde
+# Environment Variables (runtime), no hace falta repetirlas acá.
+ENV NODE_ENV=production
+ENV BUN_RUNTIME_TRANSPILER_CACHE_PATH=/tmp
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+# Usuario no-root por seguridad.
+USER bun
+
+# Healthcheck (Coolify lo usa para marcar el contenedor como healthy).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD bun run -e 'fetch("http://localhost:3000/api/health").then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))'
+
+CMD ["bun", "run", "src/index.ts"]

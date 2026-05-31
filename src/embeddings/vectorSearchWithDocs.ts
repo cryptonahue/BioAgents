@@ -140,6 +140,111 @@ export class VectorSearchWithDocuments extends VectorSearchWithReranker {
   }
 
   /**
+   * Lists every distinct document (paper) in the store, aggregated by title.
+   * Returns lightweight metadata suitable for a library listing.
+   */
+  async listDocuments(): Promise<
+    Array<{
+      title: string;
+      chunkCount: number;
+      type?: string;
+      size?: number;
+      filePath?: string;
+      lastModified?: string;
+    }>
+  > {
+    const { data, error } = await supabase
+      .from("documents")
+      .select("title, metadata")
+      .limit(50000);
+
+    if (error) throw error;
+
+    const byTitle = new Map<
+      string,
+      {
+        title: string;
+        chunkCount: number;
+        type?: string;
+        size?: number;
+        filePath?: string;
+        lastModified?: string;
+      }
+    >();
+
+    for (const row of data || []) {
+      const title = (row as any).title as string;
+      const meta = ((row as any).metadata || {}) as any;
+      const existing = byTitle.get(title);
+      if (existing) {
+        existing.chunkCount += 1;
+      } else {
+        byTitle.set(title, {
+          title,
+          chunkCount: 1,
+          type: meta.type,
+          size: meta.size,
+          filePath: meta.filePath,
+          lastModified: meta.lastModified,
+        });
+      }
+    }
+
+    return Array.from(byTitle.values()).sort((a, b) =>
+      a.title.localeCompare(b.title),
+    );
+  }
+
+  /**
+   * Fetches all chunks for a single document (by title), ordered by chunkIndex.
+   */
+  async getDocumentChunks(
+    title: string,
+  ): Promise<Array<{ content: string; metadata: any }>> {
+    const { data, error } = await supabase
+      .from("documents")
+      .select("content, metadata")
+      .eq("title", title)
+      .limit(50000);
+
+    if (error) throw error;
+    if (!data || data.length === 0) return [];
+
+    return (data as any[])
+      .map((row) => ({
+        content: row.content as string,
+        metadata: (row.metadata || {}) as any,
+      }))
+      .sort((a, b) => {
+        const ai = Number(a.metadata?.chunkIndex ?? 0);
+        const bi = Number(b.metadata?.chunkIndex ?? 0);
+        return ai - bi;
+      });
+  }
+
+  /**
+   * Reconstructs the full document text (ordered by chunkIndex) for a title.
+   * Returns null when the document does not exist.
+   */
+  async getFullDocument(title: string): Promise<{
+    title: string;
+    content: string;
+    metadata: any;
+    chunkCount: number;
+  } | null> {
+    const chunks = await this.getDocumentChunks(title);
+    if (chunks.length === 0) return null;
+
+    const content = chunks.map((c) => c.content).join("\n\n");
+    return {
+      title,
+      content,
+      metadata: chunks[0].metadata,
+      chunkCount: chunks.length,
+    };
+  }
+
+  /**
    * Processes and adds a single file to the vector store.
    * Useful for API endpoints that allow file uploads.
    * @param filePath The path to the file.
