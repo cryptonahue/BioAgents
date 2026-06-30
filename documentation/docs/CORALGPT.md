@@ -12,7 +12,7 @@ The codebase now contains TWO separate agent systems. Understanding that they ar
 
 **chat-agent system (`src/chat-agent/*`)** — a newer, self-contained tool-calling loop. The model is given a set of tools (registered in `src/chat-agent/registry.ts`) and decides which to call across iterations until it produces a final answer. This system is decoupled from `src/llm/*` and talks to providers directly.
 
-> IMPORTANT and counter-intuitive: the chat-agent loop is hand-rolled. It is NOT built on the OpenAI Agents SDK. The `@openai/agents` dependency declared in `package.json` is never imported anywhere in `src/` (confirmed: zero references) — it is effectively a dead dependency. The Anthropic path lives in `src/chat-agent/loop.ts`; the OpenRouter path in `src/chat-agent/loop-openrouter.ts`.
+> IMPORTANT and counter-intuitive: the chat-agent loop is hand-rolled. It is NOT built on the OpenAI Agents SDK. The `@openai/agents` dependency declared in `package.json` is never imported anywhere in `src/` (confirmed: zero references) — it is effectively a dead dependency. A single control loop (`src/chat-agent/agent-loop.ts`) drives both providers through a `ChatProvider` adapter (`src/chat-agent/providers/`: `anthropic-provider.ts` for the Anthropic SDK, `openai-provider.ts` for the OpenRouter/OpenAI-compatible wire format).
 
 The two systems intersect at exactly ONE seam: the `literature_search` tool (`src/chat-agent/tools/literature-search.ts`), which wraps `literatureAgent` from `src/agents/literature`. That is the only place the tool-calling loop reaches back into the deep-research engine.
 
@@ -33,8 +33,8 @@ The two systems intersect at exactly ONE seam: the `literature_search` tool (`sr
 │  chat-agent system  │  (src/chat-agent/*)                             │
 │  ┌──────────────────┴───────────────────────────────────────────┐    │
 │  │ tool-calling loop  ── runner.ts                               │    │
-│  │   ├─ loop.ts            (Anthropic)                           │    │
-│  │   └─ loop-openrouter.ts (OpenRouter)                          │    │
+│  │   ├─ agent-loop.ts      (single control loop)                │    │
+│  │   └─ providers/         (Anthropic / OpenAI adapters)         │    │
 │  │ NOT built on @openai/agents (declared dep, never imported)    │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────┘
