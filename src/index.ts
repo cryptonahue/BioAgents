@@ -310,10 +310,11 @@ const app = new Elysia()
   .use(b402ChatRoute) // POST /api/b402/chat for payment-gated chat
   .use(b402DeepResearchRoute); // POST /api/b402/deep-research/start, GET /api/b402/deep-research/status/:messageId
 
-// Mount Bull Board dashboard (only when job queue is enabled)
+// Mount Bull Board dashboard (only when the job queue is enabled AND an admin
+// password is configured). Fail closed: no ADMIN_PASSWORD -> dashboard is not
+// mounted, so job internals are never served unauthenticated.
 const queueDashboard = createQueueDashboard();
 if (queueDashboard) {
-  // Add basic auth protection for admin routes if ADMIN_PASSWORD is set
   const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -352,12 +353,16 @@ if (queueDashboard) {
         return new Response("Unauthorized", { status: 401 });
       }
     });
+    app.use(queueDashboard);
     logger.info({ path: "/admin/queues", authEnabled: true }, "bull_board_dashboard_mounted_with_auth");
   } else {
-    logger.info({ path: "/admin/queues", authEnabled: false }, "bull_board_dashboard_mounted_no_auth");
+    // Fail closed: never expose the job dashboard unauthenticated. Without a
+    // password the dashboard is not mounted at all.
+    logger.warn(
+      { path: "/admin/queues" },
+      "bull_board_dashboard_disabled: set ADMIN_PASSWORD to enable the admin dashboard",
+    );
   }
-
-  app.use(queueDashboard);
 }
 
 // Mount admin jobs API (for frontend dashboard)
