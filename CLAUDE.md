@@ -9,6 +9,7 @@ AI-powered research assistant for bioscience literature and data analysis.
 - [JOB_QUEUE.md](documentation/docs/JOB_QUEUE.md) - BullMQ queue system architecture
 - [FILE_UPLOAD.md](documentation/docs/FILE_UPLOAD.md) - S3 presigned URL file upload flow
 - [CORALGPT.md](documentation/docs/CORALGPT.md) - CoralGPT product layer (Privy auth, Library RAG, chat-agent, embeddings)
+- [WHITELIST.md](documentation/docs/WHITELIST.md) - Managing CoralGPT access with the whitelist CLI
 
 ---
 

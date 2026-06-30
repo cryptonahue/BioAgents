@@ -91,7 +91,7 @@ There is no explicit `CORALGPT_ENABLED` flag. `isCoralGptEnabled()` is implicitl
 
 ### Whitelist reality
 
-`access_type='whitelisted'` is READ to grant access, but there is currently NO admin endpoint, script, or UI that WRITES it. Onboarding a user today requires a manual edit in Supabase (set `users.access_type = 'whitelisted'`). This is the only way to move a user out of the "Access pending approval" state. See [Current state & known limitations](#current-state--known-limitations).
+`access_type='whitelisted'` is READ to grant access and is WRITTEN by the `whitelist` CLI (`scripts/whitelist.ts`): `bun run whitelist <email>` to grant, `--list` to see pending users, `--revoke` to remove access. There is no admin HTTP endpoint or UI for this — the CLI was chosen because the `/admin` basic-auth guard only registers in job-queue mode. See [WHITELIST.md](WHITELIST.md) for the full guide.
 
 ---
 
@@ -211,9 +211,9 @@ The asymmetry: in-process mode ALWAYS uses the chat-agent loop — `src/routes/c
 
 This is an honest, team-facing hardening backlog for the CoralGPT layer.
 
-- **Data exposure (RLS).** Migration `20260531130000` adds `FOR SELECT TO anon, authenticated USING (true)` policies on `conversations`, `messages`, `states`, and `conversation_states`. Because the anon key ships in the client bundle, any client can read ALL users' conversations and messages, not just their own. These policies need per-user row filtering (e.g. `USING (user_id = auth.uid()...)` or equivalent server-mediated access).
-- **Cost exposure (Library ask).** `POST /api/library/:docId/ask` uses `authResolver({ required: false })`, so unauthenticated callers can invoke a paid LLM with no rate limit or quota. Needs authentication and/or throttling.
-- **No access-granting mechanism.** `access_type='whitelisted'` is read but never written by any endpoint, script, or UI. Onboarding requires a manual Supabase edit. An admin grant path is missing.
+- **Data exposure (RLS) — RESOLVED.** Migration `20260531130000` had added `FOR SELECT TO anon, authenticated USING (true)` policies on `conversations`, `messages`, `states`, and `conversation_states`, letting any holder of the public anon key read all users' history. Migration `20260630120000` drops those policies and revokes all privileges from `anon`/`authenticated`; history is now served by authenticated, user-scoped endpoints in `src/routes/conversations.ts`. Note: under `AUTH_MODE=none` the userId still comes from a client `X-User-Id` header, so this is a real boundary only under `AUTH_MODE=jwt`.
+- **Cost exposure (Library ask) — RESOLVED.** `POST /api/library/:docId/ask` now uses `authResolver({ required: true })` plus a per-user rate limit (`library` bucket), mirroring the main chat endpoint. Caveat: rate limiting is a no-op when the job queue (Redis) is disabled; the auth requirement is the protection that always applies.
+- **Access granting — CLI only.** `access_type='whitelisted'` is written by `scripts/whitelist.ts` (see [WHITELIST.md](WHITELIST.md)). There is no admin HTTP endpoint or UI; granting requires shell/DB access to run the CLI.
 - **History impersonation / silent loss.** Library history keys on `request.auth.userId`, which in dev modes can be a client-controlled `X-User-Id`, allowing one user to read another's paper chat. Conversely, in strict `jwt` mode an unauthenticated call receives a random UUID, so history silently never persists across requests.
 - **Code duplication.** `src/chat-agent/loop.ts` and `src/chat-agent/loop-openrouter.ts` are ~90% duplicate. Provider/model resolution logic is duplicated across `src/chat-agent/runner.ts`, `src/services/queue/workers/chat.worker.ts`, and `src/routes/library.ts` (`resolveLibraryLLM`).
 - **Missing fetch timeout.** The Anthropic loop (`loop.ts`) sets a `120_000` ms client timeout; `loop-openrouter.ts` has none, so an OpenRouter call can hang indefinitely.
