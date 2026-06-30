@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getConversationState, supabase } from "../lib/supabase";
+import {
+  getConversationState,
+  getLatestStateByConversation,
+  supabase,
+} from "../lib/supabase";
 
 export interface ToolState {
   start: number;
@@ -107,19 +111,9 @@ export function useStates(
       try {
         setIsLoading(true);
 
-        // Fetch message-level state (for thinking steps, etc.)
-        const { data, error: fetchError } = await supabase
-          .from("states")
-          .select("*")
-          .eq("values->>conversationId", conversationId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (fetchError && fetchError.code !== "PGRST116") {
-          // PGRST116 = no rows returned
-          throw fetchError;
-        }
+        // Fetch message-level state (for thinking steps, etc.) via the
+        // auth-gated API; returns the most recent state or null.
+        const data = await getLatestStateByConversation(conversationId);
 
         if (mounted) {
           if (data) {
@@ -208,7 +202,11 @@ export function useStates(
     pollForState();
     const pollInterval = setInterval(pollForState, 2000);
 
-    // Subscribe to real-time updates for message states
+    // Subscribe to real-time updates for message states.
+    // NOTE: post chat-history lockdown the anon key can no longer read these
+    // tables, so these Supabase Realtime subscriptions are inert (no rows).
+    // Real-time updates arrive via the WebSocket path / polling above; kept as
+    // a no-op placeholder to avoid widening scope.
     const statesChannel = supabase
       .channel(`states:${userId}`)
       .on(

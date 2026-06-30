@@ -405,6 +405,10 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
 
     console.log("[useSessions] WebSocket not connected - using Supabase Realtime as fallback");
 
+    // NOTE: post chat-history lockdown the anon key can no longer read these
+    // tables, so this Supabase Realtime fallback is inert (it will receive no
+    // rows). The WebSocket path (primary) carries real-time updates. Kept as a
+    // no-op placeholder to avoid widening scope; remove if the fallback is dropped.
     const channel = supabase
       .channel(`messages:${currentSessionId}`)
       .on(
