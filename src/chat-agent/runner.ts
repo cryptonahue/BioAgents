@@ -5,8 +5,7 @@
  * All imports are dynamic to avoid TDZ issues in the worker process.
  */
 
-import type { ToolCallInfo } from "./types";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { AgentLoopConfig, ToolCallInfo } from "./types";
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -128,7 +127,9 @@ export async function runChatAgent(
   }
 
   // --- 4. Load conversation history from DB (if enabled) ---
-  const conversationHistory: MessageParam[] = [];
+  // Neutral history representation, provider-agnostic.
+  const conversationHistory: { role: "user" | "assistant"; content: string }[] =
+    [];
 
   if (params.loadHistory !== false) {
     try {
@@ -176,7 +177,7 @@ export async function runChatAgent(
   }
 
   // --- 5. Run the agent loop ---
-  const loopConfig = {
+  const loopConfig: AgentLoopConfig = {
     model,
     systemPrompt,
     maxToolCalls,
@@ -185,26 +186,22 @@ export async function runChatAgent(
     onToolResult: params.onToolResult,
   };
 
-  const openRouterHistory =
-    conversationHistory.length > 0
-      ? conversationHistory.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: typeof m.content === "string" ? m.content : "",
-        }))
-      : undefined;
-
-  const agentResult =
+  // Instantiate the right provider behind the shared loop.
+  const chatProvider =
     provider === "openrouter"
-      ? await (
-          await import("./loop-openrouter")
-        ).runAgentLoopOpenRouter(userMessage, loopConfig, openRouterHistory)
-      : await (
-          await import("./loop")
-        ).runAgentLoop(
-          userMessage,
-          loopConfig,
-          conversationHistory.length > 0 ? conversationHistory : undefined,
+      ? new (await import("./providers/openai-provider")).OpenAIProvider(apiKey)
+      : new (await import("./providers/anthropic-provider")).AnthropicProvider(
+          apiKey,
         );
+
+  const { runAgentLoop } = await import("./agent-loop");
+
+  const agentResult = await runAgentLoop(
+    userMessage,
+    loopConfig,
+    chatProvider,
+    conversationHistory.length > 0 ? conversationHistory : undefined,
+  );
 
   // --- 6. Return unified result ---
   return {
