@@ -147,6 +147,54 @@ token = jwt.encode(
 
 ---
 
+## Privy Authentication (CoralGPT)
+
+Privy is the third authentication path, used by the CoralGPT frontend. Instead of your backend signing a JWT directly, the user logs in through Privy and the BioAgents server exchanges a verified Privy token for a BioAgents JWT — but only after a whitelist check.
+
+### Configuration
+
+```bash
+PRIVY_APP_ID=your-privy-app-id
+PRIVY_APP_SECRET=your-privy-app-secret
+BIOAGENTS_SECRET=your-secure-secret  # used to sign the minted BioAgents JWT
+```
+
+Privy auth is enabled implicitly: `isCoralGptEnabled()` returns true whenever both `PRIVY_APP_ID` and `PRIVY_APP_SECRET` are set. There is no separate enable flag.
+
+### How It Works
+
+```
+Client                         BioAgents API
+  |                                 |
+  |-- Privy login (hosted) -------->|  (Privy)
+  |-- getAccessToken() ------------>|
+  |                                 |
+  |-- POST /api/auth/privy -------->|
+  |   { accessToken }               |
+  |                                 |-- verify token (@privy-io/server-auth)
+  |                                 |-- fetch Privy user, getOrCreatePrivyUser
+  |                                 |-- access_type === "whitelisted" ?
+  |                                 |
+  |<-- 200 { token, userId } -------|  (whitelisted: BioAgents JWT, 24h)
+  |       OR                        |
+  |<-- 403 "Access pending approval"|  (not whitelisted)
+```
+
+The minted token is a standard HS256 BioAgents JWT (`type: "ui_session"`, 24h expiry) signed with `BIOAGENTS_SECRET`, so it flows through `authResolver` like any other JWT.
+
+### Whitelist Gate
+
+Access is gated on `users.access_type === 'whitelisted'`. This value is READ to grant access but is currently never WRITTEN by any endpoint, script, or UI — granting access today requires a manual edit in Supabase. There is no self-serve approval flow yet.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/auth/privy` | Exchange a Privy access token for a BioAgents JWT (whitelist-gated) |
+| `POST /api/waitlist` | Public waitlist signup for users awaiting access |
+
+See [CORALGPT.md](CORALGPT.md) for the full CoralGPT product layer (Library RAG, embeddings, dual-engine flags).
+
+---
+
 ## x402 Payment Protocol
 
 For pay-per-request access using USDC micropayments on Base network.

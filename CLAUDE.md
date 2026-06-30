@@ -8,6 +8,7 @@ AI-powered research assistant for bioscience literature and data analysis.
 - [SETUP.md](documentation/docs/SETUP.md) - Environment setup and LLM configuration
 - [JOB_QUEUE.md](documentation/docs/JOB_QUEUE.md) - BullMQ queue system architecture
 - [FILE_UPLOAD.md](documentation/docs/FILE_UPLOAD.md) - S3 presigned URL file upload flow
+- [CORALGPT.md](documentation/docs/CORALGPT.md) - CoralGPT product layer (Privy auth, Library RAG, chat-agent, embeddings)
 
 ---
 
@@ -138,6 +139,24 @@ YOU MUST:
 - **Job Queue**: BullMQ with Redis (optional)
 - **Frontend**: Preact (bundled client in `client/dist/`)
 
+## CoralGPT Product Layer
+
+CoralGPT is a product skin built on top of the BioAgents engine, living on the `dev` branch — NOT a fork. It adds Privy authentication with a whitelist gate, a public waitlist, a paper Library with per-paper grounded RAG chat, and OpenRouter/Qwen embedding support, all reusing the existing auth middleware, database, queue, and LLM infrastructure.
+
+**Two agent systems** now coexist. The deep-research system (`src/agents/*`) is the original fixed pipeline using `src/llm/provider.ts`. The chat-agent system (`src/chat-agent/*`) is a newer, self-contained tool-calling loop, decoupled from `src/llm/*`. Counter-intuitively the chat-agent loop is hand-rolled and is NOT built on the OpenAI Agents SDK — `@openai/agents` is declared in `package.json` but never imported. The two systems touch at exactly one seam: the `literature_search` tool wraps `literatureAgent`.
+
+**Dual-engine flag matrix** — a chat request is answered by different engines depending on two flags:
+
+| `JOB_QUEUE_ENABLED` | `CHAT_AGENT_QUEUE_ENABLED` | Engine |
+| ------------------- | -------------------------- | ------ |
+| `false` (in-process) | any | chat-agent loop (always) |
+| `true` (queue) | `false` | legacy planning/hypothesis/reflection pipeline |
+| `true` (queue) | `true` | chat-agent loop (in worker) |
+
+Note the asymmetry: in-process mode ALWAYS uses the chat-agent loop and ignores `CHAT_AGENT_QUEUE_ENABLED`.
+
+See [CORALGPT.md](documentation/docs/CORALGPT.md) for full details.
+
 ## Commands
 
 ```bash
@@ -166,12 +185,20 @@ src/
 ├── worker.ts             # BullMQ worker entry point (separate process)
 ├── routes/               # API route handlers
 │   ├── chat.ts          # POST /api/chat
-│   ├── auth.ts          # /api/auth/* endpoints
+│   ├── auth.ts          # /api/auth/* endpoints (JWT, password, Privy)
+│   ├── library.ts       # /api/library/* (CoralGPT paper library + RAG)
+│   ├── waitlist.ts      # POST /api/waitlist (CoralGPT public signup)
 │   ├── artifacts.ts     # /api/artifacts/download
 │   ├── deep-research/   # /api/deep-research/*
 │   ├── x402/            # Payment-gated routes (Base/USDC)
 │   ├── b402/            # Payment-gated routes (BNB/USDT)
 │   └── admin/           # Bull Board dashboard
+├── chat-agent/           # Tool-calling chat loop (NOT @openai/agents)
+│   ├── runner.ts        # Entry point, provider/model selection
+│   ├── loop.ts          # Anthropic tool-calling loop
+│   ├── loop-openrouter.ts # OpenRouter tool-calling loop
+│   ├── registry.ts      # Tool registration/execution
+│   └── tools/           # Tools (e.g. literature-search wraps literatureAgent)
 ├── agents/               # AI agent implementations
 │   ├── literature/      # Literature search (OpenScholar, BioAgents, Edison)
 │   ├── analysis/        # Data analysis agents
@@ -187,6 +214,7 @@ src/
 │   │   ├── workers/         # Worker implementations
 │   │   └── notify.ts        # Redis pub/sub notifications
 │   ├── websocket/       # WebSocket handler for real-time updates
+│   ├── privy-auth.ts    # Privy token verification (CoralGPT auth)
 │   └── jwt.ts           # JWT verification service
 ├── middleware/           # Auth, rate limiting, payment validation
 │   ├── authResolver.ts  # Multi-method authentication
