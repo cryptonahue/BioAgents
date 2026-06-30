@@ -12,7 +12,7 @@ The codebase now contains TWO separate agent systems. Understanding that they ar
 
 **chat-agent system (`src/chat-agent/*`)** — a newer, self-contained tool-calling loop. The model is given a set of tools (registered in `src/chat-agent/registry.ts`) and decides which to call across iterations until it produces a final answer. This system is decoupled from `src/llm/*` and talks to providers directly.
 
-> IMPORTANT and counter-intuitive: the chat-agent loop is hand-rolled. It is NOT built on the OpenAI Agents SDK. The `@openai/agents` dependency declared in `package.json` is never imported anywhere in `src/` (confirmed: zero references) — it is effectively a dead dependency. A single control loop (`src/chat-agent/agent-loop.ts`) drives both providers through a `ChatProvider` adapter (`src/chat-agent/providers/`: `anthropic-provider.ts` for the Anthropic SDK, `openai-provider.ts` for the OpenRouter/OpenAI-compatible wire format).
+> IMPORTANT and counter-intuitive: the chat-agent loop is hand-rolled. It is NOT built on the OpenAI Agents SDK. The unused `@openai/agents` dependency has been removed from `package.json` (it was declared but never imported). A single control loop (`src/chat-agent/agent-loop.ts`) drives both providers through a `ChatProvider` adapter (`src/chat-agent/providers/`: `anthropic-provider.ts` for the Anthropic SDK, `openai-provider.ts` for the OpenRouter/OpenAI-compatible wire format).
 
 The two systems intersect at exactly ONE seam: the `literature_search` tool (`src/chat-agent/tools/literature-search.ts`), which wraps `literatureAgent` from `src/agents/literature`. That is the only place the tool-calling loop reaches back into the deep-research engine.
 
@@ -33,9 +33,9 @@ The two systems intersect at exactly ONE seam: the `literature_search` tool (`sr
 │  chat-agent system  │  (src/chat-agent/*)                             │
 │  ┌──────────────────┴───────────────────────────────────────────┐    │
 │  │ tool-calling loop  ── runner.ts                               │    │
-│  │   ├─ agent-loop.ts      (single control loop)                │    │
+│  │   ├─ agent-loop.ts      (single control loop)                 │    │
 │  │   └─ providers/         (Anthropic / OpenAI adapters)         │    │
-│  │ NOT built on @openai/agents (declared dep, never imported)    │    │
+│  │ hand-rolled (NOT the OpenAI Agents SDK)                       │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -200,6 +200,7 @@ The asymmetry: in-process mode ALWAYS uses the chat-agent loop — `src/routes/c
 | `EMBEDDING_PROVIDER` | `openai` (default) or `openrouter`. |
 | `TEXT_EMBEDDING_MODEL` | Embedding model id (default `text-embedding-3-small`). |
 | `EMBEDDING_DIMENSIONS` | Expected embedding vector length (default `1536`; `2560` for the Qwen path). Validated at runtime. |
+| `EMBEDDING_SEND_DIMENSIONS` | Whether to send the `dimensions` request param. Default: on for every provider except `openrouter`. Override `true`/`false`. |
 | `KNOWLEDGE_DOCS_PATH` | Folder containing the original Library files (default `docs`). |
 | `LIBRARY_FULL_CONTEXT_MAX_TOKENS` | Max estimated tokens before `full` mode falls back to `rag` (default `120000`). |
 | `LIBRARY_MAX_TOKENS` | Max output tokens for a Library answer (default `2048`). |
@@ -219,7 +220,7 @@ This is an honest, team-facing hardening backlog for the CoralGPT layer.
 - **Missing fetch timeout.** The Anthropic loop (`loop.ts`) sets a `120_000` ms client timeout; `loop-openrouter.ts` has none, so an OpenRouter call can hang indefinitely.
 - **Unverified hardcoded model ids.** `qwen/qwen3.6-plus` and `claude-sonnet-4-6` appear as fallback defaults in `runner.ts` and `resolveLibraryLLM`. Confirm these are real, current model ids before relying on the fallbacks.
 - **Hardcoded Spanish copy.** `src/routes/library.ts` contains Spanish user-facing strings and a Spanish system prompt, even though the prompt also instructs the model to "respond in the same language as the question." The fixed-language copy should be localized or neutralized.
-- **Embedding `dimensions` always sent.** The base embedding provider always passes a `dimensions` argument when `EMBEDDING_DIMENSIONS` is set; some providers/models (including certain Qwen/OpenRouter paths) may reject it. This should be opt-in per provider.
+- **Embedding `dimensions` — RESOLVED.** The `dimensions` request param is now gated by `EMBEDDING_SEND_DIMENSIONS` (default: sent for every provider except `openrouter`, since OpenRouter does not document it and Qwen returns its native size). Override via the env var. The runtime length validation against `EMBEDDING_DIMENSIONS` is unchanged.
 - **Public unthrottled waitlist write.** `POST /api/waitlist` has no rate limiting or CAPTCHA.
 
 ### Strengths

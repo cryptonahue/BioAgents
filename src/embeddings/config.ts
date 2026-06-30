@@ -9,6 +9,16 @@ export const CONFIG = {
   TEXT_EMBEDDING_MODEL:
     process.env.TEXT_EMBEDDING_MODEL || "text-embedding-3-small",
   EMBEDDING_DIMENSIONS: parseInt(process.env.EMBEDDING_DIMENSIONS || "1536", 10),
+  // Whether to send the `dimensions` request param. It is an OpenAI feature
+  // (Matryoshka truncation of text-embedding-3-*); OpenRouter does not list it
+  // and native-size models like Qwen return their full dimension regardless, so
+  // sending it there is at best redundant and at worst a 400. Default: on for
+  // every provider except openrouter. Override with EMBEDDING_SEND_DIMENSIONS.
+  EMBEDDING_SEND_DIMENSIONS:
+    process.env.EMBEDDING_SEND_DIMENSIONS !== undefined
+      ? process.env.EMBEDDING_SEND_DIMENSIONS === "true"
+      : (process.env.EMBEDDING_PROVIDER || "openai").toLowerCase() !==
+        "openrouter",
   OPENROUTER_BASE_URL:
     process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
   CHUNK_SIZE: parseInt(process.env.CHUNK_SIZE || "2000", 10),

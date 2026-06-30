@@ -23,7 +23,7 @@ abstract class BaseOpenAIEmbeddingProvider implements EmbeddingProvider {
       model: CONFIG.TEXT_EMBEDDING_MODEL,
       input: text,
       encoding_format: "float",
-      ...(CONFIG.EMBEDDING_DIMENSIONS
+      ...(CONFIG.EMBEDDING_SEND_DIMENSIONS && CONFIG.EMBEDDING_DIMENSIONS
         ? { dimensions: CONFIG.EMBEDDING_DIMENSIONS }
         : {}),
     });
