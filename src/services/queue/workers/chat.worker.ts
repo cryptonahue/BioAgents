@@ -467,13 +467,17 @@ async function processWithAgentLoop(
   await job.updateProgress({ stage: "planning", percent: 10 } as JobProgress);
   await notifyJobProgress(job.id!, conversationId, "planning", 10);
 
-  // Misconfigured API key won't self-heal between retries — fail fast
-  const chatProvider = (process.env.CHAT_AGENT_LLM_PROVIDER || "anthropic").toLowerCase();
-  const chatApiKeyMissing =
-    chatProvider === "openrouter"
-      ? !process.env.OPENROUTER_API_KEY
-      : !process.env.ANTHROPIC_API_KEY;
-  if (chatApiKeyMissing) {
+  // Misconfigured API key won't self-heal between retries — fail fast.
+  // Same strict resolution as the runner so this gate cannot pass while the
+  // runner then throws on a missing key.
+  const { resolveLLM } = await import("../../../chat-agent/llm-config");
+  const { provider: chatProvider, keyConfigured } = resolveLLM({
+    providerEnv: ["CHAT_AGENT_LLM_PROVIDER"],
+    allowed: ["anthropic", "openrouter"],
+    selection: "strict",
+    defaultProvider: "anthropic",
+  });
+  if (!keyConfigured) {
     const { UnrecoverableError } = await import("bullmq");
     throw new UnrecoverableError(
       chatProvider === "openrouter"

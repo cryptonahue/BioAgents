@@ -4,6 +4,7 @@ import { authResolver } from "../middleware/authResolver";
 import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
 import logger from "../utils/logger";
+import { resolveLLM } from "../chat-agent/llm-config";
 
 /**
  * Library Route - Paper library + per-paper grounded Q&A.
@@ -180,40 +181,15 @@ async function getLibraryHistory(
 
 /** Pick an LLM provider/model for grounded answers based on available keys. */
 function resolveLibraryLLM(): { providerName: string; apiKey: string; model: string } {
-  const requested = (
-    process.env.LIBRARY_LLM_PROVIDER ||
-    process.env.CHAT_AGENT_LLM_PROVIDER ||
-    ""
-  ).toLowerCase();
+  const { provider, apiKey, model } = resolveLLM({
+    providerEnv: ["LIBRARY_LLM_PROVIDER", "CHAT_AGENT_LLM_PROVIDER"],
+    modelEnv: ["LIBRARY_LLM_MODEL", "CHAT_AGENT_MODEL"],
+    allowed: ["anthropic", "openrouter", "openai", "google"],
+    selection: "auto",
+    defaultProvider: "anthropic",
+  });
 
-  const keys: Record<string, string> = {
-    anthropic: process.env.ANTHROPIC_API_KEY || "",
-    openrouter: process.env.OPENROUTER_API_KEY || "",
-    openai: process.env.OPENAI_API_KEY || "",
-    google: process.env.GOOGLE_API_KEY || "",
-  };
-
-  let providerName =
-    requested && keys[requested] ? requested : "";
-  if (!providerName) {
-    providerName =
-      Object.keys(keys).find((k) => keys[k]) || "anthropic";
-  }
-
-  const defaultModels: Record<string, string> = {
-    anthropic: "claude-sonnet-4-6",
-    openrouter: "qwen/qwen3.6-plus",
-    openai: "gpt-4o",
-    google: "gemini-1.5-pro",
-  };
-
-  const model =
-    process.env.LIBRARY_LLM_MODEL ||
-    process.env.CHAT_AGENT_MODEL ||
-    defaultModels[providerName] ||
-    "claude-sonnet-4-6";
-
-  return { providerName, apiKey: keys[providerName] || "", model };
+  return { providerName: provider, apiKey, model };
 }
 
 export const libraryRoute = new Elysia()
