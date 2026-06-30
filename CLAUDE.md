@@ -144,7 +144,7 @@ YOU MUST:
 
 CoralGPT is a product skin built on top of the BioAgents engine, living on the `dev` branch — NOT a fork. It adds Privy authentication with a whitelist gate, a public waitlist, a paper Library with per-paper grounded RAG chat, and OpenRouter/Qwen embedding support, all reusing the existing auth middleware, database, queue, and LLM infrastructure.
 
-**Two agent systems** now coexist. The deep-research system (`src/agents/*`) is the original fixed pipeline using `src/llm/provider.ts`. The chat-agent system (`src/chat-agent/*`) is a newer, self-contained tool-calling loop, decoupled from `src/llm/*`. Counter-intuitively the chat-agent loop is hand-rolled and is NOT built on the OpenAI Agents SDK — `@openai/agents` is declared in `package.json` but never imported. The two systems touch at exactly one seam: the `literature_search` tool wraps `literatureAgent`.
+**Two agent systems** now coexist. The deep-research system (`src/agents/*`) is the original fixed pipeline using `src/llm/provider.ts`. The chat-agent system (`src/chat-agent/*`) is a newer, self-contained tool-calling loop, decoupled from `src/llm/*`. Counter-intuitively the chat-agent loop is hand-rolled and is NOT built on the OpenAI Agents SDK (the unused `@openai/agents` dependency has been removed). The two systems touch at exactly one seam: the `literature_search` tool wraps `literatureAgent`.
 
 **Dual-engine flag matrix** — a chat request is answered by different engines depending on two flags:
 

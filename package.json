@@ -31,7 +31,6 @@
     "@elysiajs/html": "^1.4.0",
     "@elysiajs/static": "^1.4.4",
     "@google/genai": "^1.25.0",
-    "@openai/agents": "^0.1.9",
     "@privy-io/react-auth": "^3.26.1",
     "@privy-io/server-auth": "^1.32.5",
     "@supabase/supabase-js": "^2.76.1",
@@ -70,6 +69,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
+    "test": "bun test",
     "worker": "bun src/worker.ts",
     "worker:dev": "bun --watch src/worker.ts",
     "build:client": "bun run client/build.ts",
