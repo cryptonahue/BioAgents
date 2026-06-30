@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import path from "path";
 import { authResolver } from "../middleware/authResolver";
+import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
 import logger from "../utils/logger";
 
@@ -553,10 +554,17 @@ PREGUNTA: ${question.trim()}`;
       } catch (error: any) {
         logger.error({ err: error, title }, "library_ask_failed");
         set.status = 500;
-        return { error: "Failed to answer", message: error?.message };
+        return { error: "Failed to answer" };
       }
     },
-    { beforeHandle: authResolver({ required: false }) },
+    {
+      // Paid LLM endpoint: require auth (no anonymous cost abuse) and rate-limit
+      // per user, mirroring the main chat endpoint.
+      beforeHandle: [
+        authResolver({ required: true }),
+        rateLimitMiddleware("library"),
+      ],
+    },
   )
 
   // -------------------------------------------------------------------------
