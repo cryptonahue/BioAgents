@@ -1,0 +1,144 @@
+name: PR Line Budget
+
+# Soft-checks the per-PR review budget defined in OpenSpec proposals that use
+# the 400-line review budget guard (see sdd-phase-common.md, Section E).
+#
+# Default behavior: WARN only. The check posts a PR comment and fails the
+# status check, but does not block merge. Set the workflow_dispatch input
+# `mode: fail` to turn the warning into a hard block, or set `MAX_LINES=0`
+# to disable the check for a specific run.
+
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, edited]
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'PR_BUDGET_MODE — "warn" (default, non-blocking) or "fail" (blocking)'
+        required: false
+        default: 'warn'
+        type: choice
+        options:
+          - warn
+          - fail
+      max_lines:
+        description: 'MAX_LINES — per-PR changed-line budget (default 400, 0 disables)'
+        required: false
+        default: '400'
+        type: string
+      base_ref:
+        description: 'BASE_REF — base ref for diff (default: the PR base)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  check-pr-budget:
+    name: Check PR line budget
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine base ref
+        id: base
+        run: |
+          # Prefer the workflow_dispatch input if set; otherwise use the PR base.
+          if [[ -n "${{ inputs.base_ref }}" ]]; then
+            echo "value=${{ inputs.base_ref }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "value=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=origin/main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run PR budget check
+        id: check
+        env:
+          MAX_LINES: ${{ inputs.max_lines || '400' }}
+          PR_BUDGET_MODE: ${{ inputs.mode || 'warn' }}
+          BASE_REF: ${{ steps.base.outputs.value }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          TOP_N: '5'
+        run: |
+          set +e
+          bash scripts/check-pr-budget.sh
+          rc=$?
+          set -e
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Comment on PR (when over budget)
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.check.outputs.exit_code != '0' &&
+          steps.check.outputs.exit_code != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            // Re-run the check to capture the exact output for the comment.
+            // Cheap (sub-second) so it's fine to do a second time.
+            const { execSync } = require('child_process');
+            const out = execSync('bash scripts/check-pr-budget.sh', {
+              env: {
+                ...process.env,
+                MAX_LINES: process.env.MAX_LINES,
+                PR_BUDGET_MODE: 'warn', // comment is always informational
+                BASE_REF: process.env.BASE_REF,
+                HEAD_REF: process.env.HEAD_REF,
+                TOP_N: '5',
+              },
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe'],
+            });
+            const marker = '<!-- pr-budget-bot -->';
+            const body =
+              marker + '\n' +
+              '### :warning: PR line-budget check\n\n' +
+              '```\n' + out.trim() + '\n```\n\n' +
+              'The proposal for this change budgets **400 changed lines per PR** ' +
+              'to keep reviewer cognitive load bounded. This PR is over the budget. ' +
+              'Consider splitting into chained/stacked PRs, or set ' +
+              '`PR_BUDGET_MODE=fail` only after the team has accepted `size:exception`.\n';
+            // Find an existing comment by this bot to keep the thread tidy.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+        env:
+          MAX_LINES: ${{ inputs.max_lines || '400' }}
+          BASE_REF: ${{ steps.base.outputs.value }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Fail the job when over budget in fail mode
+        if: steps.check.outputs.exit_code == '1'
+        run: |
+          echo "::error::PR line-budget check failed (fail mode). See step output above."
+          exit 1

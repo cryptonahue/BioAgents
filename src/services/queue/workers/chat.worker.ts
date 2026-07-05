@@ -19,6 +19,7 @@ import {
   notifyStateUpdated,
 } from "../notify";
 import type { ChatJobData, ChatJobResult, JobProgress } from "../types";
+import { loadDiscoveriesForConversation } from "../../../services/researchBrain/discoveryPersistence";
 
 /**
  * Process a chat job
@@ -361,6 +362,18 @@ async function processChatJob(
 
     const { generateChatReply } = await import("../../../agents/reply/utils");
 
+    // Read-through: prefer the relational source (research_discoveries)
+    // so we don't ship stale JSONB. The chat worker is downstream of
+    // the discovery agent, so the DB has the truth at this point. If
+    // the DB is empty, fall back to the JSONB cache (the same source
+    // the worker has been using since v1). See
+    // loadDiscoveriesForConversation in discoveryPersistence.ts.
+    const { discoveries } = await loadDiscoveriesForConversation({
+      conversationId,
+      fallbackDiscoveries: conversationState.values.discoveries || [],
+      loggerFields: { jobId: job.id, surface: "chat_worker" },
+    });
+
     // Log uploaded datasets info for debugging
     const uploadedDatasets = conversationState.values.uploadedDatasets || [];
     logger.info(
@@ -384,7 +397,7 @@ async function processChatJob(
         hypothesis: hypothesisText,
         nextPlan: [],
         keyInsights: conversationState.values.keyInsights || [],
-        discoveries: conversationState.values.discoveries || [],
+        discoveries,
         methodology: conversationState.values.methodology,
         currentObjective: conversationState.values.currentObjective,
         uploadedDatasets,

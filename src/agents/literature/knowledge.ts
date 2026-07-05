@@ -49,14 +49,21 @@ export async function searchKnowledge(
     "knowledge_search_completed",
   );
 
-  // Format output
+  // Format output. The literature agent downstream runs the result
+  // through an LLM that has to extract bioactivity findings (compound
+  // names, MIC values, target organisms), so we need to surface the
+  // full chunk content. 300 chars truncated the chunk 21 of the
+  // Olsen 2025 paper to just the abstract, dropping the
+  // "Anthoteibinene I (4) and J (5) were the only compounds with
+  // antifungal activity" finding.
+  const CHUNK_PREVIEW_CHARS = 2000;
   const output =
     searchResults.length === 0
       ? `Found 0 relevant knowledge chunks (no results)`
       : `Found ${searchResults.length} relevant knowledge chunks:\n\n${searchResults
           .map(
             (doc: any, idx: number) =>
-              `${idx + 1}. ${doc.title}\n   ${doc.content.substring(0, 300)}...`,
+              `${idx + 1}. ${doc.title}\n   ${doc.content.length > CHUNK_PREVIEW_CHARS ? doc.content.substring(0, CHUNK_PREVIEW_CHARS) + "…" : doc.content}`,
           )
           .join("\n\n")}`;
 

@@ -5,6 +5,7 @@ import type {
   PlanTask,
 } from "../../types/core";
 import logger from "../../utils/logger";
+import { persistDiscoveriesToDb } from "../../services/researchBrain/discoveryPersistence";
 import { extractDiscoveries, fixDiscoveryArtifactPaths, type DiscoveryDoc } from "./utils";
 
 type DiscoveryAgentResult = {
@@ -162,6 +163,30 @@ Current Objective: ${conversationState.values.currentObjective || "Not set"}`;
     // Fix artifact paths by matching against task artifacts
     // LLM may output sandbox paths or filenames - we need correct storage paths
     const fixedDiscoveries = fixDiscoveryArtifactPaths(discoveries, tasksToConsider);
+
+    // v1: write-through to research_discoveries BEFORE the JSONB write
+    // (the worker's downstream `conversationState.values.discoveries = ...`
+    // assignment is unchanged). Soft-fails internally; cycle MUST NOT
+    // abort on this call. The defensive try/catch here is a
+    // belt-and-suspenders around the function's own non-throwing
+    // contract.
+    try {
+      await persistDiscoveriesToDb({
+        discoveries: fixedDiscoveries,
+        conversationId: message.conversation_id,
+        messageId: message.id,
+        threshold: 0.7,
+      });
+    } catch (error) {
+      logger.error(
+        {
+          err: error,
+          conversationId: message.conversation_id,
+          messageId: message.id,
+        },
+        "discovery_persist_failed_soft_fail",
+      );
+    }
 
     const end = new Date().toISOString();
 

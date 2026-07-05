@@ -24,6 +24,7 @@ export interface PaperMeta {
   estTokens?: number;
   doi?: string | null;
   doiUrl?: string | null;
+  researchSourceId?: string | null;
   abstract?: string;
   fileUrl: string;
 }

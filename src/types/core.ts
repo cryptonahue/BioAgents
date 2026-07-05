@@ -26,12 +26,43 @@ export interface StateValues {
   // Action responses
   finalResponse?: string; // Final text response from REPLY or HYPOTHESIS
   thought?: string;
+  researchBrainEvidence?: any;
 
   // Step tracking
   steps?: Record<string, { start: number; end?: number }>;
 }
 
 export type PlanTaskType = "LITERATURE" | "ANALYSIS";
+
+/**
+ * Per-source result from a literature task. One LITERATURE task can fan out
+ * to multiple sources (OpenScholar, Edison, Knowledge, etc.), each producing
+ * its own result that is now tracked separately so the UI can show provenance
+ * and partial failures clearly.
+ *
+ * - `status: "ok"` — source returned content
+ * - `status: "empty"` — source reachable but no matches
+ * - `status: "failed"` — source threw or returned unusable payload (see `error`)
+ */
+export type LiteratureSourceStatus = "ok" | "empty" | "failed";
+
+export type LiteratureSourceResult = {
+  /** Which source produced this result (matches LiteratureType from agents/literature). */
+  sourceName: "OPENSCHOLAR" | "KNOWLEDGE" | "EDISON" | "BIOLIT" | "BIOLITDEEP";
+  status: LiteratureSourceStatus;
+  /** Number of papers/chunks returned (0 when status is empty/failed). */
+  count: number;
+  /** Wall-clock duration in ms. Always recorded, even on failure. */
+  durationMs: number;
+  /** ISO timestamp when the source finished. */
+  finishedAt: string;
+  /** Concatenated text output (same shape that downstream agents see). */
+  output: string;
+  /** Human-readable error message when status === "failed". */
+  error?: string;
+  /** External job id when the source was Edison/BioLit. */
+  jobId?: string;
+};
 
 export type PlanTask = {
   id?: string; // Format: "ana-1" or "lit-1" where 1 is the level number
@@ -48,6 +79,15 @@ export type PlanTask = {
   start?: string;
   end?: string;
   output?: string;
+  /**
+   * Per-source results for LITERATURE tasks. Populated when the deep-research
+   * worker fans out to multiple literature sources in parallel.
+   * - `sources[]` is the source of truth; `output` is derived from it for
+   *   backward compatibility with hypothesis/reply/verifier prompts that
+   *   still consume `task.output` as a flat string.
+   * - For ANALYSIS tasks this stays undefined.
+   */
+  sources?: LiteratureSourceResult[];
   reasoning?: string[]; // Real-time reasoning trace from external agent (updated during polling)
   artifacts?: Array<AnalysisArtifact>;
 };
@@ -116,6 +156,7 @@ export interface ConversationStateValues extends StateValues {
   suggestedNextSteps?: Array<PlanTask>; // Suggestions for next iteration (from "next" planning mode)
   currentActivity?: DeepResearchActivity; // Compact top-level activity shown in the main deep research view
   objectiveTrace?: DeepResearchObjectiveTrace; // Synthetic objective breakdown shown in the main loader
+  researchBrainEvidence?: any; // Evidence pack from Research Brain used to ground planning/replies
   researchMode?: "semi-autonomous" | "fully-autonomous" | "steering"; // Research iteration mode (can change per request)
   uploadedDatasets?: Array<{
     filename: string;

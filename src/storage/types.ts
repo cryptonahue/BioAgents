@@ -128,12 +128,15 @@ export abstract class StorageProvider {
 }
 
 export interface StorageConfig {
-  provider: "s3";
+  provider: "s3" | "local";
   s3?: {
     accessKeyId: string;
     secretAccessKey: string;
     region: string;
     bucket: string;
     endpoint?: string; // Optional for S3-compatible services
+  };
+  local?: {
+    rootDir: string;
   };
 }

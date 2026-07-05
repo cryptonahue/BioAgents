@@ -1,11 +1,15 @@
-import type { OnPollUpdate } from "../../types/core";
+import type {
+  LiteratureSourceResult,
+  LiteratureSourceStatus,
+  OnPollUpdate,
+} from "../../types/core";
 import logger from "../../utils/logger";
 import { searchBioLiterature } from "./bio";
 import { searchEdison } from "./edison";
 import { searchKnowledge } from "./knowledge";
 import { searchOpenScholar } from "./openscholar";
 
-type LiteratureType =
+export type LiteratureType =
   | "OPENSCHOLAR"
   | "KNOWLEDGE"
   | "EDISON"
@@ -14,7 +18,12 @@ type LiteratureType =
 
 export type BioLiteratureMode = "fast" | "deep";
 
-type LiteratureResult = {
+/**
+ * Backward-compatible flat result. The deep-research worker also reads
+ * `status`, `durationMs`, `error`, etc. directly off this object to populate
+ * `task.sources[]` and emit per-source notifications.
+ */
+export type LiteratureResult = {
   objective: string;
   output: string;
   count?: number;
@@ -22,6 +31,11 @@ type LiteratureResult = {
   reasoning?: string[]; // Real-time reasoning trace from external agent
   start: string;
   end: string;
+  // --- New per-source provenance fields ---
+  sourceName: LiteratureSourceResult["sourceName"];
+  status: LiteratureSourceStatus;
+  durationMs: number;
+  error?: string;
 };
 
 /**
@@ -35,7 +49,11 @@ type LiteratureResult = {
  *    - KNOWLEDGE: Search local knowledge base via vector search
  *    - EDISON: Deep search via Edison AI agent
  *    - BIOLIT: Search via BioLiterature API
- * 3. Return results with timing information
+ * 3. Return results with timing + per-source provenance
+ *
+ * Errors are caught and surfaced as `status: "failed"` so that one failed
+ * source does not block the rest of the literature fan-out (worker treats
+ * each source independently).
  */
 export async function literatureAgent(input: {
   objective: string;
@@ -44,6 +62,7 @@ export async function literatureAgent(input: {
 }): Promise<LiteratureResult> {
   const { objective, type, onPollUpdate } = input;
   const start = new Date().toISOString();
+  const startedAtMs = Date.now();
 
   logger.info({ objective, type }, "literature_agent_started");
 
@@ -51,6 +70,8 @@ export async function literatureAgent(input: {
   let count: number | undefined;
   let jobId: string | undefined;
   let reasoning: string[] | undefined;
+  let status: LiteratureSourceStatus = "ok";
+  let error: string | undefined;
 
   try {
     switch (type) {
@@ -58,12 +79,14 @@ export async function literatureAgent(input: {
         const result = await searchOpenScholar(objective);
         output = result.output;
         count = result.count;
+        if ((count ?? 0) === 0) status = "empty";
         break;
       }
       case "KNOWLEDGE": {
         const result = await searchKnowledge(objective);
         output = result.output;
         count = result.count;
+        if ((count ?? 0) === 0) status = "empty";
         break;
       }
       case "BIOLIT": {
@@ -93,14 +116,29 @@ export async function literatureAgent(input: {
         throw new Error(`Unknown literature type: ${type}`);
     }
   } catch (err) {
+    const errorMsg =
+      err instanceof Error ? err.message : "Unknown error";
     logger.error({ err, objective, type }, "literature_agent_failed");
-    output = `Error searching literature: ${err instanceof Error ? err.message : "Unknown error"}`;
+    output = `Error searching literature (${type}): ${errorMsg}`;
+    count = 0;
+    status = "failed";
+    error = errorMsg;
   }
 
   const end = new Date().toISOString();
+  const durationMs = Date.now() - startedAtMs;
 
   logger.info(
-    { objective, type, outputLength: output.length, count },
+    {
+      objective,
+      type,
+      sourceName: type,
+      status,
+      durationMs,
+      outputLength: output.length,
+      count,
+      error,
+    },
     "literature_agent_completed",
   );
 
@@ -112,5 +150,9 @@ export async function literatureAgent(input: {
     reasoning,
     start,
     end,
+    sourceName: type,
+    status,
+    durationMs,
+    error,
   };
 }

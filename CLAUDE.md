@@ -130,6 +130,45 @@ YOU MUST:
 - Include all DOI-backed citations in the bibliography
 - Link figures and artifacts to their source analysis tasks
 
+#### Provenance Viewer (bioprospecting-pdf-provenance-viewer PR #3)
+
+- A fact citation click opens the inline **EvidenceLightbox** by
+  default; Ctrl/Cmd-click (or the "Open in tab" button in the
+  lightbox) navigates to the dedicated viewer
+  `/viewer/:sourceId#bbox=…&page=…&type=…` in a new tab.
+- Citations in chat messages carry `data-provenance-trigger` and
+  `data-fact-id` so the global `ProvenanceProvider` can resolve
+  the right fact. The lightbox mounts at the provider's level
+  (both `LegacyAppShell` and `CoralAppShell`), so the trigger
+  works from any page.
+- For facts that have a `chunk_id` but no `evidence_table_id` /
+  `evidence_figure_id`, the lightbox uses
+  `useTextChunkSearch` to locate the chunk's first 80 chars on
+  the page (yellow highlight) and shows the
+  `provenance: text-only` badge when the search misses.
+- Reloading the dedicated viewer preserves the URL hash — the
+  bbox, page, and type are all restored from `#bbox=…,#page=…,
+  #type=…`. The hash is also deep-linkable for sharing.
+
+#### Figure Image Extraction (figure-image-extraction PR #1 + PR #2)
+
+- Extracted figure images are stored at `figures/{sourceId}/{figureIndex}.{format}`
+  in S3 and surfaced via the auth-gated endpoint
+  `GET /api/research-brain/figures/:figureId/image`.
+- The lightbox renders a cropped `<img>` header for figures with
+  `imageUrl` (with `role="img"`, `aria-label`, `loading="lazy"`),
+  plus "Open image" and "Download" buttons (gated on `imageUrl`).
+- Bbox color split: **green** = figure with extracted image,
+  **purple** = bbox-only (extraction failed or pending). Tables
+  and chunks keep their pre-existing blue/yellow colors.
+- Mistral OCR provider is flipped to `include_image_base64: true`
+  by default (`MISTRAL_OCR_INCLUDE_IMAGE_BASE64` env var) to
+  receive raster figures in the response.
+- **v1 limitation**: local XObject extraction (PDF embedded images)
+  is `wontfix: documented-v1-limitation` per the spike NO-GO
+  against `pdfjs-dist@5.4.296` legacy build. v1 ships on Mistral
+  raster + render-crop vector paths only.
+
 ---
 
 ## Tech Stack
@@ -288,6 +327,7 @@ B402_ENABLED=false         # BNB/USDT payments
 - `POST /api/deep-research/start` - Start deep research job
 - `GET /api/deep-research/status/:messageId` - Check job status
 - `GET /api/health` - Health check with queue status
+- `GET /api/version` - Build metadata (no auth): `{ version, sha, buildDate }`. Surfaces in the client Footer.
 
 ### Paper Generation
 

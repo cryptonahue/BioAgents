@@ -1,0 +1,72 @@
+-- Track per-source provenance in literature tasks
+--
+-- Background: prior to this migration, a LITERATURE task in the deep-research
+-- workflow fan-out concatenated every enabled source (OpenScholar, Edison,
+-- Knowledge) into a single flat task.output string. The UI could not
+-- distinguish which evidence came from which source, and a partial failure
+-- silently degraded into a string starting with 'Error searching literature: ...'
+-- that downstream agents still had to consume.
+--
+-- This migration does NOT change the database schema. The conversation_states
+-- table stores plan data inside a jsonb `values` column, which is already
+-- flexible enough. We only document the new shape so operators reading the
+-- column directly (or building SQL views on top) know what to expect.
+--
+-- The application code (commit 516440e) writes the following shape into
+-- `values.plan[*].sources[]` for every LITERATURE task:
+--
+--   plan: [
+--     {
+--       "id": "lit-1",
+--       "type": "LITERATURE",
+--       "objective": "...",
+--       "sources": [
+--         {
+--           "sourceName": "OPENSCHOLAR",
+--           "status": "ok" | "empty" | "failed",
+--           "count": 8,
+--           "durationMs": 18_000,
+--           "finishedAt": "2026-06-18T08:18:30.123Z",
+--           "output": "Found 8 relevant papers from OpenScholar:\n\n...",
+--           "error": "OpenScholar API URL or API key not configured",  -- only when status="failed"
+--           "jobId": "edison-job-abc-123"  -- only for Edison/BioLit
+--         },
+--         {
+--           "sourceName": "EDISON",
+--           "status": "failed",
+--           "count": 0,
+--           "durationMs": 200,
+--           "finishedAt": "2026-06-18T08:18:32.456Z",
+--           "output": "Error searching literature (EDISON): Edison API URL or API key not configured",
+--           "error": "Edison API URL or API key not configured"
+--         },
+--         {
+--           "sourceName": "KNOWLEDGE",
+--           "status": "ok",
+--           "count": 12,
+--           "durationMs": 1_200,
+--           "finishedAt": "2026-06-18T08:18:33.789Z",
+--           "output": "Found 12 relevant knowledge chunks:\n\n..."
+--         }
+--       ],
+--       "output": "Found 8 relevant papers from OpenScholar:\n\n...\n\nFound 12 relevant knowledge chunks:\n\n..."  -- derived from sources, filters out failed
+--     }
+--   ]
+--
+-- Backward compatibility:
+-- - Existing plan[*] entries without `sources` keep working. The application
+--   derives task.output from sources[] only when sources[] is present.
+-- - For pre-existing rows (created before commit 516440e), task.output is
+--   the only field available; the UI falls back to showing "1 source (legacy)".
+--
+-- Operational view (optional, for analytics):
+-- To inspect provenance across all conversations, the existing jsonb_path_query
+-- GIN index on conversation_states.values is sufficient. No new index needed
+-- for the v1 read pattern (per-conversation, not cross-conversation aggregation).
+--
+-- If a future migration adds cross-conversation analytics on sources, add:
+--   CREATE INDEX idx_conv_states_plan_sources
+--     ON conversation_states USING GIN ((values->'plan') jsonb_path_ops);
+
+-- No schema changes in this migration. Documentation only.
+SELECT 1;

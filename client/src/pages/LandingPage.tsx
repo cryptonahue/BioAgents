@@ -5,8 +5,7 @@ import { WaitlistModal } from '../components/WaitlistModal';
 import { useAuth } from '../hooks';
 import { useLandingScroll } from '../hooks/useLandingScroll';
 
-const DEFAULT_HERO_VIDEO =
-  'https://videos.pexels.com/video-files/854982/854982-hd_1920_1080_30fps.mp4';
+const DEFAULT_HERO_VIDEO = '/assets/videos/DNA_helix_bg.mp4';
 
 const STEPS = [
   {

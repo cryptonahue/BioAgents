@@ -343,6 +343,7 @@ export function ChatPage({
         uploadedDatasets: conversationState.values.uploadedDatasets,
         currentHypothesis: conversationState.values.currentHypothesis,
         suggestedNextSteps: conversationState.values.suggestedNextSteps,
+        researchBrainEvidence: conversationState.values.researchBrainEvidence,
       }
     : currentState?.values
       ? {
@@ -354,6 +355,7 @@ export function ChatPage({
           uploadedDatasets: currentState.values.uploadedDatasets,
           currentHypothesis: currentState.values.currentHypothesis,
           suggestedNextSteps: currentState.values.suggestedNextSteps,
+          researchBrainEvidence: currentState.values.researchBrainEvidence,
         }
       : null;
 
@@ -375,6 +377,7 @@ export function ChatPage({
       researchState.currentHypothesis ||
       researchState.plan?.length > 0 ||
       researchState.suggestedNextSteps?.length > 0 ||
+      researchState.researchBrainEvidence ||
       researchState.methodology ||
       researchState.currentObjective);
 

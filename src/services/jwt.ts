@@ -111,6 +111,14 @@ export async function verifyJWT(token: string): Promise<JWTVerificationResult> {
       jti: payload.jti as string | undefined,
       iss: payload.iss as string | undefined,
       aud: payload.aud as string | string[] | undefined,
+      // PR #3 of `bioprospecting-compound-authority` — the role
+      // claim is what `authResolver({ role: "admin" })` reads to
+      // gate the new admin routes (alias add, failed-fact promote).
+      // The cast in the original code dropped every field not on
+      // the typed payload, which silently 403'd any admin caller
+      // because `claims.role` was always undefined. Pass it
+      // through so the role check actually sees the claim.
+      role: payload.role as string | undefined,
     };
 
     logger?.info(

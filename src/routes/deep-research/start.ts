@@ -44,6 +44,7 @@ import {
   notifyStateUpdated,
 } from "../../services/queue/notify";
 import { getDeepResearchQueue } from "../../services/queue/queues";
+import { persistDiscoveriesToDb } from "../../services/researchBrain/discoveryPersistence";
 import type { AuthContext } from "../../types/auth";
 import type {
   ConversationState,
@@ -1129,6 +1130,26 @@ async function runDeepResearch(params: {
       const iterationStartTime = Date.now();
       logger.info({ iterationCount, maxAutoIterations }, "starting_iteration");
 
+      try {
+        const { researchBrainSearch } = await import(
+          "../../services/researchBrain"
+        );
+        conversationState.values.researchBrainEvidence =
+          await researchBrainSearch({
+            query:
+              conversationState.values.currentObjective ||
+              conversationState.values.evolvingObjective ||
+              conversationState.values.objective ||
+              currentMessage.question ||
+              createdMessage.question,
+            trustTier: "internal",
+            includeExternal: false,
+            limit: 12,
+          });
+      } catch (error) {
+        logger.warn({ error }, "deep_research_research_brain_search_failed");
+      }
+
       if (!skipPlanning) {
         await persistConversationActivity(
           {
@@ -1439,8 +1460,29 @@ async function runDeepResearch(params: {
               ? "BIOLITDEEP"
               : "EDISON";
 
-          // Build list of literature promises based on configured sources
+          // Build list of literature promises based on configured sources.
+          // Each source independently appends to task.sources[] with
+          // provenance (status, count, durationMs, error). task.output is
+          // rebuilt from sources[] at the end so downstream agents
+          // (hypothesis, reply, verifier) see the same concatenated text.
           const literaturePromises: Promise<void>[] = [];
+
+          const appendSource = (result: Awaited<ReturnType<typeof literatureAgent>>) => {
+            if (!task.sources) task.sources = [];
+            task.sources.push({
+              sourceName: result.sourceName,
+              status: result.status,
+              count: result.count ?? 0,
+              durationMs: result.durationMs,
+              finishedAt: result.end,
+              output: result.output,
+              error: result.error,
+              jobId: result.jobId,
+            });
+            if (result.jobId && !task.jobId) {
+              task.jobId = result.jobId;
+            }
+          };
 
           // OpenScholar (enabled if OPENSCHOLAR_API_URL is configured)
           if (process.env.OPENSCHOLAR_API_URL) {
@@ -1448,9 +1490,7 @@ async function runDeepResearch(params: {
               objective: task.objective,
               type: "OPENSCHOLAR",
             }).then(async (result) => {
-              if (result.count && result.count > 0) {
-                task.output += `${result.output}\n\n`;
-              }
+              appendSource(result);
               if (conversationState.id) {
                 await writeStateSerialized();
                 logger.info({ count: result.count }, "openscholar_completed");
@@ -1469,12 +1509,7 @@ async function runDeepResearch(params: {
             type: primaryLiteratureType,
             onPollUpdate,
           }).then(async (result) => {
-            // Always append for Edison/BioLit (no count filtering)
-            task.output += `${result.output}\n\n`;
-            // Capture jobId from primary literature (Edison or BioLit)
-            if (result.jobId) {
-              task.jobId = result.jobId;
-            }
+            appendSource(result);
             if (conversationState.id) {
               await writeStateSerialized();
             }
@@ -1491,9 +1526,7 @@ async function runDeepResearch(params: {
               objective: task.objective,
               type: "KNOWLEDGE",
             }).then(async (result) => {
-              if (result.count && result.count > 0) {
-                task.output += `${result.output}\n\n`;
-              }
+              appendSource(result);
               if (conversationState.id) {
                 await writeStateSerialized();
                 logger.info({ count: result.count }, "knowledge_completed");
@@ -1508,6 +1541,15 @@ async function runDeepResearch(params: {
 
           // Wait for all enabled sources to complete
           await Promise.all(literaturePromises);
+
+          // Derive task.output from sources[] so downstream agents
+          // (hypothesis, reflection, reply, verifier) see the same flat
+          // string they got before this refactor. Skip failed sources to
+          // avoid leaking error messages into the hypothesis prompt.
+          task.output = (task.sources ?? [])
+            .filter((s) => s.status !== "failed")
+            .map((s) => `${s.output}\n\n`)
+            .join("");
 
           // Set end timestamp after all are done
           task.end = new Date().toISOString();
@@ -1692,6 +1734,39 @@ These molecular changes align with established longevity pathways (Converging nu
         completedTasks: tasksToExecute, // All tasks from current level
       });
 
+      // Ground the hypothesis against the evidence pack so the user does
+      // not see invented specifics when the literature agents returned only
+      // tangential background. Soft-fail: keep the raw hypothesis if the
+      // verifier itself errors so the iteration does not abort.
+      try {
+        const { verifyHypothesisAgainstEvidence } = await import(
+          "../../services/researchBrain/verifier"
+        );
+        const evidencePack = conversationState.values.researchBrainEvidence;
+        if (evidencePack) {
+          const grounded = await verifyHypothesisAgainstEvidence({
+            question: currentObjective,
+            hypothesis: hypothesisResult.hypothesis,
+            evidencePack,
+          });
+          if (grounded !== hypothesisResult.hypothesis) {
+            logger.info(
+              {
+                originalLength: hypothesisResult.hypothesis.length,
+                groundedLength: grounded.length,
+              },
+              "hypothesis_grounded_against_evidence",
+            );
+          }
+          hypothesisResult = { ...hypothesisResult, hypothesis: grounded };
+        }
+      } catch (error) {
+        logger.warn(
+          { error },
+          "hypothesis_grounding_skipped_non_fatal",
+        );
+      }
+
       // Update conversation state with new hypothesis
       conversationState.values.currentHypothesis = hypothesisResult.hypothesis;
       if (conversationState.id) {
@@ -1761,6 +1836,22 @@ These molecular changes align with established longevity pathways (Converging nu
 
       // Update conversation state with discovery results if discovery ran
       if (discoveryResult) {
+        // v1: write-through to research_discoveries BEFORE the JSONB write.
+        // Soft-fails internally; cycle MUST NOT abort on this call.
+        try {
+          await persistDiscoveriesToDb({
+            discoveries: discoveryResult.discoveries,
+            conversationId: createdMessage.conversation_id,
+            messageId: createdMessage.id,
+            threshold: 0.7,
+          });
+        } catch (err) {
+          logger.error(
+            { err, conversationId: createdMessage.conversation_id },
+            "discovery_persist_failed_soft_fail",
+          );
+        }
+
         conversationState.values.discoveries = discoveryResult.discoveries;
         logger.info(
           {
@@ -1937,10 +2028,36 @@ These molecular changes align with established longevity pathways (Converging nu
         isFinal,
       });
 
+      let groundedReply = replyResult.reply;
+      try {
+        const { verifyEvidenceGroundedResponse, writeResearchMemory } =
+          await import("../../services/researchBrain");
+        if (conversationState.values.researchBrainEvidence) {
+          groundedReply = await verifyEvidenceGroundedResponse({
+            question: currentMessage.question || createdMessage.question,
+            draft: replyResult.reply,
+            evidencePack: conversationState.values.researchBrainEvidence,
+          });
+        }
+        await writeResearchMemory({
+          title: `Deep Research memory: ${
+            conversationState.values.currentObjective ||
+            currentMessage.question ||
+            createdMessage.question
+          }`,
+          text: groundedReply,
+          conversationId: currentMessage.conversation_id,
+          messageId: currentMessage.id,
+          trustTier: "internal",
+        });
+      } catch (error) {
+        logger.warn({ error }, "deep_research_memory_or_verifier_failed");
+      }
+
       // Update the current message with the reply and mark as complete
       const iterationResponseTime = Date.now() - iterationStartTime;
       await updateMessage(currentMessage.id, {
-        content: replyResult.reply,
+        content: groundedReply,
         summary: replyResult.summary,
         response_time: iterationResponseTime, // Mark message as complete so UI displays it
       });
@@ -1949,7 +2066,7 @@ These molecular changes align with established longevity pathways (Converging nu
         {
           messageId: currentMessage.id,
           iterationCount,
-          contentLength: replyResult.reply.length,
+          contentLength: groundedReply.length,
         },
         "iteration_reply_saved",
       );

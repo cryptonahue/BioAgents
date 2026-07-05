@@ -14,6 +14,7 @@
 import { Job, Worker } from "bullmq";
 import type {
   ConversationState,
+  LiteratureSourceResult,
   OnPollUpdate,
   PlanTask,
   State,
@@ -38,6 +39,7 @@ import logger from "../../../utils/logger";
 import { markRunFinished, touchRun } from "../../deep-research/run-guard";
 import { getBullMQConnection } from "../connection";
 import {
+  notifyAgentSourceCompleted,
   notifyJobCompleted,
   notifyJobFailed,
   notifyJobProgress,
@@ -46,6 +48,7 @@ import {
   notifyStateUpdated,
 } from "../notify";
 import { getDeepResearchQueue } from "../queues";
+import { persistDiscoveriesToDb } from "../../researchBrain/discoveryPersistence";
 import type {
   DeepResearchJobData,
   DeepResearchJobResult,
@@ -327,6 +330,28 @@ async function processDeepResearchJob(
       },
       "starting_iteration",
     );
+
+    try {
+      const { researchBrainSearch } = await import(
+        "../../../services/researchBrain"
+      );
+      conversationState.values.researchBrainEvidence = await researchBrainSearch({
+        query:
+          conversationState.values.currentObjective ||
+          conversationState.values.evolvingObjective ||
+          conversationState.values.objective ||
+          messageRecord.question ||
+          message,
+        trustTier: "internal",
+        includeExternal: false,
+        limit: 12,
+      });
+    } catch (error) {
+      logger.warn(
+        { error, jobId: job.id },
+        "deep_research_worker_research_brain_search_failed",
+      );
+    }
 
     // =========================================================================
     // SINGLE ITERATION EXECUTION
@@ -681,8 +706,32 @@ async function processDeepResearchJob(
             ? "BIOLITDEEP"
             : "EDISON";
 
-        // Build list of literature promises based on configured sources
+        // Build list of literature promises based on configured sources.
+        // Each source independently appends to task.sources[] with provenance
+        // (status, count, durationMs, error). task.output is rebuilt from
+        // sources[] at the end so downstream agents (hypothesis, reply,
+        // verifier) see the same concatenated text as before.
         const literaturePromises: Promise<void>[] = [];
+        const currentIteration = job.data.iterationNumber ?? 1;
+
+        const appendSource = (result: Awaited<ReturnType<typeof literatureAgent>>) => {
+          if (!task.sources) task.sources = [];
+          task.sources.push({
+            sourceName: result.sourceName,
+            status: result.status,
+            count: result.count ?? 0,
+            durationMs: result.durationMs,
+            finishedAt: result.end,
+            output: result.output,
+            error: result.error,
+            jobId: result.jobId,
+          });
+          // Persist jobId from primary literature (Edison/BioLit) at the task
+          // level too so existing callers that read task.jobId keep working.
+          if (result.jobId && !task.jobId) {
+            task.jobId = result.jobId;
+          }
+        };
 
         // OpenScholar (enabled if OPENSCHOLAR_API_URL is configured)
         if (process.env.OPENSCHOLAR_API_URL) {
@@ -690,7 +739,19 @@ async function processDeepResearchJob(
             objective: task.objective,
             type: "OPENSCHOLAR",
           }).then(async (result) => {
-            task.output += `${result.output}\n\n`;
+            appendSource(result);
+            await notifyAgentSourceCompleted(
+              job.id!,
+              conversationId,
+              {
+                sourceName: result.sourceName,
+                status: result.status,
+                count: result.count ?? 0,
+                durationMs: result.durationMs,
+                error: result.error,
+                iteration: currentIteration,
+              },
+            );
             if (activeConversationState.id) {
               await writeStateSerialized!();
             }
@@ -704,11 +765,19 @@ async function processDeepResearchJob(
           type: primaryLiteratureType,
           onPollUpdate,
         }).then(async (result) => {
-          task.output += `${result.output}\n\n`;
-          // Capture jobId from primary literature (Edison)
-          if (result.jobId) {
-            task.jobId = result.jobId;
-          }
+          appendSource(result);
+          await notifyAgentSourceCompleted(
+            job.id!,
+            conversationId,
+            {
+              sourceName: result.sourceName,
+              status: result.status,
+              count: result.count ?? 0,
+              durationMs: result.durationMs,
+              error: result.error,
+              iteration: currentIteration,
+            },
+          );
           if (activeConversationState.id) {
             await writeStateSerialized!();
           }
@@ -721,7 +790,19 @@ async function processDeepResearchJob(
             objective: task.objective,
             type: "KNOWLEDGE",
           }).then(async (result) => {
-            task.output += `${result.output}\n\n`;
+            appendSource(result);
+            await notifyAgentSourceCompleted(
+              job.id!,
+              conversationId,
+              {
+                sourceName: result.sourceName,
+                status: result.status,
+                count: result.count ?? 0,
+                durationMs: result.durationMs,
+                error: result.error,
+                iteration: currentIteration,
+              },
+            );
             if (activeConversationState.id) {
               await writeStateSerialized!();
             }
@@ -730,6 +811,15 @@ async function processDeepResearchJob(
         }
 
         await Promise.all(literaturePromises);
+
+        // Derive task.output from sources[] so downstream agents
+        // (hypothesis, reflection, reply, verifier) see the same flat
+        // string they got before this refactor. Skip failed sources to
+        // avoid leaking error messages into the hypothesis prompt.
+        task.output = (task.sources ?? [])
+          .filter((s) => s.status !== "failed")
+          .map((s) => `${s.output}\n\n`)
+          .join("");
 
         task.end = new Date().toISOString();
         if (activeConversationState.id) {
@@ -856,6 +946,41 @@ async function processDeepResearchJob(
       completedTasks: tasksToExecute,
     });
 
+    // Ground the hypothesis against the evidence pack so the user does not
+    // see invented specifics (compound class, IC₅₀ range, mechanism, strain)
+    // when the literature agents returned only tangential background.
+    // Soft-fail: if the verifier itself errors, keep the raw hypothesis so the
+    // iteration does not abort on a transient LLM hiccup.
+    try {
+      const { verifyHypothesisAgainstEvidence } = await import(
+        "../../../services/researchBrain/verifier"
+      );
+      const evidencePack = conversationState.values.researchBrainEvidence;
+      if (evidencePack) {
+        const grounded = await verifyHypothesisAgainstEvidence({
+          question: currentObjective,
+          hypothesis: hypothesisResult.hypothesis,
+          evidencePack,
+        });
+        if (grounded !== hypothesisResult.hypothesis) {
+          logger.info(
+            {
+              jobId: job.id,
+              originalLength: hypothesisResult.hypothesis.length,
+              groundedLength: grounded.length,
+            },
+            "hypothesis_grounded_against_evidence",
+          );
+        }
+        hypothesisResult = { ...hypothesisResult, hypothesis: grounded };
+      }
+    } catch (error) {
+      logger.warn(
+        { error, jobId: job.id },
+        "hypothesis_grounding_skipped_non_fatal",
+      );
+    }
+
     conversationState.values.currentHypothesis = hypothesisResult.hypothesis;
     if (conversationState.id) {
       await persistConversationState();
@@ -933,6 +1058,23 @@ async function processDeepResearchJob(
 
     // Update conversation state with discovery results if discovery ran
     if (discoveryResult) {
+      // v1: write-through to research_discoveries BEFORE the JSONB write.
+      // Soft-fails internally; cycle MUST NOT abort on this call.
+      try {
+        await persistDiscoveriesToDb({
+          discoveries: discoveryResult.discoveries,
+          conversationId,
+          messageId: messageRecord.id,
+          threshold: 0.7,
+          loggerFields: { jobId: job.id },
+        });
+      } catch (err) {
+        logger.error(
+          { err, jobId: job.id, conversationId },
+          "discovery_persist_failed_soft_fail",
+        );
+      }
+
       conversationState.values.discoveries = discoveryResult.discoveries;
       logger.info(
         { jobId: job.id, discoveryCount: discoveryResult.discoveries.length },
@@ -1088,8 +1230,38 @@ async function processDeepResearchJob(
       isFinal,
     });
 
+    let groundedReply = replyResult.reply;
+    try {
+      const { verifyEvidenceGroundedResponse, writeResearchMemory } =
+        await import("../../../services/researchBrain");
+      if (conversationState.values.researchBrainEvidence) {
+        groundedReply = await verifyEvidenceGroundedResponse({
+          question: currentMessage.question || messageRecord.question || message,
+          draft: replyResult.reply,
+          evidencePack: conversationState.values.researchBrainEvidence,
+        });
+      }
+      await writeResearchMemory({
+        title: `Deep Research memory: ${
+          conversationState.values.currentObjective ||
+          currentMessage.question ||
+          messageRecord.question ||
+          message
+        }`,
+        text: groundedReply,
+        conversationId,
+        messageId: currentMessage.id,
+        trustTier: "internal",
+      });
+    } catch (error) {
+      logger.warn(
+        { error, jobId: job.id },
+        "deep_research_worker_memory_or_verifier_failed",
+      );
+    }
+
     // Warn if reply is empty
-    if (!replyResult.reply || replyResult.reply.trim().length === 0) {
+    if (!groundedReply || groundedReply.trim().length === 0) {
       logger.warn(
         {
           jobId: job.id,
@@ -1104,7 +1276,7 @@ async function processDeepResearchJob(
     // Update the current message with the reply and mark as complete
     const iterationResponseTime = Date.now() - startTime;
     await updateMessage(currentMessage.id, {
-      content: replyResult.reply,
+      content: groundedReply,
       summary: replyResult.summary,
       response_time: iterationResponseTime, // Mark message as complete so UI displays it
     });
@@ -1114,7 +1286,7 @@ async function processDeepResearchJob(
         jobId: job.id,
         messageId: currentMessage.id,
         iterationNumber,
-        contentLength: replyResult.reply?.length || 0,
+        contentLength: groundedReply?.length || 0,
       },
       "iteration_reply_saved",
     );

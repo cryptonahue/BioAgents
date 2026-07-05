@@ -87,8 +87,7 @@ export class OpenRouterAdapter extends LLMAdapter {
     }
 
     // Append :online to model name if URL is detected
-    const model =
-      hasUrl && !request.model.includes(':online') ? `${request.model}:online` : request.model;
+    const model = request.model.includes(':online') ? request.model : request.model;
 
     const payload: OpenRouterRequestPayload = {
       model,
@@ -125,7 +124,7 @@ export class OpenRouterAdapter extends LLMAdapter {
     }
 
     // Append :online to model name for web search
-    const model = !request.model.includes(':online') ? `${request.model}:online` : request.model;
+    const model = request.model.includes(':online') ? request.model : request.model;
 
     const payload: OpenRouterRequestPayload = {
       model,

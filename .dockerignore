@@ -3,7 +3,11 @@ node_modules/
 client/node_modules/
 
 # Build outputs
-client/dist/
+# NOTE: client/dist/ is intentionally NOT ignored. The Dockerfile either
+# builds the client in-container (default) or, when SKIP_CLIENT_BUILD=1
+# (set by bin/build-and-up.sh), reuses a pre-built client/dist/ from the
+# build context. The .git/ entry below is what actually saves the build
+# context size.
 *.log
 
 # Development files

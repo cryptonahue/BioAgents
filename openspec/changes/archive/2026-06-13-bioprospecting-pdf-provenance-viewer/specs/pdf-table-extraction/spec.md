@@ -1,0 +1,632 @@
+# Spec: pdf-table-extraction
+
+## Purpose
+
+Provide a deterministic, source-cached PDF table extraction pipeline that
+turns tabular data inside research PDFs into structured rows the rest of
+the Research Brain can reason about, and persist those rows so the
+bioprospecting extractor, the viewer, and the evidence pack all see the
+same table of record.
+
+The capability ships a provider abstraction with two implementations: a
+local, network-free `pdf-table-extractor` (npm) for digital PDFs and a
+Mistral OCR fallback for scanned or low-quality inputs. A strict quality
+gate decides when to fall back. Re-extracting the same `source_id` is a
+no-op against external services — `research_evidence_tables` is the
+authoritative cache.
+
+## Requirements
+
+### Requirement: research_evidence_tables Schema
+
+The system MUST create a `research_evidence_tables` table that persists
+extracted tables per `source_id`. The table is the single source of
+truth for table provenance in the Research Brain; both the LLM
+extractor and the viewer MUST read from it, never re-extract.
+
+**Schema:**
+
+```sql
+CREATE TABLE IF NOT EXISTS public.research_evidence_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_id UUID NOT NULL REFERENCES public.research_sources(id) ON DELETE CASCADE,
+  page INTEGER NOT NULL,
+  table_index INTEGER NOT NULL,
+  headers JSONB NOT NULL DEFAULT '[]',
+  rows JSONB NOT NULL DEFAULT '[]',
+  markdown TEXT NOT NULL,
+  bbox JSONB NOT NULL,
+  extraction_provider TEXT NOT NULL CHECK (extraction_provider IN ('local', 'mistral')),
+  extraction_confidence NUMERIC(4,3) NOT NULL CHECK (extraction_confidence >= 0 AND extraction_confidence <= 1),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (source_id, page, table_index)
+);
+```
+
+**Column semantics:**
+
+- `id` — UUID primary key. Surfaced as `evidence_table_id` on
+  `research_bioprospecting_facts` and consumed by the viewer.
+- `source_id` — parent source. CASCADE on delete so source wipes free
+  the table cache.
+- `page` — 1-indexed PDF page where the table was found.
+- `table_index` — ordinal position of this table on the page (0-based,
+  per provider). Together with `(source_id, page)` forms the uniqueness
+  guard.
+- `headers` — JSONB array of normalized header strings. Multi-level
+  headers are flattened using the rendering rule described in
+  `Headers And Empty Cells` (see below).
+- `rows` — JSONB array of row arrays. Each cell is a string; empty
+  cells MUST be encoded as the literal string `"-"` and never as
+  `null`.
+- `markdown` — pipe-rendered markdown mirror of `headers` + `rows`,
+  suitable for direct injection into LLM prompts.
+- `bbox` — JSONB object `{ x: number, y: number, w: number, h: number,
+  page: number, units: "pt" }` in PDF point space (1pt = 1/72in). The
+  viewer transforms this to render-scale at display time.
+- `extraction_provider` — `'local'` or `'mistral'`. The
+  `TABLE_EXTRACTION_PROVIDER` env var selects the active mode, not
+  this column — this column is the audit trail of which provider
+  actually produced the row.
+- `extraction_confidence` — per-table confidence in `[0, 1]`. Used by
+  the quality gate (see `Quality Gate And Fallback`).
+- `created_at` — server timestamp at insertion.
+
+**Indexes (partial, for source-locality lookups):**
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_evidence_tables_source_page
+  ON public.research_evidence_tables (source_id, page)
+  WHERE table_index IS NOT NULL;
+```
+
+The unique constraint `(source_id, page, table_index)` is the
+authoritative idempotency guard — re-extracting the same source/page/
+table will violate the constraint and the upsert MUST treat that as
+"already cached, skip".
+
+#### Scenario: Insert a freshly extracted table
+
+- GIVEN a `source_id` S, page 4, table_index 1 with three rows and a
+  detection confidence of 0.87 from the local provider
+- WHEN `persistExtractedTables` runs
+- THEN a row exists in `research_evidence_tables` with
+  `(source_id=S, page=4, table_index=1, headers=[...], rows=[...],
+  markdown=..., bbox=..., extraction_provider='local',
+  extraction_confidence=0.870)`
+- AND the row is reachable by joining on `source_id` and filtering by
+  `page` using the partial index
+
+#### Scenario: Cascade delete frees the cache
+
+- GIVEN a `research_sources` row S with N rows in
+  `research_evidence_tables`
+- WHEN S is deleted
+- THEN all N rows for that `source_id` are removed
+- AND no orphaned rows remain
+
+#### Scenario: Unique constraint prevents duplicate table writes
+
+- GIVEN an existing row with
+  `(source_id=S, page=4, table_index=1)`
+- WHEN a second insert attempts the same triple
+- THEN the insert MUST fail with a unique-constraint violation
+- AND the upsert helper MUST treat the violation as success (cache hit)
+  and MUST NOT call the extraction provider
+
+### Requirement: research_evidence_figures Schema
+
+The system MUST create a `research_evidence_figures` table that
+persists figure (image) provenance per `source_id`. Phase 1 records
+bbox coordinates and caption only — no image file is extracted.
+
+**Schema:**
+
+```sql
+CREATE TABLE IF NOT EXISTS public.research_evidence_figures (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_id UUID NOT NULL REFERENCES public.research_sources(id) ON DELETE CASCADE,
+  page INTEGER NOT NULL,
+  figure_index INTEGER NOT NULL,
+  bbox JSONB NOT NULL,
+  caption TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (source_id, page, figure_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evidence_figures_source_page
+  ON public.research_evidence_figures (source_id, page);
+```
+
+**Column semantics:**
+
+- `bbox` — JSONB object in the same shape as
+  `research_evidence_tables.bbox`: `{ x, y, w, h, page, units: "pt" }`.
+- `caption` — best-effort text from the figure caption line, MAY be
+  null when the provider cannot locate one.
+- All other columns mirror the `research_evidence_tables` shape
+  (same uniqueness guard, same cascade behavior).
+
+#### Scenario: Persist a figure with caption and bbox
+
+- GIVEN the local provider finds one image on page 2 with caption
+  "Figure 3. Cell viability assay results."
+- WHEN `persistExtractedFigures` runs
+- THEN a row exists in `research_evidence_figures` with
+  `(source_id=S, page=2, figure_index=0, bbox=..., caption='Figure 3.
+  Cell viability assay results.')`
+
+#### Scenario: Figure row without caption is allowed
+
+- GIVEN a detected image with no caption text nearby
+- WHEN persisted
+- THEN `caption` is `null`
+- AND the row is still inserted (bbox provenance is the supported
+  unit; missing caption does not block the row)
+
+### Requirement: Foreign Keys From research_bioprospecting_facts
+
+The system MUST add two nullable foreign keys to
+`research_bioprospecting_facts` so a fact can point at the table or
+figure it was extracted from.
+
+**Schema delta:**
+
+```sql
+ALTER TABLE public.research_bioprospecting_facts
+  ADD COLUMN IF NOT EXISTS evidence_table_id UUID
+    REFERENCES public.research_evidence_tables(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS evidence_figure_id UUID
+    REFERENCES public.research_evidence_figures(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_bioprospecting_facts_evidence_table
+  ON public.research_bioprospecting_facts (evidence_table_id)
+  WHERE evidence_table_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_bioprospecting_facts_evidence_figure
+  ON public.research_bioprospecting_facts (evidence_figure_id)
+  WHERE evidence_figure_id IS NOT NULL;
+```
+
+Both columns are nullable. Existing facts (without table/figure
+provenance) keep `NULL`. The partial indexes support reverse lookup
+("which facts were extracted from this table?") without bloating the
+main facts index.
+
+#### Scenario: Backwards-compatible column add
+
+- GIVEN an existing `research_bioprospecting_facts` table populated by
+  the legacy extractor
+- WHEN the migration runs
+- THEN every existing row has `evidence_table_id = NULL` and
+  `evidence_figure_id = NULL`
+- AND the application layer continues to function unchanged
+
+#### Scenario: Cascade set null on table/figure delete
+
+- GIVEN a fact F with `evidence_table_id = T`
+- WHEN T is deleted from `research_evidence_tables`
+- THEN F's `evidence_table_id` becomes `NULL`
+- AND F is NOT deleted from `research_bioprospecting_facts`
+
+### Requirement: Provider Abstraction And Selection
+
+The system MUST define a provider abstraction that hides the local
+and Mistral implementations behind a single
+`extractPDFTables(sourceId, pdfBuffer): Promise<ExtractedTables>`
+function. The active provider is selected at startup from the
+`TABLE_EXTRACTION_PROVIDER` environment variable and is one of:
+
+- `auto` — run the local provider first, then evaluate the quality
+  gate; fall back to Mistral OCR if the gate fails.
+- `local` — run the local provider only; never call Mistral.
+- `mistral` — skip the local provider entirely; run Mistral OCR.
+
+The active mode is read once at process start and held in a
+module-private `getTableExtractionProvider()` accessor. The accessor
+MUST export the resolved provider name (`'auto' | 'local' | 'mistral'`)
+so logs and the quality gate can record the decision context.
+
+**Provider interface (logical):**
+
+```typescript
+interface TableExtractionProvider {
+  readonly name: "local" | "mistral";
+  extract(pdf: Uint8Array): Promise<ExtractedTable[]>;
+}
+
+interface ExtractedTable {
+  page: number;            // 1-indexed
+  tableIndex: number;      // 0-based ordinal on page
+  headers: string[];       // flattened per multi-level rule
+  rows: string[][];        // empty cells as "-"
+  bbox: { x: number; y: number; w: number; h: number; page: number; units: "pt" };
+  confidence: number;      // [0, 1]
+  markdown: string;        // derived from headers + rows
+}
+```
+
+The orchestrator (`extractPDFTables`) handles the cache check and the
+quality gate; providers only do the per-document extraction.
+
+#### Scenario: auto mode runs local first
+
+- GIVEN `TABLE_EXTRACTION_PROVIDER=auto` and a digital PDF (no
+  scanned pages)
+- WHEN `extractPDFTables(S, pdf)` is called and no cached tables
+  exist for S
+- THEN the local provider runs
+- AND if its output passes the quality gate, the result is persisted
+  with `extraction_provider='local'`
+- AND Mistral is NOT called
+
+#### Scenario: auto mode falls back to mistral on low confidence
+
+- GIVEN `TABLE_EXTRACTION_PROVIDER=auto` and the local provider
+  returns 1 table with average row confidence 0.32
+- WHEN the quality gate runs
+- THEN the local result is discarded
+- AND the Mistral provider is called
+- AND the persisted result has `extraction_provider='mistral'`
+
+#### Scenario: local mode never calls mistral
+
+- GIVEN `TABLE_EXTRACTION_PROVIDER=local`
+- WHEN the local provider returns a low-confidence result
+- THEN the local result is persisted as-is
+- AND Mistral is NOT called (the gate is bypassed in `local` mode)
+
+#### Scenario: mistral mode skips local
+
+- GIVEN `TABLE_EXTRACTION_PROVIDER=mistral`
+- WHEN `extractPDFTables(S, pdf)` is called
+- THEN the local provider is NOT invoked
+- AND the Mistral provider is called directly
+- AND the persisted result has `extraction_provider='mistral'`
+
+#### Scenario: Cache hit short-circuits provider calls
+
+- GIVEN `research_evidence_tables` already has rows for `source_id`
+  S
+- WHEN `extractPDFTables(S, pdf)` is called
+- THEN no provider is called
+- AND the cached rows are returned verbatim
+- AND no new rows are inserted (idempotent)
+
+### Requirement: Local Provider (pdf-table-extractor)
+
+The system MUST implement a `local` provider that wraps the
+`pdf-table-extractor` npm package. The local provider runs entirely
+in-process, makes no network calls, and is the default extraction
+path for digital PDFs.
+
+**Behavior contract:**
+
+- The provider MUST be implemented at
+  `src/services/files/pdfTableExtractor.ts` and exported as
+  `class LocalTableExtractionProvider implements TableExtractionProvider`
+  with `readonly name = "local"`.
+- The provider MUST render each page at 1.5× zoom to compute
+  `bbox` in PDF point space (the viewer uses the same scale, so the
+  bboxes are render-accurate).
+- The provider MUST emit `confidence` as a deterministic function
+  of the row's text density (chars per cell). Empty cells count
+  as 0 chars; rows where every cell is empty have confidence 0.
+- The provider MUST throw `TableExtractionProviderError` on parse
+  failure; the orchestrator converts that into a quality-gate
+  fallback (auto mode) or a logged skip (local mode).
+
+#### Scenario: Local provider handles a digital research PDF
+
+- GIVEN a PDF with 2 pages, page 1 has 2 tables and page 2 has 0
+  tables
+- WHEN the local provider runs
+- THEN it returns 2 `ExtractedTable` objects with
+  `page ∈ {1, 1}`, `tableIndex ∈ {0, 1}`
+- AND each table's `bbox` is in `{ x, y, w, h, page, units: "pt" }`
+  shape
+- AND no network calls are made (the provider runs offline)
+
+#### Scenario: Local provider fails gracefully
+
+- GIVEN a corrupted PDF buffer
+- WHEN the local provider runs
+- THEN it throws `TableExtractionProviderError` with the parser
+  error wrapped
+- AND the orchestrator logs `pdf_table_extraction_local_failed` with
+  the `source_id`
+- AND in `auto` mode, the orchestrator proceeds to Mistral
+- AND in `local` mode, the orchestrator returns an empty result
+  and persists no rows
+
+### Requirement: Mistral Provider (Fallback)
+
+The system MUST implement a `mistral` provider that wraps the
+Mistral OCR API. The Mistral provider is the fallback for scanned
+or low-quality PDFs and is the primary path only when
+`TABLE_EXTRACTION_PROVIDER=mistral`.
+
+**Behavior contract:**
+
+- The provider MUST be implemented at
+  `src/services/files/pdfTableExtractor.ts` and exported as
+  `class MistralTableExtractionProvider implements TableExtractionProvider`
+  with `readonly name = "mistral"`.
+- The provider MUST call Mistral's OCR endpoint with the PDF and
+  parse the structured response into `ExtractedTable[]`.
+- The provider MUST emit `confidence` from Mistral's per-block
+  confidence (averaged per row). When the API does not return a
+  confidence, the provider defaults to `0.5`.
+- The provider MUST record `extraction_provider='mistral'` in
+  every persisted row, regardless of who initiated the call (auto
+  fallback or direct mode).
+
+#### Scenario: Mistral provider extracts from a scanned PDF
+
+- GIVEN a scanned PDF (image-only, no text layer) and
+  `MISTRAL_API_KEY` is set
+- WHEN the Mistral provider runs
+- THEN it returns N `ExtractedTable` objects with per-block
+  confidences
+- AND the result is persisted with `extraction_provider='mistral'`
+
+#### Scenario: Mistral API key missing
+
+- GIVEN `MISTRAL_API_KEY` is unset and the Mistral provider is
+  selected
+- WHEN the provider runs
+- THEN it throws `TableExtractionProviderError` with a clear
+  "missing MISTRAL_API_KEY" message
+- AND the orchestrator logs the failure and returns the local
+  result (auto) or an empty result (mistral mode)
+
+### Requirement: Quality Gate And Fallback
+
+The system MUST apply a strict quality gate on the local provider's
+output when `TABLE_EXTRACTION_PROVIDER=auto`. The gate triggers a
+Mistral fallback when the local result is "too thin to be useful".
+
+**Quality gate rules** (any one triggers fallback):
+
+- **Low table count**: total returned tables < 3 across the
+  whole document. Reason code: `low_table_count`.
+- **Low row confidence**: average of all per-row confidences <
+  0.5. Reason code: `low_row_confidence`.
+
+**Behavior:**
+
+- The gate runs ONLY in `auto` mode. In `local` mode, the local
+  result is persisted regardless of confidence. In `mistral` mode,
+  the gate is bypassed entirely.
+- The gate MUST log every decision with the structured event
+  `pdf_table_extraction_quality_gate` carrying
+  `{ source_id, reason: "low_table_count" | "low_row_confidence" |
+  "passed", tables: number, avgConfidence: number, provider: "local"
+  | "mistral" }`.
+- When the gate fails, the local result is discarded (not
+  persisted) and the Mistral provider runs. The persisted row's
+  `extraction_provider` is `'mistral'`.
+- When the gate passes, the local result is persisted with
+  `extraction_provider='local'`.
+
+#### Scenario: Gate passes on healthy local result
+
+- GIVEN local provider returns 4 tables, average row confidence
+  0.78
+- WHEN the gate runs
+- THEN the gate emits
+  `pdf_table_extraction_quality_gate{reason:"passed",
+  tables:4, avgConfidence:0.78, provider:"local"}`
+- AND the result is persisted as `extraction_provider='local'`
+
+#### Scenario: Gate fails on low table count
+
+- GIVEN local provider returns 1 table, average row confidence 0.9
+- WHEN the gate runs
+- THEN the gate emits
+  `pdf_table_extraction_quality_gate{reason:"low_table_count",
+  tables:1, avgConfidence:0.9, provider:"local"}`
+- AND the local result is discarded
+- AND the Mistral provider runs
+- AND the persisted result has `extraction_provider='mistral'`
+
+#### Scenario: Gate fails on low row confidence
+
+- GIVEN local provider returns 5 tables, average row confidence
+  0.32
+- WHEN the gate runs
+- THEN the gate emits
+  `pdf_table_extraction_quality_gate{reason:"low_row_confidence",
+  tables:5, avgConfidence:0.32, provider:"local"}`
+- AND the local result is discarded
+- AND the Mistral provider runs
+
+#### Scenario: Gate bypassed in local mode
+
+- GIVEN `TABLE_EXTRACTION_PROVIDER=local` and the local result
+  fails the gate
+- WHEN the orchestrator runs
+- THEN the local result is persisted as-is
+- AND the gate decision is logged for observability but does NOT
+  trigger a fallback
+
+### Requirement: Headers And Empty Cells
+
+The system MUST preserve multi-level headers (e.g., parent units
+spanning child columns) and MUST render empty cells consistently
+in the persisted row data, the markdown mirror, and the LLM-facing
+prompt section.
+
+**Multi-level header rendering rule:**
+
+- When a parent span (e.g., "Treatment") covers N child columns
+  (e.g., "Control [mg/mL]", "Dose [mg/mL]"), the flattened
+  header for each child column is rendered as
+  `**{parent}** | {child}` — the parent in bold, a single pipe
+  separator, then the child text.
+- When a column has no parent span, the flattened header is the
+  raw child text (no leading `**|**` prefix).
+- The flattened form is what lands in `headers` JSONB and in the
+  `markdown` mirror.
+
+**Empty cell rule:**
+
+- Empty cells in `rows` JSONB MUST be encoded as the literal
+  string `"-"` and never as `null` or empty string.
+- The same rule applies to the markdown mirror: empty cells render
+  as `-`.
+- The rule is non-negotiable — downstream LLM prompts depend on
+  every cell being a string so the LLM can `trim()` and pattern-
+  match without null checks.
+
+#### Scenario: Multi-level header flattened correctly
+
+- GIVEN a header where "Treatment" spans two children
+  "Control [mg/mL]" and "Dose [mg/mL]"
+- WHEN the provider flattens headers
+- THEN the resulting `headers` array is
+  `["**Treatment** | Control [mg/mL]", "**Treatment** | Dose [mg/mL]"]`
+- AND the markdown mirror renders those headers verbatim
+
+#### Scenario: Empty cells become "-"
+
+- GIVEN a row with three cells where the middle cell is empty
+- WHEN the provider persists the row
+- THEN the persisted `rows` entry is `["3.2", "-", "8.1"]`
+- AND the markdown mirror renders that row as `| 3.2 | - | 8.1 |`
+
+#### Scenario: Headers without parents keep raw child text
+
+- GIVEN a column with no parent span and child text "IC50 [μM]"
+- WHEN the provider flattens headers
+- THEN the entry is `"IC50 [μM]"` (no leading `**|**`)
+
+### Requirement: Bbox Coordinate Space
+
+The system MUST store all bbox coordinates in PDF point space
+(`units: "pt"`, 1pt = 1/72in) and MUST render the PDF at a fixed
+1.5× scale in the viewer so the same coordinates can be transformed
+to screen pixels without per-document scale drift.
+
+**Bbox shape (canonical):**
+
+```typescript
+type BBox = {
+  x: number;      // top-left x in PDF points
+  y: number;      // top-left y in PDF points
+  w: number;      // width in PDF points
+  h: number;      // height in PDF points
+  page: number;   // 1-indexed page number
+  units: "pt";
+};
+```
+
+**Render-time transform (viewer responsibility, not this spec):**
+
+- The viewer renders the PDF page at 1.5× scale.
+- To overlay a highlight, the viewer multiplies `x`, `y`, `w`, `h`
+  by 1.5 to get pixel coordinates on its canvas.
+- The transform is a constant; it MUST NOT be parameterized per
+  document in this spec's scope.
+
+#### Scenario: Bbox is stored in point space
+
+- GIVEN a table whose top-left corner is at (72, 144) in PDF
+  points and is 216 points wide
+- WHEN the provider persists the table
+- THEN the stored `bbox` is
+  `{ x: 72, y: 144, w: 216, h: ..., page: N, units: "pt" }`
+- AND `units` is the literal string `"pt"`
+
+### Requirement: Idempotent Extraction And Cache Source
+
+The system MUST treat `research_evidence_tables` as the source of
+truth for table provenance and MUST guarantee idempotency on
+re-extraction.
+
+**Rules:**
+
+- On `extractPDFTables(S, pdf)` for a `source_id` S that already
+  has rows in `research_evidence_tables`, the function MUST:
+  - Return the cached rows.
+  - Make ZERO calls to any extraction provider.
+  - Make ZERO calls to Mistral.
+  - Make ZERO writes to `research_evidence_tables`.
+- The cache check is by `source_id` (not by `(source_id, page)`)
+  — if ANY row exists for S, the entire source is treated as
+  cached. This is intentional: table extraction is a whole-
+  document operation, not a per-page one, and partial re-
+  extraction has no defined semantics in Phase 1.
+- Forcing a re-extraction (e.g., a manual admin trigger) MUST
+  delete all existing rows for the `source_id` first and then
+  re-run the provider. The forced path is a separate admin-only
+  endpoint, not a default code path.
+
+#### Scenario: Repeated extraction is a cache hit
+
+- GIVEN `research_evidence_tables` has 3 rows for `source_id` S
+  from a previous local extraction
+- WHEN `extractPDFTables(S, pdf)` is called
+- THEN those 3 rows are returned as-is
+- AND no provider call is logged
+- AND no INSERT runs against `research_evidence_tables`
+
+#### Scenario: Forced re-extraction clears the cache
+
+- GIVEN an admin invokes the forced re-extraction endpoint for
+  S, and S has 3 existing rows
+- WHEN the endpoint runs
+- THEN all 3 rows for S are deleted
+- AND the provider runs
+- AND the persisted count matches the provider's output count
+
+### Requirement: Prompt Injection Of Extracted Tables
+
+The system MUST expose a helper
+`buildTablesPromptSection(tables: ExtractedTable[]): string` that
+renders cached tables as a `tables:` block suitable for injection
+into the bioprospecting LLM prompt. The helper MUST be exported
+from `src/services/files/pdfTableExtractor.ts` and is the contract
+that connects extraction output to the extractor in
+`research-bioprospecting` (see that capability's modified
+requirements).
+
+**Format contract:**
+
+```text
+tables:
+  page=4 table=0
+  | **Treatment** | Control [mg/mL] | Dose [mg/mL] |
+  | --- | --- | --- |
+  | 0 | - | 1.2 |
+  | 24 | 3.1 | 5.4 |
+  page=5 table=0
+  | Species | IC50 [μM] |
+  | --- | --- |
+  | A. vera | 12.4 |
+```
+
+- Tables are grouped by `page` in ascending order; within a page,
+  ordered by `table_index` ascending.
+- Each table is preceded by `page={N} table={M}` on its own line.
+- Empty cells render as `-` (consistent with the persisted shape).
+- The function is pure: it does not read from the database; it
+  transforms already-loaded `ExtractedTable` objects. The caller
+  is responsible for the load.
+
+#### Scenario: buildTablesPromptSection renders deterministic output
+
+- GIVEN two tables (page 4 table 0 and page 5 table 0) loaded from
+  the cache
+- WHEN `buildTablesPromptSection(tables)` is called
+- THEN the output starts with the literal line `tables:`
+- AND each table is preceded by `page=N table=M`
+- AND empty cells render as `-`
+
+#### Scenario: buildTablesPromptSection on empty input
+
+- GIVEN an empty `tables` array (no cached tables for the source)
+- WHEN `buildTablesPromptSection([])` is called
+- THEN the result is the empty string
+- AND callers can concatenate the result with the prose section
+  without special-casing

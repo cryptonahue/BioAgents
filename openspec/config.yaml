@@ -1,0 +1,30 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Bun runtime, Elysia framework, Supabase (PostgreSQL), BullMQ/Redis (optional job queue), Preact frontend
+  Architecture: Multi-agent system with Deep Research iterative workflow, LLM adapter pattern for multi-provider support
+  Testing: bun test runner available but NO test files exist; strict TDD not supported
+  Style: TypeScript strict mode, Prettier formatter only (no ESLint)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

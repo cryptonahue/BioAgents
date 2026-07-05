@@ -6,12 +6,13 @@
  * Supports watch mode with --watch flag
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, watch } from 'fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, watch } from 'fs';
 import { join, resolve } from 'path';
 
 const clientDir = import.meta.dir;
 const distDir = join(clientDir, 'dist');
 const isWatchMode = process.argv.includes('--watch');
+const noSourcemap = process.argv.includes('--no-sourcemap');
 
 // Load environment variables from parent directory's .env file
 const envPath = join(clientDir, '..', '.env');
@@ -25,6 +26,27 @@ if (existsSync(envPath)) {
     }
   }
 }
+
+// Load version from package.json + git SHA for build-time injection
+let appVersion = '0.0.0';
+try {
+  const pkg = JSON.parse(readFileSync(join(clientDir, '..', 'package.json'), 'utf-8'));
+  appVersion = pkg.version || '0.0.0';
+} catch (e) {
+  console.warn('⚠️  Could not read package.json version');
+}
+
+let gitSha = 'unknown';
+try {
+  const { execSync } = await import('child_process');
+  gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+} catch (e) {
+  console.warn('⚠️  Could not read git SHA');
+}
+
+const buildDate = new Date().toISOString();
+
+console.log(`📌 Building ${appVersion} (${gitSha}) at ${buildDate}`);
 
 // Ensure dist directory exists
 if (!existsSync(distDir)) {
@@ -41,11 +63,14 @@ async function build() {
     outdir: distDir,
     minify: !isWatchMode, // Don't minify in watch mode for faster builds
     target: 'browser',
-    sourcemap: 'external',
+    sourcemap: noSourcemap ? 'none' : 'external',
     splitting: false, // Disable code splitting to avoid chunk files the server doesn't handle
     define: {
       'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY || ''),
+      'process.env.APP_VERSION': JSON.stringify(appVersion),
+      'process.env.GIT_SHA': JSON.stringify(gitSha),
+      'process.env.BUILD_DATE': JSON.stringify(buildDate),
       'import.meta.env.CDP_PROJECT_ID': JSON.stringify(process.env.CDP_PROJECT_ID || 'your-project-id-here'),
       'import.meta.env.PRIVY_APP_ID': JSON.stringify(process.env.PRIVY_APP_ID || ''),
       'import.meta.env.CORALGPT_HERO_VIDEO_URL': JSON.stringify(process.env.CORALGPT_HERO_VIDEO_URL || ''),
@@ -98,11 +123,18 @@ async function build() {
 
   writeFileSync(htmlDest, htmlContent);
 
-  // Copy static assets (images, etc.) from public/ to dist/
-  const publicImagesDir = join(clientDir, 'public', 'images');
-  const distImagesDir = join(distDir, 'images');
-  if (existsSync(publicImagesDir)) {
-    cpSync(publicImagesDir, distImagesDir, { recursive: true });
+  // Copy static assets (images, videos, etc.) from public/ to dist/assets/
+  // Skip index.html — it is rendered with injected CSS above.
+  const publicDir = join(clientDir, 'public');
+  const distAssetsDir = join(distDir, 'assets');
+  if (existsSync(publicDir)) {
+    const entries = readdirSync(publicDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === 'index.html') continue;
+      const src = join(publicDir, entry.name);
+      const dest = join(distAssetsDir, entry.name);
+      cpSync(src, dest, { recursive: true });
+    }
   }
 
   const buildTime = Date.now() - startTime;

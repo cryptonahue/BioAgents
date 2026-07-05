@@ -1,45 +1,41 @@
-import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     {
-      type: 'category',
-      label: 'Getting Started',
+      type: "category",
+      label: "Getting Started",
       collapsed: false,
       items: [
-        'getting-started/introduction',
-        'getting-started/installation',
-        'getting-started/configuration',
+        "getting-started/introduction",
+        "getting-started/installation",
+        "getting-started/configuration",
       ],
     },
     {
-      type: 'category',
-      label: 'Guides',
+      type: "category",
+      label: "Guides",
       collapsed: false,
       items: [
-        'guides/authentication',
-        'guides/deep-research',
-        'guides/file-upload',
-        'guides/job-queue',
-        'guides/websocket',
-        'guides/x402-payments',
+        "guides/authentication",
+        "guides/deep-research",
+        "guides/file-upload",
+        "guides/job-queue",
+        "guides/websocket",
+        "guides/x402-payments",
       ],
     },
     {
-      type: 'category',
-      label: 'Architecture',
+      type: "category",
+      label: "Architecture",
       collapsed: true,
-      items: [
-        'architecture/overview',
-      ],
+      items: ["architecture/overview", "architecture/bioprospection-overview"],
     },
     {
-      type: 'category',
-      label: 'Deployment',
+      type: "category",
+      label: "Deployment",
       collapsed: true,
-      items: [
-        'deployment/docker',
-      ],
+      items: ["deployment/docker"],
     },
   ],
 };

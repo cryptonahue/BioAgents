@@ -185,3 +185,91 @@ export function fixDiscoveryArtifactPaths(
     }),
   }));
 }
+
+// ---------------------------------------------------------------------------
+// discovery-persistence: pure match functions
+//
+// See openspec/changes/discovery-persistence/design/design.md §5.1.
+// These are the 4 pure functions the discovery agent and the persistence
+// service call. They have no Supabase, no IO, no LLM. The threshold
+// parameter on `findMatchingDiscovery` lets future tuning skip a spec
+// change (spec scenario "Threshold is parameterizable").
+// ---------------------------------------------------------------------------
+
+/**
+ * Lowercase, NFKD-decompose, drop diacritics, replace non-alphanumeric
+ * runs with space, split, filter tokens shorter than 3 chars. Returns
+ * a Set for O(1) lookup.
+ *
+ * Spec: design.md §5.1 — "Normalize: lowercase, NFKD, alphanumeric-only,
+ * drop tokens shorter than 3 chars."
+ */
+export function normalizeTokens(s: string | null | undefined): Set<string> {
+  if (!s) return new Set();
+  return new Set(
+    s
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+      .replace(/[^a-z0-9\s]/g, " ") // alphanumeric + whitespace
+      .split(/\s+/)
+      .filter((t) => t.length > 2),
+  );
+}
+
+/**
+ * Standard Jaccard similarity: |A ∩ B| / |A ∪ B|.
+ * Edge cases: both empty => 1 (trivially equal), one empty => 0.
+ */
+export function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1;
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+/**
+ * Stable, debuggable normalized string. NOT a hash — we want to be able
+ * to grep for "kinase|binding" in logs. Sort tokens and join with `|`.
+ *
+ * Spec: design.md §5.1 — "Sort tokens and join with `|` (stable
+ * debuggable string, not a hash)."
+ */
+export function discoveryStableKey(title: string, claim: string): string {
+  const tokens = normalizeTokens(`${title} ${claim}`);
+  return [...tokens].sort().join("|");
+}
+
+/**
+ * Returns the id of the best matching existing row, or null if no row
+ * scores >= threshold. Best match is the highest Jaccard score. Ties
+ * broken by alphabetical id (deterministic).
+ *
+ * The threshold is a parameter (default 0.7) so future tuning needs no
+ * spec change. See spec scenario "Threshold is parameterizable".
+ */
+export function findMatchingDiscovery(
+  incoming: { title: string; claim: string },
+  existing: Array<{ id: string; discovery_key: string }>,
+  threshold = 0.7,
+): string | null {
+  if (existing.length === 0) return null;
+  const incomingTokens = normalizeTokens(`${incoming.title} ${incoming.claim}`);
+  if (incomingTokens.size === 0) return null;
+
+  let best: { id: string; score: number } | null = null;
+  for (const row of existing) {
+    if (!row.discovery_key) continue;
+    const rowTokens = new Set(row.discovery_key.split("|"));
+    const score = jaccard(incomingTokens, rowTokens);
+    if (best === null || score > best.score) {
+      best = { id: row.id, score };
+    } else if (score === best.score && row.id < best.id) {
+      // Tie-break: alphabetical id wins (deterministic).
+      best = { id: row.id, score };
+    }
+  }
+  return best && best.score >= threshold ? best.id : null;
+}

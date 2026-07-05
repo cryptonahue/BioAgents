@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "==> Building image (esto puede tardar varios minutos)..."
-docker compose build bioagents
+GIT_SHA=$(git rev-parse --short HEAD) BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build bioagents
 
 echo "==> Recreating container..."
 docker compose up -d --force-recreate bioagents

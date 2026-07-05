@@ -1,10 +1,16 @@
 // Must be first - polyfills for pdf-parse/pdfjs-dist
 import "./utils/canvas-polyfill";
 
+import path from "node:path";
+
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 import { artifactsRoute } from "./routes/artifacts";
 import { libraryRoute } from "./routes/library";
+import { researchBrainRoute } from "./routes/research-brain";
+import { researchBrainGraphRoute } from "./routes/research-brain-graph";
+import { researchBrainCitationsRoute } from "./routes/research-brain-citations";
+import { tableMergesRoute } from "./routes/admin/table-merges";
 import { authRoute } from "./routes/auth";
 import { chatRoute } from "./routes/chat";
 import { conversationsRoute } from "./routes/conversations";
@@ -13,6 +19,7 @@ import { deepResearchStartRoute } from "./routes/deep-research/start";
 import { deepResearchStatusRoute } from "./routes/deep-research/status";
 import { deepResearchPaperRoute } from "./routes/deep-research/paper";
 import { deepResearchBranchRoute } from "./routes/deep-research/branch";
+import { deepResearchDiscoveriesRoute } from "./routes/deep-research/discoveries";
 import { filesRoute } from "./routes/files";
 import { x402Route } from "./routes/x402";
 import { x402ChatRoute } from "./routes/x402/chat";
@@ -31,6 +38,8 @@ import { startRedisSubscription, stopRedisSubscription } from "./services/websoc
 import { waitlistRoute } from "./routes/waitlist";
 import { createQueueDashboard } from "./routes/admin/queue-dashboard";
 import { adminJobsRoute } from "./routes/admin/jobs";
+import { costTotalsRoute } from "./routes/admin/cost-totals";
+import { versionRoute } from "./routes/version";
 
 // ============================================================================
 // CORS Configuration - Security Critical
@@ -194,6 +203,30 @@ const app = new Elysia()
     });
   })
 
+  // Serve the pdfjs-dist worker used by the PDF provenance viewer.
+  // The frontend bundle imports `pdfjs-dist/build/pdf.mjs` and sets
+  // `GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.mjs"` (see
+  // `client/src/lib/pdfjs.ts`). We pin the standard build, not the
+  // legacy build, because the viewer needs the worker for
+  // responsive rendering on multi-page research PDFs.
+  .get("/pdfjs/pdf.worker.mjs", () => {
+    return new Response(
+      Bun.file("node_modules/pdfjs-dist/build/pdf.worker.mjs"),
+      {
+        headers: {
+          // Workers must be served as JS for the browser to execute
+          // them; `.mjs` keeps the import/export semantics intact.
+          "Content-Type": "application/javascript",
+          // The worker bundle is large but stable; cache it for one
+          // day at the edge. The frontend bundle re-references the
+          // same URL across page loads, so this saves a round-trip
+          // on every viewer open.
+          "Cache-Control": "public, max-age=86400",
+        },
+      },
+    );
+  })
+
   // Serve the bundled CSS file
   .get("/index.css", () => {
     return new Response(Bun.file("client/dist/index.css"), {
@@ -204,9 +237,10 @@ const app = new Elysia()
   })
 
   // Serve static UI images (welcome background, etc.)
+  // Images live under client/dist/assets/images/ after build:client runs.
   .get("/images/*", async ({ request }) => {
     const url = new URL(request.url);
-    const filePath = `client/dist${url.pathname}`;
+    const filePath = `client/dist/assets${url.pathname}`;
     const file = Bun.file(filePath);
     if (!(await file.exists())) {
       return new Response("Not Found", { status: 404 });
@@ -221,6 +255,79 @@ const app = new Elysia()
             ? "image/webp"
             : "application/octet-stream";
     return new Response(file, { headers: { "Content-Type": contentType } });
+  })
+
+  // Serve bundled assets (videos, fonts, future static files from client/public/*)
+  // Supports HTTP Range requests so <video>/<audio> can seek.
+  .get("/assets/*", async ({ request }) => {
+    const url = new URL(request.url);
+    const safePath = path.normalize(url.pathname).replace(/^(\.\.[/\\])+/, "");
+    if (!safePath.startsWith("/assets/")) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    const relative = safePath.replace(/^\/assets\//, "");
+    const filePath = path.join("client/dist/assets", relative);
+    const file = Bun.file(filePath);
+    if (!(await file.exists())) {
+      return new Response("Not Found", { status: 404 });
+    }
+    const ext = relative.split(".").pop()?.toLowerCase() ?? "";
+    const contentType =
+      ext === "mp4" ? "video/mp4"
+      : ext === "webm" ? "video/webm"
+      : ext === "mov" ? "video/quicktime"
+      : ext === "ogv" ? "video/ogg"
+      : ext === "ogg" ? "audio/ogg"
+      : ext === "mp3" ? "audio/mpeg"
+      : ext === "wav" ? "audio/wav"
+      : ext === "png" ? "image/png"
+      : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
+      : ext === "webp" ? "image/webp"
+      : ext === "gif" ? "image/gif"
+      : ext === "svg" ? "image/svg+xml"
+      : ext === "woff" ? "font/woff"
+      : ext === "woff2" ? "font/woff2"
+      : ext === "ttf" ? "font/ttf"
+      : ext === "otf" ? "font/otf"
+      : "application/octet-stream";
+
+    const rangeHeader = request.headers.get("range");
+    if (!rangeHeader) {
+      return new Response(file, {
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=3600",
+          "Accept-Ranges": "bytes",
+        },
+      });
+    }
+
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+    if (!match) {
+      return new Response("Malformed Range", { status: 416 });
+    }
+    const start = match[1] === "" ? null : Number(match[1]);
+    const end = match[2] === "" ? null : Number(match[2]);
+    const total = file.size;
+    const rangeStart = start ?? Math.max(0, total - (end ?? 0));
+    const rangeEnd = end ?? (start != null ? total - 1 : total - 1);
+    if (rangeStart >= total || rangeEnd >= total || rangeStart > rangeEnd) {
+      return new Response("Range Not Satisfiable", {
+        status: 416,
+        headers: { "Content-Range": `bytes */${total}` },
+      });
+    }
+    const slice = file.slice(rangeStart, rangeEnd + 1);
+    return new Response(slice, {
+      status: 206,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(rangeEnd - rangeStart + 1),
+        "Content-Range": `bytes ${rangeStart}-${rangeEnd}/${total}`,
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
   })
 
   // Serve source map for debugging
@@ -295,9 +402,15 @@ const app = new Elysia()
   .use(deepResearchStatusRoute) // GET /api/deep-research/status/:messageId to check status
   .use(deepResearchBranchRoute) // POST /api/deep-research/branch to fork a conversation with copied state
   .use(deepResearchPaperRoute) // POST /api/deep-research/conversations/:conversationId/paper for paper generation
+  .use(deepResearchDiscoveriesRoute) // GET /api/deep-research/conversations/:conversationId/discoveries (discovery-persistence v1, PR #2)
   .use(artifactsRoute) // GET /api/artifacts/download for artifact downloads
   .use(libraryRoute) // GET/POST /api/library/* for paper library + per-paper Q&A
+  .use(researchBrainRoute) // GET/POST /api/research-brain/* for evidence-first Research Brain
+  .use(researchBrainGraphRoute) // GET /api/research-brain/graph/compounds/search for v1 knowledge graph (PR #1 of bioprospecting-knowledge-graph)
+  .use(researchBrainCitationsRoute) // GET /api/research-brain/citations/:sourceId for paper-to-paper related-work graph (LLM-free)
+  .use(tableMergesRoute) // POST/DELETE/GET /api/research-brain/tables/* for admin table-merge overrides (PR #3 of bioprospecting-multipage-table-merge)
   .use(filesRoute) // POST /api/files/* for direct S3 file uploads
+  .use(versionRoute) // GET /api/version for build metadata (version, sha, buildDate)
 
   // x402 payment routes - Base (USDC)
   .use(x402Route) // GET /api/x402/* for config, pricing, payments, health
@@ -367,6 +480,9 @@ if (queueDashboard) {
 
 // Mount admin jobs API (for frontend dashboard)
 app.use(adminJobsRoute);
+
+// Mount admin cost-totals drill-down (api-cost-guard-rails PR #3)
+app.use(costTotalsRoute);
 
 // Continue with catch-all route
 app

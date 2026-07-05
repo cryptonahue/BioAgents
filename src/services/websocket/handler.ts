@@ -18,6 +18,9 @@ import logger from "../../utils/logger";
 // Track connected clients by conversation
 const conversationClients = new Map<string, Set<any>>();
 
+// Track connected clients by run
+const runClients = new Map<string, Set<any>>();
+
 // Track user's allowed conversations (cache)
 const userConversationAccess = new Map<string, Set<string>>();
 
@@ -119,7 +122,28 @@ export const websocketHandler = new Elysia().ws("/api/ws", {
 
       switch (data.action) {
         case "subscribe": {
-          const { conversationId } = data;
+          const { conversationId, channel } = data;
+
+          // Handle run:* channel subscription (for corpus dashboard)
+          if (channel && channel.startsWith("run:")) {
+            const runId = channel.replace("run:", "");
+            if (!runClients.has(runId)) {
+              runClients.set(runId, new Set());
+            }
+            runClients.get(runId)!.add(ws);
+            (ws.data as any).subscriptions.add(channel);
+
+            ws.send(
+              JSON.stringify({
+                type: "subscribed",
+                channel,
+              }),
+            );
+
+            logger.info({ userId, runId }, "ws_client_subscribed_to_run");
+            return;
+          }
+
           if (!conversationId) return;
 
           // Check if user has access to this conversation
@@ -204,8 +228,13 @@ export const websocketHandler = new Elysia().ws("/api/ws", {
 
     // Clean up all subscriptions
     if (subscriptions) {
-      for (const conversationId of subscriptions) {
-        conversationClients.get(conversationId)?.delete(ws);
+      for (const sub of subscriptions) {
+        if (sub.startsWith("run:")) {
+          const runId = sub.replace("run:", "");
+          runClients.get(runId)?.delete(ws);
+        } else {
+          conversationClients.get(sub)?.delete(ws);
+        }
       }
     }
 
@@ -280,5 +309,44 @@ export function cleanupDeadConnections() {
     if (clients.size === 0) {
       conversationClients.delete(conversationId);
     }
+  }
+
+  for (const [runId, clients] of runClients) {
+    for (const client of clients) {
+      if ((client as any).readyState !== 1) {
+        clients.delete(client);
+      }
+    }
+    if (clients.size === 0) {
+      runClients.delete(runId);
+    }
+  }
+}
+
+/**
+ * Broadcast a message to all clients subscribed to a run
+ */
+export function broadcastToRun(runId: string, message: object) {
+  const clients = runClients.get(runId);
+  if (!clients) return;
+
+  const payload = JSON.stringify(message);
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const client of clients) {
+    try {
+      client.send(payload);
+      successCount++;
+    } catch (e) {
+      errorCount++;
+    }
+  }
+
+  if (successCount > 0 || errorCount > 0) {
+    logger.info(
+      { runId, successCount, errorCount },
+      "ws_broadcast_to_run_completed",
+    );
   }
 }

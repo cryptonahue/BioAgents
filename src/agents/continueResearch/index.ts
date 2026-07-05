@@ -1,6 +1,7 @@
 import type { ConversationState, Message, PlanTask } from "../../types/core";
 import { getMessagesByConversation } from "../../db/operations";
 import logger from "../../utils/logger";
+import { loadDiscoveriesForConversation } from "../../services/researchBrain/discoveryPersistence";
 import {
   decideContinuation,
   type ContinueResearchDoc,
@@ -189,6 +190,16 @@ export async function continueResearchAgent(input: {
       .join("\n");
 
     // Call LLM for decision
+    // Read-through: prefer the relational source (research_discoveries)
+    // so we don't ship stale JSONB. The continue-research agent is
+    // downstream of the discovery agent, so the DB has the truth at
+    // this point. If the DB is empty, fall back to the JSONB cache.
+    const { discoveries } = await loadDiscoveriesForConversation({
+      conversationId: message.conversation_id,
+      fallbackDiscoveries: conversationState.values.discoveries || [],
+      loggerFields: { surface: "continue_research_agent" },
+    });
+
     const result = await decideContinuation(
       conversationState.values.objective || message.question || "",
       conversationState.values.evolvingObjective || conversationState.values.objective || message.question || "",
@@ -196,7 +207,7 @@ export async function continueResearchAgent(input: {
       iterationCount,
       hypothesis,
       conversationState.values.keyInsights || [],
-      conversationState.values.discoveries || [],
+      discoveries,
       docs,
       suggestedNextStepsText,
       userLastMessage,

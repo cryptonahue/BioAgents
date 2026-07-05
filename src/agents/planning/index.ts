@@ -9,6 +9,7 @@ import type {
 } from "../../types/core";
 import logger from "../../utils/logger";
 import { extractPlanningResult } from "../../utils/planningJsonExtractor";
+import { loadDiscoveriesForConversation } from "../../services/researchBrain/discoveryPersistence";
 import { formatFileSize } from "../fileUpload/utils";
 import {
   INITIAL_PLANNING_NO_PLAN_PROMPT,
@@ -391,6 +392,21 @@ async function buildContextFromState(
     );
   }
 
+  if (conversationState.values.researchBrainEvidence) {
+    try {
+      const { formatEvidencePackForPrompt } = await import(
+        "../../services/researchBrain"
+      );
+      contextParts.push(
+        `Research Brain Evidence (strict first source of truth; do not plan as if unsupported claims are facts):\n${formatEvidencePackForPrompt(
+          conversationState.values.researchBrainEvidence,
+        )}`,
+      );
+    } catch (error) {
+      logger.warn({ error }, "research_brain_context_format_failed");
+    }
+  }
+
   if (conversationState.values.keyInsights?.length) {
     contextParts.push(
       `Key Insights:\n${conversationState.values.keyInsights.map((insight, i) => `  ${i + 1}. ${insight}`).join("\n")}`,
@@ -398,8 +414,17 @@ async function buildContextFromState(
   }
 
   // Add discoveries if available
-  if (conversationState.values.discoveries?.length) {
-    const discoveriesText = conversationState.values.discoveries
+  // Read-through: prefer the relational source (research_discoveries)
+  // so we don't ship stale JSONB. The planning agent is downstream
+  // of the discovery agent, so the DB has the truth at this point.
+  // If the DB is empty, fall back to the JSONB cache.
+  const { discoveries } = await loadDiscoveriesForConversation({
+    ...(conversationId ? { conversationId } : {}),
+    fallbackDiscoveries: conversationState.values.discoveries || [],
+    loggerFields: { surface: "planning_agent" },
+  });
+  if (discoveries.length) {
+    const discoveriesText = discoveries
       .map((discovery, i) => {
         let text = `  ${i + 1}. ${discovery.title}\n     Claim: ${discovery.claim}\n     Summary: ${discovery.summary}`;
         if (discovery.evidenceArray?.length) {

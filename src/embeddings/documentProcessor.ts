@@ -1,4 +1,6 @@
+import { createHash } from "crypto";
 import matter from "front-matter";
+import { createReadStream } from "fs";
 import fs from "fs/promises";
 import mammoth from "mammoth";
 import path from "path";
@@ -13,15 +15,77 @@ export interface ProcessedDocument {
     type: string;
     size: number;
     lastModified: Date;
+    contentHash: string;
     [key: string]: any;
   };
 }
 
+const SUPPORTED_EXTENSIONS = new Set([".md", ".docx", ".pdf", ".txt"]);
+
+export interface DocumentIdentity {
+  title: string;
+  filePath: string;
+  type: string;
+  size: number;
+  lastModified: Date;
+  contentHash: string;
+}
+
+export interface FileListOptions {
+  ignorePatterns?: string[];
+}
+
+async function sha256File(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(filePath);
+    stream.on("error", reject);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+function matchesIgnorePattern(filePath: string, patterns: string[]): boolean {
+  const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+  const basename = path.basename(filePath).toLowerCase();
+
+  return patterns.some((pattern) => {
+    const value = pattern.trim().replace(/\\/g, "/").toLowerCase();
+    if (!value) return false;
+    return basename === value || normalized.includes(value);
+  });
+}
+
 export class DocumentProcessor {
-  async processFile(filePath: string): Promise<ProcessedDocument | null> {
+  async getFileIdentity(filePath: string): Promise<DocumentIdentity | null> {
     const stats = await fs.stat(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    const fileName = path.basename(filePath); // Keep extension in filename
+
+    if (!SUPPORTED_EXTENSIONS.has(ext)) {
+      return null;
+    }
+
+    return {
+      title: path.basename(filePath),
+      filePath,
+      type: ext.slice(1),
+      size: stats.size,
+      lastModified: stats.mtime,
+      contentHash: await sha256File(filePath),
+    };
+  }
+
+  async processFile(filePath: string): Promise<ProcessedDocument | null> {
+    const identity = await this.getFileIdentity(filePath);
+    if (!identity) {
+      logger.warn(
+        `Unsupported file type: ${path.extname(filePath).toLowerCase()}`,
+      );
+      return null;
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    const fileName = identity.title; // Keep extension in filename
 
     let content: string;
     let frontMatterData: any = {};
@@ -33,6 +97,10 @@ export class DocumentProcessor {
           const parsed = matter(rawContent);
           frontMatterData = parsed.attributes;
           content = parsed.body;
+          break;
+
+        case ".txt":
+          content = await fs.readFile(filePath, "utf-8");
           break;
 
         case ".docx":
@@ -67,9 +135,10 @@ export class DocumentProcessor {
         content: content.trim(),
         metadata: {
           filePath,
-          type: ext.slice(1),
-          size: stats.size,
-          lastModified: stats.mtime,
+          type: identity.type,
+          size: identity.size,
+          lastModified: identity.lastModified,
+          contentHash: identity.contentHash,
           ...frontMatterData,
         },
       };
@@ -105,5 +174,35 @@ export class DocumentProcessor {
     }
 
     return documents;
+  }
+
+  async listSupportedFiles(
+    dirPath: string,
+    options: FileListOptions = {},
+  ): Promise<string[]> {
+    const files: string[] = [];
+    const ignorePatterns = options.ignorePatterns || [];
+
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          files.push(...(await this.listSupportedFiles(fullPath, options)));
+        } else if (
+          entry.isFile() &&
+          SUPPORTED_EXTENSIONS.has(path.extname(entry.name).toLowerCase()) &&
+          !matchesIgnorePattern(fullPath, ignorePatterns)
+        ) {
+          files.push(fullPath);
+        }
+      }
+    } catch (error) {
+      logger.error(`Error listing directory ${dirPath}:`, error as any);
+    }
+
+    return files.sort((a, b) => a.localeCompare(b));
   }
 }

@@ -1,0 +1,532 @@
+/* Admin Page Styles — Bioprospecting Review UI
+ *
+ * Mirrors the visual language of `corpus.css` (topbar, table
+ * styling, error/empty states) but introduces the admin-specific
+ * tab bar, dialog, and stats grid. CSS variables are reused from
+ * `corpus.css` so the two pages share a color palette.
+ */
+
+.admin-page {
+  min-height: 100vh;
+  background: #0a0e17;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #111827;
+  border-bottom: 1px solid #1f2937;
+  flex-shrink: 0;
+}
+
+.admin-brand {
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  color: #f9fafb;
+}
+
+.admin-topbar-links {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-link-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.admin-link-btn:hover {
+  color: #f9fafb;
+  background: #1f2937;
+}
+
+.admin-main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.admin-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #f9fafb;
+}
+
+.admin-header p {
+  color: #9ca3af;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* ----------------- Tabs ----------------- */
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #1f2937;
+  margin: 24px 0 16px;
+}
+
+.admin-tab {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.admin-tab:hover {
+  color: #e2e8f0;
+}
+
+.admin-tab.active {
+  color: #f9fafb;
+  border-bottom-color: #6366f1;
+}
+
+.admin-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.admin-info {
+  background: #1e3a8a;
+  color: #bfdbfe;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.admin-loading {
+  color: #9ca3af;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.admin-empty {
+  color: #6b7280;
+  padding: 32px 24px;
+  text-align: center;
+  font-size: 14px;
+  background: #111827;
+  border-radius: 8px;
+  border: 1px dashed #1f2937;
+}
+
+/* ----------------- Toolbar / filter chips ----------------- */
+
+.admin-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.admin-chip {
+  background: #1f2937;
+  color: #9ca3af;
+  border: 1px solid #374151;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.admin-chip:hover {
+  color: #e2e8f0;
+  border-color: #4b5563;
+}
+
+.admin-chip.active {
+  background: #4338ca;
+  color: #f9fafb;
+  border-color: #6366f1;
+}
+
+.admin-window-select {
+  background: #1f2937;
+  color: #e2e8f0;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* ----------------- Tables ----------------- */
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111827;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.admin-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #0f172a;
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #1f2937;
+}
+
+.admin-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+  color: #e2e8f0;
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.admin-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-status-badge.status-unresolved {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.admin-status-badge.status-resolved {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.admin-status-badge.status-dismissed {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.admin-status-badge.status-active {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.admin-status-badge.status-inactive {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+/* ----------------- Action buttons ----------------- */
+
+.admin-btn {
+  background: #1f2937;
+  color: #e2e8f0;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.admin-btn:hover:not(:disabled) {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.admin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-btn-primary {
+  background: #4338ca;
+  border-color: #6366f1;
+  color: #f9fafb;
+}
+
+.admin-btn-primary:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.admin-btn-danger {
+  background: #7f1d1d;
+  border-color: #b91c1c;
+  color: #fecaca;
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  background: #991b1b;
+}
+
+.admin-btn-success {
+  background: #065f46;
+  border-color: #047857;
+  color: #a7f3d0;
+}
+
+.admin-btn-success:hover:not(:disabled) {
+  background: #047857;
+}
+
+/* ----------------- Footer action bar (bulk) ----------------- */
+
+.admin-actionbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  position: sticky;
+  bottom: 16px;
+}
+
+.admin-actionbar-count {
+  color: #f9fafb;
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: auto;
+}
+
+/* ----------------- Pagination ----------------- */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* ----------------- Dialog (unmerge) ----------------- */
+
+.admin-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.admin-dialog {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.admin-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #f9fafb;
+}
+
+.admin-dialog p {
+  margin: 0 0 16px;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-dialog label {
+  display: block;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.admin-dialog select,
+.admin-dialog textarea {
+  width: 100%;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+
+.admin-dialog select:focus,
+.admin-dialog textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.admin-dialog textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.admin-dialog-helper {
+  color: #6b7280;
+  font-size: 12px;
+  margin: -8px 0 16px;
+}
+
+.admin-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.admin-dialog-error {
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ----------------- Stats card ----------------- */
+
+.admin-stats-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 16px;
+}
+
+.admin-stats-section {
+  margin-bottom: 24px;
+}
+
+.admin-stats-section:last-child {
+  margin-bottom: 0;
+}
+
+.admin-stats-section-title {
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.admin-stats-tile {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.admin-stats-tile.pending-alert {
+  background: #422006;
+  border-color: #b45309;
+  color: #fde68a;
+}
+
+.admin-stats-tile-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: #f9fafb;
+  line-height: 1.2;
+}
+
+.admin-stats-tile.pending-alert .admin-stats-tile-value {
+  color: #fde68a;
+}
+
+.admin-stats-tile-label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-stats-tile.pending-alert .admin-stats-tile-label {
+  color: #fde68a;
+}
+
+.admin-stats-link {
+  display: inline-block;
+  margin-top: 16px;
+  color: #93c5fd;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-stats-link:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+
+/* ----------------- Mobile ----------------- */
+
+@media (max-width: 768px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .admin-table {
+    font-size: 12px;
+  }
+
+  .admin-table thead th,
+  .admin-table tbody td {
+    padding: 6px 8px;
+  }
+}

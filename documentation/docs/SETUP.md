@@ -395,6 +395,109 @@ docker compose up -d --scale worker=3
 
 ---
 
+## Cost Guard Rails
+
+External API spend (Mistral OCR, PubChem) is tracked in the
+`daily_api_usage` Postgres table and capped via the
+`record_api_call` RPC. Caps are env-driven; all default values
+are safe for development. Per the spec, the cap-reader fails
+closed: a missing env var defaults to `0`, which immediately
+blocks any positive spend on that scope.
+
+### Cap scope table
+
+| Variable | Default | Provider | Scope | Reset |
+| --- | --- | --- | --- | --- |
+| `MISTRAL_OCR_DAILY_COST_CAP_USD` | `50` | mistral_ocr | per UTC day | UTC midnight |
+| `MISTRAL_OCR_MONTHLY_COST_CAP_USD` | `1000` | mistral_ocr | rolling 30d | continuous |
+| `MISTRAL_OCR_PER_SOURCE_COST_CAP_USD` | `2` | mistral_ocr | per `source_id` | per source |
+| `MISTRAL_OCR_COST_PER_PAGE_USD` | `0.05` | mistral_ocr | per-page cost (USD) | n/a |
+| `MISTRAL_OCR_COST_GUARD` | `true` | mistral_ocr | feature flag (kill switch for cost guard) | n/a |
+| `PUBCHEM_DAILY_REQUEST_CAP` | `200000` | pubchem | per UTC day (units) | UTC midnight |
+| `PUBCHEM_COST_GUARD` | `true` | pubchem | feature flag (kill switch for cost guard) | n/a |
+| `COST_ALERT_HARD_BLOCK` | `true` | all | toggles hard-block on cap hit | n/a |
+| `COST_ALERT_SOFT_THRESHOLD` | `0.8` | all | fraction of cap that triggers WARN | n/a |
+| `MISTRAL_OCR_ENABLED` | `true` | mistral_ocr | global kill switch (short-circuits at module init) | n/a |
+| `PUBCHEM_ENABLED` | `true` | pubchem | global kill switch (short-circuits at module init) | n/a |
+
+### Behavior on cap hit
+
+When a cap is hit, the orchestrator transparently falls back to
+the `local` table extraction provider. The run continues; the
+`extraction_provider='local'` column is set on the persisted rows
+and a `mistral_disabled_today` WARN is logged. The
+`globalThis.__mistralOcrDisabledToday__` flag short-circuits
+subsequent calls in the same process until UTC midnight resets
+the daily cap.
+
+When `COST_ALERT_HARD_BLOCK=false`, a cap hit is logged but the
+caller does NOT throw — useful for soft-cap operation.
+
+### Soft-threshold WARN
+
+A structured WARN (`event=cost_alert_soft_hit`) is emitted the
+first time cumulative spend crosses
+`COST_ALERT_SOFT_THRESHOLD` of the daily cap. The WARN is
+idempotent within a UTC day via the
+`daily_api_usage.last_cap_warn_at` column.
+
+### PubChem day-cap behavior
+
+PubChem is free in dollars but rate-limited; an IP ban is
+triggered when the per-day request cap is exceeded. The
+`PUBCHEM_DAILY_REQUEST_CAP` env var bounds the daily volume in
+addition to the existing `RateGate` (per-second RPS). When the
+day cap is hit, the `compoundAuthority` worker aborts the
+current pass cleanly and persists
+`summary.capHit='day'` on the run summary; the next scheduler
+tick re-picks the same `pending` facts.
+
+### Reading current spend
+
+The `costService` module exposes read-side helpers:
+
+- `getCurrentSpend({ provider, dayOrMonth })` — single
+  provider's current day or rolling 30-day cost in USD.
+- `getDailyTotals('24h' | '7d' | '30d', provider?)` — per-day,
+  per-provider rows (admin surface).
+- `getPerSourceTotals(sourceId)` — total USD and call count
+  for a single source.
+- `isProviderDisabled(provider)` — boolean state of the
+  TDZ-safe `globalThis` provider-disabled flag.
+
+These helpers soft-fail (return zeros / empty list) on DB
+errors so they are safe to call from any code path.
+
+### Admin drill-down
+
+`GET /api/admin/cost-totals?since=24h|7d|30d&provider=mistral_ocr|pubchem|all`
+returns per-(day, provider) totals with cap utilization columns
+(`pctOfDailyCap`, `pctOfMonthlyCap`, `lastCapWarnAt`) and an
+aggregate `capUtilization` block per provider (`peakDay`,
+`averageDay`, `daysAt80pct`, `daysAt100pct`). The route is
+gated by `authResolver({ required: true, role: 'admin' })`.
+
+### WebSocket payload
+
+The `run:api_call` notification carries `apiCost` and
+`apiCallsCount`; the `ingestion:progress` notification gains
+the same optional fields (omitted when no external spend has
+been recorded). The bioprospecting extractor / worker fires
+`notifyApiCallDelta` after each call so the dashboard updates
+in near-real-time.
+
+### Nightly GC
+
+The worker process runs `DELETE FROM daily_api_usage WHERE
+day < CURRENT_DATE - INTERVAL '35 days'` every 24 hours
+(starting 30s after worker boot). The 35-day window preserves
+two 30-day cap windows plus a 5-day clock-skew buffer. Set
+`COST_GUARD_GC_ENABLED=false` to disable in environments where
+`pg_cron` is doing the same job. Failures log
+`cost_guard_gc_failed` and never crash the worker.
+
+---
+
 ## Running the Application
 
 ### Development
@@ -443,6 +546,27 @@ bun run build:client
 ```
 
 The app will be available at `http://localhost:3000`
+
+### Version Metadata
+
+Every build injects the current version into both the backend and the frontend:
+
+- **Backend** exposes `GET /api/version` (no auth) returning `{ version, sha, buildDate }`
+- **Frontend Footer** shows `BioAgents v0.1.0 · abc1234 · 2026-06-16` at the bottom of the app
+- The Footer fetches `/api/version` on load and falls back to build-time values if the server is unreachable
+- If the bundled and server versions differ, the Footer shows a "⚠ version mismatch" badge
+
+**For local dev** (no Docker): `client/build.ts` reads `package.json` and `git rev-parse --short HEAD` at build time automatically.
+
+**For Docker rebuilds**: the `redeploy` script auto-injects `GIT_SHA` and `BUILD_DATE` as compose args:
+
+```bash
+bun run redeploy
+# = GIT_SHA=$(git rev-parse --short HEAD) BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+#   docker compose build bioagents && docker compose up -d --force-recreate bioagents
+```
+
+To bump the version, edit the `"version"` field in `package.json` and rebuild.
 
 ---
 

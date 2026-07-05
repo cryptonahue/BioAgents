@@ -248,6 +248,27 @@ export const libraryRoute = new Elysia()
         // Extract a DOI from the first portion of the text, if present.
         const doiMatch = fullText.slice(0, 20000).match(DOI_REGEX);
         const doi = doiMatch ? doiMatch[0] : null;
+        let researchSourceId: string | null = null;
+        try {
+          const sb = getServiceClient();
+          let sourceQuery = sb
+            .from("research_sources")
+            .select("id")
+            .eq("file_path", meta.filePath)
+            .limit(1);
+          let { data: sourceRows } = await sourceQuery;
+          if ((!sourceRows || sourceRows.length === 0) && doi) {
+            const byDoi = await sb
+              .from("research_sources")
+              .select("id")
+              .ilike("doi", doi)
+              .limit(1);
+            sourceRows = byDoi.data;
+          }
+          researchSourceId = sourceRows?.[0]?.id || null;
+        } catch (err) {
+          logger.warn({ err, title }, "library_research_source_lookup_failed");
+        }
 
         const abstract = fullText.slice(0, 600).trim();
 
@@ -261,6 +282,7 @@ export const libraryRoute = new Elysia()
           estTokens,
           doi,
           doiUrl: doi ? `https://doi.org/${doi}` : null,
+          researchSourceId,
           abstract,
           fileUrl: `/api/library/${params.docId}/file`,
         };

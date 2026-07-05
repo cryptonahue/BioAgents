@@ -6,11 +6,16 @@ import { usePrivy } from '@privy-io/react-auth';
 import { CDPProvider } from './providers/CDPProvider';
 import { CoralPrivyProvider } from './providers/PrivyProvider';
 import { AuthProvider } from './contexts';
-import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage } from './pages';
+import { ProvenanceProvider } from './contexts/ProvenanceContext';
+import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, ViewerPage, LibraryViewerPage } from './pages';
 import { useAuth } from './hooks';
+import { Footer } from './components/Footer';
 import './styles/global.css';
 import './styles/coralgpt.css';
 import './styles/library.css';
+import './styles/corpus.css';
+import './styles/admin.css';
+import './styles/provenance.css';
 
 function LoadingScreen() {
   return (
@@ -62,14 +67,22 @@ function LegacyAppShell() {
   }
 
   return (
-    <Router onChange={handleRouteChange}>
-      <LoginPage path="/login" />
-      <ChatPage path="/chat/:sessionId?" />
-      <LibraryPage path="/library" />
-      <PaperPage path="/library/:docId" />
-      <Redirect path="/" to="/chat" />
-      <NotFound default redirectTo="/chat" />
-    </Router>
+    <>
+      <Router onChange={handleRouteChange}>
+        <LoginPage path="/login" />
+        <ChatPage path="/chat/:sessionId?" />
+        <LibraryPage path="/library" />
+        <PaperPage path="/library/:docId" />
+        <LibraryViewerPage path="/library/:docId/viewer" />
+        <ViewerPage path="/viewer/:sourceId" />
+        <ResearchBrainPage path="/brain" />
+        <CorpusDashboardPage path="/corpus" />
+        <AdminPage path="/admin" />
+        <Redirect path="/" to="/chat" />
+        <NotFound default redirectTo="/chat" />
+      </Router>
+      <Footer />
+    </>
   );
 }
 
@@ -105,14 +118,21 @@ function CoralAppShell() {
   }
 
   return (
-    <Router onChange={handleRouteChange}>
-      <LandingPage path="/" />
-      <AccessPendingPage path="/access-pending" />
-      <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
-      <LibraryPage path="/library" coralGptMode />
-      <PaperPage path="/library/:docId" coralGptMode />
-      <NotFound default redirectTo="/" />
-    </Router>
+    <>
+      <Router onChange={handleRouteChange}>
+        <LandingPage path="/" />
+        <AccessPendingPage path="/access-pending" />
+        <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
+        <LibraryPage path="/library" coralGptMode />
+        <PaperPage path="/library/:docId" coralGptMode />
+        <LibraryViewerPage path="/library/:docId/viewer" coralGptMode />
+        <ViewerPage path="/viewer/:sourceId" coralGptMode />
+        <ResearchBrainPage path="/brain" coralGptMode />
+        <AdminPage path="/admin" />
+        <NotFound default redirectTo="/" />
+      </Router>
+      <Footer />
+    </>
   );
 }
 
@@ -159,7 +179,9 @@ function Root() {
     return (
       <AuthProvider>
         <CoralPrivyProvider appId={privyAppId}>
-          <CoralAppShell />
+          <ProvenanceProvider>
+            <CoralAppShell />
+          </ProvenanceProvider>
         </CoralPrivyProvider>
       </AuthProvider>
     );
@@ -169,7 +191,9 @@ function Root() {
     return (
       <AuthProvider>
         <CDPProvider>
-          <LegacyAppShell />
+          <ProvenanceProvider>
+            <LegacyAppShell />
+          </ProvenanceProvider>
         </CDPProvider>
       </AuthProvider>
     );
@@ -177,7 +201,9 @@ function Root() {
 
   return (
     <AuthProvider>
-      <LegacyAppShell />
+      <ProvenanceProvider>
+        <LegacyAppShell />
+      </ProvenanceProvider>
     </AuthProvider>
   );
 }

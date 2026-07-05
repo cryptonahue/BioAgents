@@ -43,7 +43,16 @@ services:
         set -eu
         mkdir -p /app/supabase/.temp
         echo "Supabase CLI: $(supabase --version)"
-        supabase db push --db-url "$SUPABASE_FULL_URL"
+        # The direct DB URL (db.*.supabase.co) resolves to IPv6 only and the
+        # container has no IPv6 connectivity, so we override with the IPv4
+        # pooler URL when SUPABASE_DB_URL is provided.
+        DB_URL="${SUPABASE_DB_URL:-}"
+        if [ -z "$DB_URL" ]; then
+          DB_URL="$SUPABASE_FULL_URL"
+        fi
+        export DB_URL
+        echo "Using DB host: $(echo "$DB_URL" | sed -E "s|.*@([^/]+).*|\\1|")"
+        supabase db push --db-url "$DB_URL"
       '
     restart: "no"
 
@@ -58,6 +67,9 @@ services:
         SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
         PRIVY_APP_ID: ${PRIVY_APP_ID:-}
         CORALGPT_HERO_VIDEO_URL: ${CORALGPT_HERO_VIDEO_URL:-}
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-}
+        SKIP_CLIENT_BUILD: ${SKIP_CLIENT_BUILD:-0}
     container_name: bioagents-api
     expose:
       - "${PORT:-3000}"
@@ -71,11 +83,19 @@ services:
       - "0.0.0.0:${PORT:-3000}:3000"
 
     environment:
-      # LLM / embedding API keys: use env_file (.env) only — listing them here with
-      # ${VAR:-} overrides env_file with an empty value when Compose substitution fails.
-
-      # Agent LLM Configuration
-      - OPENSCHOLAR_API_URL=${OPENSCHOLAR_API_URL:-}
+      # CRITICAL: env_file (.env) is the SINGLE SOURCE OF TRUTH for all
+      # non-default vars. Listing a var here with `${VAR:-}` (empty default)
+      # OVERRIDES env_file with an empty string at runtime — which makes the
+      # running container see the var as missing even though it's in .env.
+      # Rule of thumb: only list vars in `environment:` if you need a
+      # Compose-time default that differs from .env, or if the var must
+      # always be present (PORT, NODE_ENV, etc.).
+      #
+      # REMOVED: OPENSCHOLAR_API_URL was here with ${OPENSCHOLAR_API_URL:-}
+      # but that overrode the value from .env at runtime, making the worker
+      # see it as empty and skip OpenScholar. Now read from .env only.
+      # EDISON_API_URL + EDISON_API_KEY must NEVER be added here for the
+      # same reason — they come from .env only.
       - REPLY_LLM_PROVIDER=${REPLY_LLM_PROVIDER:-openai}
       - REPLY_LLM_MODEL=${REPLY_LLM_MODEL:-gpt-5.4}
       - HYP_LLM_PROVIDER=${HYP_LLM_PROVIDER:-openai}

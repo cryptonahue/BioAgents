@@ -1,0 +1,654 @@
+[
+  {
+    "canonical_name": "Curcumin",
+    "pubchem_cid": 969516,
+    "inchi_key": "VFLDPWHFBUODDF-FCXRPNKRSA-N",
+    "molecular_formula": "C21H20O6",
+    "iupac_name": "(1E,6E)-1,7-bis(4-hydroxy-3-methoxyphenyl)hepta-1,6-diene-3,5-dione",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Diferuloylmethane",
+      "Turmeric yellow",
+      "Natural Yellow 3",
+      "Curcuma longa pigment"
+    ]
+  },
+  {
+    "canonical_name": "Docosahexaenoic acid",
+    "pubchem_cid": 445580,
+    "inchi_key": "MBMBGCFOFBJSGT-KUBAVDMBSA-N",
+    "molecular_formula": "C22H32O2",
+    "iupac_name": "(4Z,7Z,10Z,13Z,16Z,19Z)-docosa-4,7,10,13,16,19-hexaenoic acid",
+    "compound_kind": "lipid",
+    "aliases": [
+      "DHA",
+      "Docosahexaenoate",
+      "22:6 n-3",
+      "Cervonic acid"
+    ]
+  },
+  {
+    "canonical_name": "Eicosapentaenoic acid",
+    "pubchem_cid": 5282847,
+    "inchi_key": "JAZBEHYOTPTENJ-RCHUDCCISA-N",
+    "molecular_formula": "C20H30O2",
+    "iupac_name": "(5Z,8Z,11Z,14Z,17Z)-icosa-5,8,11,14,17-pentaenoic acid",
+    "compound_kind": "lipid",
+    "aliases": [
+      "EPA",
+      "Timnodonic acid",
+      "20:5 n-3"
+    ]
+  },
+  {
+    "canonical_name": "Paclitaxel",
+    "pubchem_cid": 36314,
+    "inchi_key": "RCINICONZNJXQF-MZXODVADSA-N",
+    "molecular_formula": "C47H51NO14",
+    "iupac_name": "[(1S,2S,3R,4S,7R,9S,10S,12R,15S)-4,12-diacetyloxy-15-[(2R,3S)-3-benzamido-2-hydroxy-3-phenylpropanoyl]oxy-1,9-dihydroxy-10,14,17,17-tetramethyl-11-oxo-6-oxatetracyclo[11.3.1.03,10.04,7]heptadec-13-en-2-yl] benzoate",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Taxol",
+      "Abraxane",
+      "NSC-125973",
+      "Bristol-Myers Squibb 181339"
+    ]
+  },
+  {
+    "canonical_name": "Bryostatin 1",
+    "pubchem_cid": 5280757,
+    "inchi_key": "MJQUEDHRCUIRLF-TVIXENOKSA-N",
+    "molecular_formula": "C47H68O17",
+    "iupac_name": "Bryostatin 1",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Bryostatin-1",
+      "NSC-339555",
+      "Bugula neritina macrolide"
+    ]
+  },
+  {
+    "canonical_name": "Quercetin",
+    "pubchem_cid": 5280343,
+    "inchi_key": "REFJWTPEDVJJIY-UHFFFAOYSA-N",
+    "molecular_formula": "C15H10O7",
+    "iupac_name": "2-(3,4-dihydroxyphenyl)-3,5,7-trihydroxychromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Sophoretin",
+      "Meletin",
+      "Quercetol",
+      "Xanthaurine"
+    ]
+  },
+  {
+    "canonical_name": "Resveratrol",
+    "pubchem_cid": 445154,
+    "inchi_key": "LUKBXSAWLPMMSZ-OWOJBTEDSA-N",
+    "molecular_formula": "C14H12O3",
+    "iupac_name": "5-[(E)-2-(4-hydroxyphenyl)ethenyl]benzene-1,3-diol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "trans-Resveratrol",
+      "3,5,4'-Trihydroxystilbene",
+      "Resvida"
+    ]
+  },
+  {
+    "canonical_name": "Fucoxanthin",
+    "pubchem_cid": 5281239,
+    "inchi_key": "SJWWTRQNNRNTPU-ABBNZJFMSA-N",
+    "molecular_formula": "C42H58O6",
+    "iupac_name": "Fucoxanthin",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "all-trans-Fucoxanthin",
+      "Brown seaweed carotenoid"
+    ]
+  },
+  {
+    "canonical_name": "Capsaicin",
+    "pubchem_cid": 1548943,
+    "inchi_key": "YKPUWZUDDOIDPM-SOFGYWHQSA-N",
+    "molecular_formula": "C18H27NO3",
+    "iupac_name": "(E)-N-[(4-hydroxy-3-methoxyphenyl)methyl]-8-methylnon-6-enamide",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "trans-Capsaicin",
+      "8-Methyl-N-vanillyl-6-nonenamide",
+      "Capsaicine"
+    ]
+  },
+  {
+    "canonical_name": "Astaxanthin",
+    "pubchem_cid": 5281224,
+    "inchi_key": "MQZIGYBFDRPAKN-UWFIBFSHSA-N",
+    "molecular_formula": "C40H52O4",
+    "iupac_name": "(6S,6'S)-3,3'-[(1E,3E,5E,7E,9E,11E,13E,15E,17E)-18-[(4R)-4-hydroxy-2,6,6-trimethylcyclohexen-1-yl]-3,7,12,16-tetramethyloctadeca-1,3,5,7,9,11,13,15,17-nonaenyl]bis(4-hydroxy-2,4,6-trimethylcyclohexa-2,5-dien-1-one)",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "all-trans-Astaxanthin",
+      "Haematococcus carotenoid",
+      "3,3'-Dihydroxy-beta,beta-carotene-4,4'-dione"
+    ]
+  },
+  {
+    "canonical_name": "Apigenin",
+    "pubchem_cid": 5280443,
+    "inchi_key": "KZNIFHPLKGYRTM-UHFFFAOYSA-N",
+    "molecular_formula": "C15H10O5",
+    "iupac_name": "5,7-dihydroxy-2-(4-hydroxyphenyl)chromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "4',5,7-Trihydroxyflavone",
+      "Versulin",
+      "Apigenol"
+    ]
+  },
+  {
+    "canonical_name": "Kaempferol",
+    "pubchem_cid": 5280863,
+    "inchi_key": "IYRMWMYZSQPJKC-UHFFFAOYSA-N",
+    "molecular_formula": "C15H10O6",
+    "iupac_name": "3,5,7-trihydroxy-2-(4-hydroxyphenyl)chromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "3,4',5,7-Tetrahydroxyflavone",
+      "Kempferol",
+      "Robigenin"
+    ]
+  },
+  {
+    "canonical_name": "Genistein",
+    "pubchem_cid": 5280961,
+    "inchi_key": "TZBJGXHYKVUXJN-UHFFFAOYSA-N",
+    "molecular_formula": "C15H10O5",
+    "iupac_name": "5,7-dihydroxy-3-(4-hydroxyphenyl)chromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "4',5,7-Trihydroxyisoflavone",
+      "Prunetol",
+      "Sophoricol"
+    ]
+  },
+  {
+    "canonical_name": "Ginkgolide A",
+    "pubchem_cid": 9909368,
+    "inchi_key": "FPUXKXIZEIDQKW-VKMVSBOZSA-N",
+    "molecular_formula": "C20H24O9",
+    "iupac_name": "Ginkgolide A",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "BN-52020",
+      "Ginkgo biloba terpene lactone"
+    ]
+  },
+  {
+    "canonical_name": "Ginkgolide B",
+    "pubchem_cid": 11973122,
+    "inchi_key": "SQOJOAFXDQDRGF-ZMVGXLHTSA-N",
+    "molecular_formula": "C20H24O10",
+    "iupac_name": "Ginkgolide B",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "BN-52021",
+      "Ginkgo terpene lactone"
+    ]
+  },
+  {
+    "canonical_name": "Gingerol",
+    "pubchem_cid": 442793,
+    "inchi_key": "NLDDIKRKFXEWBK-AWEZNQCLSA-N",
+    "molecular_formula": "C17H26O4",
+    "iupac_name": "(E)-1-(4-hydroxy-3-methoxyphenyl)dec-4-en-3-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "[6]-Gingerol",
+      "Zingiber officinale pungent principle"
+    ]
+  },
+  {
+    "canonical_name": "Allicin",
+    "pubchem_cid": 65036,
+    "inchi_key": "JDLKFOPOAOFWQN-UHFFFAOYSA-N",
+    "molecular_formula": "C6H10OS2",
+    "iupac_name": "3-prop-2-enylsulfinylsulfanylprop-1-ene",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Diallyl thiosulfinate",
+      "Allium sativum thiosulfinate"
+    ]
+  },
+  {
+    "canonical_name": "Lycopene",
+    "pubchem_cid": 446925,
+    "inchi_key": "OAIJSZIZWZSQBC-GYZMGTAESA-N",
+    "molecular_formula": "C40H56",
+    "iupac_name": "(6E,8E,10E,12E,14E,16E,18E,20E,22E,24E,26E)-2,6,10,14,19,23,27,31-octamethyldotriaconta-2,6,8,10,12,14,16,18,20,22,24,26-dodecaene",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "all-trans-Lycopene",
+      "psi,psi-Carotene",
+      "Solanum lycopersicum pigment"
+    ]
+  },
+  {
+    "canonical_name": "Beta-carotene",
+    "pubchem_cid": 5280489,
+    "inchi_key": "OENHQHLEOONYIE-JLTXGRSLSA-N",
+    "molecular_formula": "C40H56",
+    "iupac_name": "1,3,3-trimethyl-2-[(1E,3E,5E,7E,9E,11E,13E,15E,17E)-3,7,12,16-tetramethyl-18-(2,6,6-trimethylcyclohexen-1-yl)octadeca-1,3,5,7,9,11,13,15,17-nonaenyl]cyclohexene",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "beta,beta-Carotene",
+      "Provitamin A",
+      "Betacarotene"
+    ]
+  },
+  {
+    "canonical_name": "Lutein",
+    "pubchem_cid": 5281243,
+    "inchi_key": "KBPHJBAIARWVSC-RGZFRNHPSA-N",
+    "molecular_formula": "C40H56O2",
+    "iupac_name": "(1R,4R)-4-[(1E,3E,5E,7E,9E,11E,13E,15E,17E)-18-[(4R)-4-hydroxy-2,6,6-trimethylcyclohexen-1-yl]-3,7,12,16-tetramethyloctadeca-1,3,5,7,9,11,13,15,17-nonaenyl]-3,5,5-trimethylcyclohex-2-en-1-ol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Luteine",
+      "Xanthophyll",
+      "Bo 573 carotenoid"
+    ]
+  },
+  {
+    "canonical_name": "Zeaxanthin",
+    "pubchem_cid": 5280899,
+    "inchi_key": "JKQXZKUSFCKOGQ-QAYBQHTQSA-N",
+    "molecular_formula": "C40H56O2",
+    "iupac_name": "(1R,4R)-4-[(1E,3E,5E,7E,9E,11E,13E,15E,17E)-18-[(4R)-4-hydroxy-2,6,6-trimethylcyclohexen-1-yl]-3,7,12,16-tetramethyloctadeca-1,3,5,7,9,11,13,15,17-nonaenyl]-3,5,5-trimethylcyclohex-2-en-1-ol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "all-trans-Zeaxanthin",
+      "Antheraxanthin-related xanthophyll"
+    ]
+  },
+  {
+    "canonical_name": "Catechol",
+    "pubchem_cid": 289,
+    "inchi_key": "YCIMNLLNPGFGHC-UHFFFAOYSA-N",
+    "molecular_formula": "C6H6O2",
+    "iupac_name": "benzene-1,2-diol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Pyrocatechol",
+      "1,2-Benzenediol",
+      "o-Benzenediol",
+      "1,2-Dihydroxybenzene"
+    ]
+  },
+  {
+    "canonical_name": "Phloroglucinol",
+    "pubchem_cid": 359,
+    "inchi_key": "QCDYQQDYXPDABM-UHFFFAOYSA-N",
+    "molecular_formula": "C6H6O3",
+    "iupac_name": "benzene-1,3,5-triol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "1,3,5-Trihydroxybenzene",
+      "sym-Trihydroxybenzene",
+      "Benzene-1,3,5-triol"
+    ]
+  },
+  {
+    "canonical_name": "Salidroside",
+    "pubchem_cid": 159278,
+    "inchi_key": null,
+    "molecular_formula": null,
+    "iupac_name": null,
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Rhodioloside",
+      "Rhodiola rosea glycoside",
+      "2-(4-Hydroxyphenyl)ethyl beta-D-glucopyranoside"
+    ]
+  },
+  {
+    "canonical_name": "Ginsenoside Rg1",
+    "pubchem_cid": 441923,
+    "inchi_key": "YURJSTAIMNSZAE-HHNZYBFYSA-N",
+    "molecular_formula": "C42H72O14",
+    "iupac_name": "Ginsenoside Rg1",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Panaxoside Rg1",
+      "Panax ginseng saponin Rg1"
+    ]
+  },
+  {
+    "canonical_name": "Ginsenoside Rb1",
+    "pubchem_cid": 9898279,
+    "inchi_key": "GZYPWOGIYAIIPV-JBDTYSNRSA-N",
+    "molecular_formula": "C54H92O23",
+    "iupac_name": "Ginsenoside Rb1",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Panaxoside Rb1",
+      "Panax ginseng saponin Rb1",
+      "Gynosaponin C"
+    ]
+  },
+  {
+    "canonical_name": "Cordycepin",
+    "pubchem_cid": 6303,
+    "inchi_key": "OFEZSBMBBKLLBJ-BAJZRUMYSA-N",
+    "molecular_formula": "C10H13N5O3",
+    "iupac_name": "(2R,3R,5S)-2-(6-aminopurin-9-yl)-5-(hydroxymethyl)oxolan-3-ol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "3'-Deoxyadenosine",
+      "Cordyceps militaris nucleoside"
+    ]
+  },
+  {
+    "canonical_name": "Squalene",
+    "pubchem_cid": 638072,
+    "inchi_key": "YYGNTYWPHWGJRM-AAJYLUCBSA-N",
+    "molecular_formula": "C30H50",
+    "iupac_name": "(6E,10E,14E,18E)-2,6,10,15,19,23-hexamethyltetracosa-2,6,10,14,18,22-hexaene",
+    "compound_kind": "lipid",
+    "aliases": [
+      "all-trans-Squalene",
+      "Spinacene",
+      "Shark liver oil triterpene"
+    ]
+  },
+  {
+    "canonical_name": "Laminarin",
+    "pubchem_cid": 439306,
+    "inchi_key": "DBTMGCOVALSLOR-VPNXCSTESA-N",
+    "molecular_formula": "C18H32O16",
+    "iupac_name": "Laminarin",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Laminaran",
+      "Laminaria beta-glucan"
+    ]
+  },
+  {
+    "canonical_name": "Staurosporine",
+    "pubchem_cid": 44259,
+    "inchi_key": "HKSZLNNOFSGOKW-FYTWVXJKSA-N",
+    "molecular_formula": "C28H26N4O3",
+    "iupac_name": "Staurosporine",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "AM-2282",
+      "Streptomyces staurosporeus alkaloid"
+    ]
+  },
+  {
+    "canonical_name": "Tetrodotoxin",
+    "pubchem_cid": 11174599,
+    "inchi_key": "CFMYXEVWODSLAX-QOZOJKKESA-N",
+    "molecular_formula": "C11H17N3O8",
+    "iupac_name": "Tetrodotoxin",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "TTX",
+      "Fugu poison",
+      "Tetrodontoxin"
+    ]
+  },
+  {
+    "canonical_name": "Saxitoxin",
+    "pubchem_cid": 56947150,
+    "inchi_key": null,
+    "molecular_formula": null,
+    "iupac_name": null,
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "STX",
+      "Paralytic shellfish poison",
+      "Saxidomus giganteus toxin"
+    ]
+  },
+  {
+    "canonical_name": "Concanavalin A",
+    "pubchem_cid": 155486958,
+    "inchi_key": "RVSZVJZFCQZYHQ-UHFFFAOYSA-N",
+    "molecular_formula": "C23H32N6O8S",
+    "iupac_name": "Concanavalin A",
+    "compound_kind": "protein",
+    "aliases": [
+      "Con A",
+      "Jack bean lectin",
+      "Canavalia ensiformis agglutinin"
+    ]
+  },
+  {
+    "canonical_name": "Chlorophyll a",
+    "pubchem_cid": 12085802,
+    "inchi_key": "ATNHDLDRLWWWCB-AENOIHSZSA-M",
+    "molecular_formula": "C55H72MgN4O5",
+    "iupac_name": "Chlorophyll a",
+    "compound_kind": "other",
+    "aliases": [
+      "Chl a",
+      "Magnesium chlorophyllin a"
+    ]
+  },
+  {
+    "canonical_name": "Cholesterol",
+    "pubchem_cid": 5997,
+    "inchi_key": "HVYWMOMLDIMFJA-DPAQBDIFSA-N",
+    "molecular_formula": "C27H46O",
+    "iupac_name": "(3R,8S,9S,10R,13R,14S,17R)-10,13-dimethyl-17-[(2R)-6-methylheptan-2-yl]-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol",
+    "compound_kind": "lipid",
+    "aliases": [
+      "Cholesterin",
+      "Cholesteryl alcohol",
+      "(3beta)-Cholest-5-en-3-ol"
+    ]
+  },
+  {
+    "canonical_name": "Ergosterol",
+    "pubchem_cid": 444679,
+    "inchi_key": "DNVPQKQSNYMLRS-APGDWVJJSA-N",
+    "molecular_formula": "C28H44O",
+    "iupac_name": "(3R,9R,10R,13R,14R,17R)-17-[(E,2R,3S)-3-hydroxy-6-methylhept-5-en-2-yl]-10,13-dimethyl-2,3,4,9,11,12,14,15,16,17-decahydro-1H-cyclopenta[a]phenanthren-3-ol",
+    "compound_kind": "lipid",
+    "aliases": [
+      "Provitamin D2",
+      "Ergosta-5,7,22-trien-3beta-ol"
+    ]
+  },
+  {
+    "canonical_name": "Oleic acid",
+    "pubchem_cid": 445639,
+    "inchi_key": "ZQPPMHVWECSIRJ-KTKRTIGZSA-N",
+    "molecular_formula": "C18H34O2",
+    "iupac_name": "(Z)-octadec-9-enoic acid",
+    "compound_kind": "lipid",
+    "aliases": [
+      "cis-9-Octadecenoic acid",
+      "Oleate",
+      "9Z-Octadecenoic acid"
+    ]
+  },
+  {
+    "canonical_name": "Palmitic acid",
+    "pubchem_cid": 985,
+    "inchi_key": "IPCSVZSSVZVIGE-UHFFFAOYSA-N",
+    "molecular_formula": "C16H32O2",
+    "iupac_name": "hexadecanoic acid",
+    "compound_kind": "lipid",
+    "aliases": [
+      "n-Hexadecanoic acid",
+      "Palmitate",
+      "C16:0"
+    ]
+  },
+  {
+    "canonical_name": "Stearic acid",
+    "pubchem_cid": 5281,
+    "inchi_key": "QIQXTHQIDYTFRH-UHFFFAOYSA-N",
+    "molecular_formula": "C18H36O2",
+    "iupac_name": "octadecanoic acid",
+    "compound_kind": "lipid",
+    "aliases": [
+      "n-Octadecanoic acid",
+      "Stearate",
+      "C18:0"
+    ]
+  },
+  {
+    "canonical_name": "Luteolin",
+    "pubchem_cid": 5280445,
+    "inchi_key": "IQPNAANSBPBGFQ-UHFFFAOYSA-N",
+    "molecular_formula": "C15H10O6",
+    "iupac_name": "2-(3,4-dihydroxyphenyl)-5,7-dihydroxychromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "3',4',5,7-Tetrahydroxyflavone",
+      "Digitoflavone",
+      "Luteolol"
+    ]
+  },
+  {
+    "canonical_name": "Epigallocatechin gallate",
+    "pubchem_cid": 65064,
+    "inchi_key": null,
+    "molecular_formula": null,
+    "iupac_name": null,
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "EGCG",
+      "Epigallocatechin-3-gallate",
+      "Camellia sinensis catechin"
+    ]
+  },
+  {
+    "canonical_name": "Fucoidan",
+    "pubchem_cid": 129886698,
+    "inchi_key": null,
+    "molecular_formula": null,
+    "iupac_name": null,
+    "compound_kind": "other",
+    "aliases": [
+      "Fucoidin",
+      "Fucus vesiculosus sulfated polysaccharide"
+    ]
+  },
+  {
+    "canonical_name": "Beta-sitosterol",
+    "pubchem_cid": 222284,
+    "inchi_key": "KZJWDPNRJALLNS-VJSFXXLFSA-N",
+    "molecular_formula": "C29H50O",
+    "iupac_name": "(3R,8S,9S,10R,13R,14S,17R)-17-[(2R,5R)-5-ethyl-6-methylheptan-2-yl]-10,13-dimethyl-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "beta-Sitosterin",
+      "22,23-Dihydrostigmasterol",
+      "alpha-Dihydrofucosterol"
+    ]
+  },
+  {
+    "canonical_name": "Stigmasterol",
+    "pubchem_cid": 5280794,
+    "inchi_key": "HCXVJBMSMIARIN-PHZDYDNGSA-N",
+    "molecular_formula": "C29H48O",
+    "iupac_name": "(3R,8S,9S,10R,13R,14S,17R)-17-[(E,2R)-2-ethyl-6-methylhept-5-en-2-yl]-10,13-dimethyl-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Stigmasterin",
+      "Porifasterol"
+    ]
+  },
+  {
+    "canonical_name": "Rutin",
+    "pubchem_cid": 5280805,
+    "inchi_key": "IKGXIBQEEMLURG-NVPNHPEKSA-N",
+    "molecular_formula": "C27H30O16",
+    "iupac_name": "2-(3,4-dihydroxyphenyl)-5,7-dihydroxy-3-[(2S,3R,4S,5S,6R)-3,4,5-trihydroxy-6-[[(2R,3R,4R,5R,6S)-3,4,5-trihydroxy-6-methyloxan-2-yl]oxymethyl]oxan-2-yl]oxychromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Rutoside",
+      "Vitamin P",
+      "Quercetin-3-O-rutinoside",
+      "Sophorin"
+    ]
+  },
+  {
+    "canonical_name": "Hesperetin",
+    "pubchem_cid": 72281,
+    "inchi_key": "AIONOLUJFZUPKP-UHFFFAOYSA-N",
+    "molecular_formula": "C16H14O6",
+    "iupac_name": "(2S)-5,7-dihydroxy-2-(3-hydroxy-4-methoxyphenyl)-2,3-dihydrochromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Hesperitin",
+      "3',5,7-Trihydroxy-4'-methoxyflavanone"
+    ]
+  },
+  {
+    "canonical_name": "Naringenin",
+    "pubchem_cid": 932,
+    "inchi_key": "FTVWIRXFELQLPI-UHFFFAOYSA-N",
+    "molecular_formula": "C15H12O5",
+    "iupac_name": "(2S)-5,7-dihydroxy-2-(4-hydroxyphenyl)-2,3-dihydrochromen-4-one",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "4',5,7-Trihydroxyflavanone",
+      "Naringetol",
+      "Salipurpol"
+    ]
+  },
+  {
+    "canonical_name": "Caffeic acid",
+    "pubchem_cid": 689043,
+    "inchi_key": "QAIPRVGONGVQAS-UHFFFAOYSA-N",
+    "molecular_formula": "C9H8O4",
+    "iupac_name": "(E)-3-(3,4-dihydroxyphenyl)prop-2-enoic acid",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "trans-Caffeate",
+      "3,4-Dihydroxycinnamic acid",
+      "Caffeate"
+    ]
+  },
+  {
+    "canonical_name": "Ferulic acid",
+    "pubchem_cid": 445858,
+    "inchi_key": "KSEBMYQBYZTDMP-HWKANZROSA-N",
+    "molecular_formula": "C10H10O4",
+    "iupac_name": "(E)-3-(4-hydroxy-3-methoxyphenyl)prop-2-enoic acid",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "trans-Ferulate",
+      "4-Hydroxy-3-methoxycinnamic acid",
+      "Ferulate"
+    ]
+  },
+  {
+    "canonical_name": "Gallic acid",
+    "pubchem_cid": 370,
+    "inchi_key": "LNTHITQWPMADXU-UHFFFAOYSA-N",
+    "molecular_formula": "C7H6O5",
+    "iupac_name": "3,4,5-trihydroxybenzoic acid",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "3,4,5-Trihydroxybenzoate",
+      "Gallocatechin precursor"
+    ]
+  },
+  {
+    "canonical_name": "Vanillin",
+    "pubchem_cid": 1183,
+    "inchi_key": "MWOOGOJBHIARFG-UHFFFAOYSA-N",
+    "molecular_formula": "C8H8O3",
+    "iupac_name": "4-hydroxy-3-methoxybenzaldehyde",
+    "compound_kind": "small_molecule",
+    "aliases": [
+      "Vanillic aldehyde",
+      "Methylprotocatechuic aldehyde"
+    ]
+  }
+]

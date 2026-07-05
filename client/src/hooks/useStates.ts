@@ -29,6 +29,7 @@ export interface StateValues {
   uploadedDatasets?: Array<any>;
   currentHypothesis?: string;
   suggestedNextSteps?: Array<any>;
+  researchBrainEvidence?: any;
 }
 
 export interface State {
@@ -50,6 +51,7 @@ export interface ConversationState {
     uploadedDatasets?: Array<any>;
     currentHypothesis?: string;
     suggestedNextSteps?: Array<any>;
+    researchBrainEvidence?: any;
   };
   created_at: string;
   updated_at: string;

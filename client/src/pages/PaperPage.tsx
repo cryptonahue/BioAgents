@@ -4,6 +4,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { askPaper, getPaperHistory, usePaperMeta, type AskSource } from "../hooks";
 import { Icon } from "../components/icons";
+import { useResearchBrainChunk, useResearchBrainClaims } from "../hooks/useResearchBrain";
 
 interface PaperPageProps {
   path?: string;
@@ -25,19 +26,41 @@ function renderMarkdown(text: string): string {
   return DOMPurify.sanitize(marked.parse(text) as string);
 }
 
+function readFocusedFragmentFromUrl(): number | null {
+  const params = new URLSearchParams(window.location.search);
+  const raw =
+    params.get("fragmento") ||
+    params.get("fragment") ||
+    window.location.hash.match(/fragmento?-(\d+)/i)?.[1] ||
+    window.location.hash.match(/chunk-(\d+)/i)?.[1];
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
 export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
   const { meta, isLoading, error } = usePaperMeta(docId);
+  const { claims, isLoading: claimsLoading } = useResearchBrainClaims(
+    meta?.researchSourceId,
+  );
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [fullContext, setFullContext] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [askError, setAskError] = useState("");
   const [activeSource, setActiveSource] = useState<string | null>(null);
+  const [focusedFragment, setFocusedFragment] = useState<number | null>(null);
+  const {
+    chunk: focusedChunk,
+    isLoading: focusedChunkLoading,
+    error: focusedChunkError,
+  } = useResearchBrainChunk(meta?.researchSourceId, focusedFragment);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   // Load persisted history for this paper on open.
   useEffect(() => {
     if (!docId) return;
+    setFocusedFragment(readFocusedFragmentFromUrl());
     let cancelled = false;
     (async () => {
       const history = await getPaperHistory(docId);
@@ -51,11 +74,26 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
     };
   }, [docId]);
 
+  const focusedClaim =
+    focusedFragment == null
+      ? null
+      : claims.find(
+          (claim) => Number(claim.chunk?.chunk_index) === focusedFragment,
+        ) || null;
+  const focusedEvidenceContent =
+    focusedClaim?.chunk?.content || focusedChunk?.content || "";
+  const focusedEvidencePage = focusedClaim?.chunk?.page || focusedChunk?.page;
+
   const fullContextTooBig =
     meta?.estTokens != null && meta.estTokens > FULL_CONTEXT_TOKEN_LIMIT;
 
   const canEmbed =
     meta?.type === "pdf" || meta?.type === "md" || meta?.type === "txt";
+
+  const viewerSrc =
+    meta?.fileUrl && focusedEvidencePage
+      ? `${meta.fileUrl}#page=${focusedEvidencePage}`
+      : meta?.fileUrl;
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -92,7 +130,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
       ]);
       scrollToBottom();
     } catch (err: any) {
-      setAskError(err?.message || "No se pudo responder");
+      setAskError(err?.message || "Could not respond");
       setTurns(nextTurns);
     } finally {
       setIsAsking(false);
@@ -104,14 +142,14 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
       <header className="library-topbar">
         <div className="library-brand" onClick={() => route("/library")}>
           <Icon name="chevronLeft" size={18} />
-          <span className="library-brand-text">Biblioteca</span>
+          <span className="library-brand-text">Library</span>
         </div>
         <div className="paper-topbar-title" title={meta?.title}>
-          {meta?.title || (isLoading ? "Cargando…" : "Paper")}
+          {meta?.title || (isLoading ? "Loading…" : "Paper")}
         </div>
         <button className="library-link-btn" onClick={() => route("/chat")}>
           <Icon name="messageSquare" size={16} />
-          <span>Chat general</span>
+          <span>General chat</span>
         </button>
       </header>
 
@@ -123,17 +161,65 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
         <div className="paper-split">
           {/* Viewer */}
           <section className="paper-viewer">
-            {isLoading && <div className="library-state">Cargando…</div>}
+            {focusedFragment != null && (
+              <div className="paper-evidence-focus">
+                <div className="paper-evidence-focus-header">
+                  <span>Fragment {focusedFragment}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFocusedFragment(null);
+                      if (docId) route(`/library/${docId}`, true);
+                    }}
+                    aria-label="Cerrar fragmento enfocado"
+                  >
+                    ×
+                  </button>
+                </div>
+                {focusedClaim ? (
+                  <>
+                    <p className="paper-evidence-focus-claim">
+                      {focusedClaim.claim}
+                    </p>
+                    {focusedEvidenceContent && (
+                      <blockquote>
+                        {focusedEvidenceContent.slice(0, 900)}
+                        {focusedEvidenceContent.length > 900 ? "…" : ""}
+                      </blockquote>
+                    )}
+                  </>
+                ) : focusedChunkLoading ? (
+                  <p className="paper-evidence-focus-empty">
+                    Loading fragment…
+                  </p>
+                ) : focusedEvidenceContent ? (
+                  <blockquote>
+                    {focusedEvidenceContent.slice(0, 1100)}
+                    {focusedEvidenceContent.length > 1100 ? "…" : ""}
+                  </blockquote>
+                ) : focusedChunkError ? (
+                  <p className="paper-evidence-focus-empty">
+                    Could not load that fragment: {focusedChunkError}
+                  </p>
+                ) : (
+                  <p className="paper-evidence-focus-empty">
+                    The fragment is selected, but no associated text was
+                    found in Research Brain.
+                  </p>
+                )}
+              </div>
+            )}
+            {isLoading && <div className="library-state">Loading…</div>}
             {!isLoading && meta && canEmbed && (
               <iframe
                 className="paper-iframe"
-                src={meta.fileUrl}
+                src={viewerSrc}
                 title={meta.title}
               />
             )}
             {!isLoading && meta && !canEmbed && (
               <div className="library-state">
-                <p>La vista previa embebida no está disponible para este tipo de archivo.</p>
+                <p>The embedded preview is not available for this file type.</p>
                 <a
                   className="library-link-btn"
                   href={meta.fileUrl}
@@ -141,7 +227,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                   rel="noopener noreferrer"
                 >
                   <Icon name="download" size={16} />
-                  <span>Abrir archivo</span>
+                  <span>Open file</span>
                 </a>
               </div>
             )}
@@ -157,7 +243,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                     href={meta.doiUrl || `https://doi.org/${meta.doi}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Abrir DOI"
+                    title="Open DOI"
                   >
                     DOI: {meta.doi}
                   </a>
@@ -170,13 +256,36 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
               </div>
             </div>
 
+            {meta?.researchSourceId && (
+              <div className="paper-claims-strip">
+                <div className="paper-claims-strip-title">
+                  <Icon name="brainCircuit" size={15} />
+                  <span>Extracted claims</span>
+                </div>
+                {claimsLoading && <span>Loading claims…</span>}
+                {!claimsLoading && claims.length === 0 && (
+                  <span>No extracted claims yet.</span>
+                )}
+                {!claimsLoading && claims.length > 0 && (
+                  <div className="paper-claims-mini-list">
+                    {claims.slice(0, 4).map((claim) => (
+                      <div key={claim.id} className="paper-claim-mini">
+                        <span>{claim.status}</span>
+                        <p>{claim.claim}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="paper-chat-messages" ref={messagesRef}>
               {turns.length === 0 && (
                 <div className="paper-chat-empty">
                   <Icon name="sparkles" size={20} />
                   <p>
-                    Preguntá sobre este paper. Las respuestas se basan
-                    únicamente en su contenido y citan los fragmentos usados.
+                    Ask questions about this paper. Answers are based solely
+                    on its content and cite the fragments used.
                   </p>
                 </div>
               )}
@@ -190,8 +299,8 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                     <>
                       {turn.tooLarge && (
                         <div className="paper-notice">
-                          El paper es demasiado grande para contexto completo;
-                          se respondió con búsqueda por fragmentos (RAG).
+                          The paper is too large for full-context; it was
+                          answered with fragment search (RAG).
                         </div>
                       )}
                       <div
@@ -202,7 +311,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                       />
                       {turn.sources && turn.sources.length > 0 && (
                         <div className="paper-sources">
-                          <div className="paper-sources-label">Fuentes</div>
+                          <div className="paper-sources-label">Sources</div>
                           <div className="paper-sources-chips">
                             {turn.sources.map((s) => {
                               const key = `${i}-${s.index}`;
@@ -215,7 +324,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                                       activeSource === key ? null : key,
                                     )
                                   }
-                                  title={`Fragmento ${s.chunkIndex}`}
+                                  title={`Fragment ${s.chunkIndex}`}
                                 >
                                   [{s.index}]
                                 </button>
@@ -262,8 +371,8 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                   className={`paper-toggle ${fullContextTooBig ? "disabled" : ""}`}
                   title={
                     fullContextTooBig
-                      ? "El paper supera el límite de contexto completo; se usará RAG."
-                      : "Enviar el texto completo del paper como contexto"
+                      ? "The paper exceeds the full-context limit; RAG will be used."
+                      : "Send the full paper text as context"
                   }
                 >
                   <input
@@ -274,7 +383,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                       setFullContext((e.target as HTMLInputElement).checked)
                     }
                   />
-                  <span>Usar paper completo</span>
+                  <span>Use full paper</span>
                 </label>
                 <span className="paper-mode-hint">
                   {fullContext && !fullContextTooBig
@@ -286,7 +395,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                 <input
                   type="text"
                   className="paper-input"
-                  placeholder="Preguntá algo sobre este paper…"
+                  placeholder="Ask something about this paper…"
                   value={input}
                   onInput={(e) => setInput((e.target as HTMLInputElement).value)}
                   disabled={isAsking}

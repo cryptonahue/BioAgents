@@ -116,9 +116,18 @@ function isValidApiKey(request: Request): boolean {
  *   const method = request.auth.method;
  * }
  * ```
+ *
+ * @example
+ * ```typescript
+ * // Admin-only route
+ * app.guard(
+ *   { beforeHandle: [authResolver({ required: true, role: 'admin' })] },
+ *   (app) => app.get("/api/admin/dashboard", handler)
+ * );
+ * ```
  */
 export function authResolver(options: AuthResolverOptions = {}) {
-  const { required = true } = options;
+  const { required = true, role } = options;
   const config = getAuthConfig();
 
   return async ({
@@ -126,7 +135,7 @@ export function authResolver(options: AuthResolverOptions = {}) {
     set,
     body,
   }: {
-    request: Request & { auth?: AuthContext; x402Settlement?: any };
+    request: Request& { auth?: AuthContext; x402Settlement?: any };
     set: any;
     body?: any;
   }) => {
@@ -138,6 +147,7 @@ export function authResolver(options: AuthResolverOptions = {}) {
         path,
         mode: config.mode,
         required,
+        role,
         hasX402Settlement: !!(request as any).x402Settlement,
       },
       "auth_resolver_start",
@@ -316,6 +326,30 @@ export function authResolver(options: AuthResolverOptions = {}) {
         },
         "auth_resolved_anonymous_fallback",
       );
+    }
+
+    // =====================================================
+    // Role Authorization Check
+    // =====================================================
+    if (role === "admin") {
+      const userRole = (auth as AuthContext).claims?.role as string | undefined;
+      if (userRole !== "admin") {
+        logger?.warn(
+          {
+            userId: auth.userId,
+            userRole,
+            requiredRole: role,
+            path,
+          },
+          "auth_role_forbidden",
+        );
+
+        set.status = 403;
+        return {
+          error: "Forbidden",
+          message: "Admin role required",
+        };
+      }
     }
 
     // Attach auth context to request

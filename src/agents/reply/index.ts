@@ -4,6 +4,7 @@ import {
   resolveQuestionForReply,
 } from "../../utils/deep-research/continuation-utils";
 import logger from "../../utils/logger";
+import { loadDiscoveriesForConversation } from "../../services/researchBrain/discoveryPersistence";
 import { generateReply } from "./utils";
 
 type ReplyResult = {
@@ -42,13 +43,24 @@ export async function replyAgent(input: {
   } = input;
   const start = new Date().toISOString();
 
+  // Read-through: prefer the relational source (research_discoveries)
+  // for downstream consumers. The reply agent is downstream of the
+  // discovery agent, so the DB has the truth at this point. If the
+  // DB is empty, fall back to the JSONB cache. See
+  // loadDiscoveriesForConversation in discoveryPersistence.ts.
+  const { discoveries } = await loadDiscoveriesForConversation({
+    conversationId: message.conversation_id,
+    fallbackDiscoveries: conversationState.values.discoveries || [],
+    loggerFields: { surface: "reply_agent" },
+  });
+
   logger.info(
     {
       completedTaskCount: completedMaxTasks.length,
       hasHypothesis: !!hypothesis,
       nextPlanCount: nextPlan.length,
       hasInsights: (conversationState.values.keyInsights?.length || 0) > 0,
-      hasDiscoveries: (conversationState.values.discoveries?.length || 0) > 0,
+      hasDiscoveries: discoveries.length > 0,
     },
     "reply_agent_started",
   );
@@ -90,7 +102,7 @@ export async function replyAgent(input: {
         hypothesis,
         nextPlan,
         keyInsights: conversationState.values.keyInsights || [],
-        discoveries: conversationState.values.discoveries || [],
+        discoveries,
         methodology: conversationState.values.methodology,
         currentObjective: conversationState.values.currentObjective,
         evolvingObjective: conversationState.values.evolvingObjective,

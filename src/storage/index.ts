@@ -1,13 +1,18 @@
 import logger from "../utils/logger";
 import { STORAGE_CONFIG } from "./config";
-import { S3StorageProvider } from "./providers/s3";
+import { LocalStorageProvider } from "./providers/local";
 import type { StorageProvider } from "./types";
 
 /**
- * Create a storage provider based on environment configuration
+ * Create a storage provider based on environment configuration.
+ *
+ * `S3StorageProvider` is loaded lazily (sync `require`) so that
+ * loading this module does not eagerly evaluate the S3 class body
+ * and trip the Bun TDZ ordering bug when `StorageProvider` is still
+ * being initialized (see CLAUDE.md "TDZ in worker processes").
  */
 function createStorageProvider(): StorageProvider | null {
-  const { provider, s3 } = STORAGE_CONFIG;
+  const { provider, s3, local } = STORAGE_CONFIG;
 
   if (!provider) {
     if (logger) {
@@ -26,6 +31,8 @@ function createStorageProvider(): StorageProvider | null {
         );
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { S3StorageProvider } = require("./providers/s3") as typeof import("./providers/s3");
       return new S3StorageProvider({
         accessKeyId: s3.accessKeyId,
         secretAccessKey: s3.secretAccessKey,
@@ -35,9 +42,19 @@ function createStorageProvider(): StorageProvider | null {
       });
     }
 
+    case "local": {
+      if (logger) {
+        logger.info(
+          { rootDir: local.rootDir },
+          "LocalStorageProvider initialized (read-only proxy for files on disk)",
+        );
+      }
+      return new LocalStorageProvider({ rootDir: local.rootDir });
+    }
+
     default:
       throw new Error(
-        `Unknown storage provider: ${provider}. Supported providers: s3`,
+        `Unknown storage provider: ${provider}. Supported providers: s3, local`,
       );
   }
 }

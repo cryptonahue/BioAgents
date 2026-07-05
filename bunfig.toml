@@ -1,0 +1,10 @@
+# Bun configuration for the BioAgents project.
+#
+# The Preact-based client tests need a DOM global; Preact's
+# `render` calls `document.createElement` even for null mounts.
+# We preload a tiny DOM shim from `client/src/test-dom-shim.ts`
+# into every test run. The shim is a no-op if a real `document`
+# already exists (e.g., when running under `happy-dom` or in a
+# browser test environment).
+[test]
+preload = ["./client/src/test-dom-shim.ts"]

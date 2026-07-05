@@ -1,17 +1,30 @@
 {
   "name": "bioagents-openai-agentkit",
-  "module": "index.ts",
-  "type": "module",
+  "version": "0.2.1",
   "private": true,
-  "devDependencies": {
-    "@types/archiver": "^7.0.0",
-    "@types/bun": "latest",
-    "prettier": "^3.6.2",
-    "prettier-plugin-organize-imports": "^4.3.0",
-    "prettier-plugin-packagejson": "^2.5.19"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "build": "bun run build:client",
+    "build:client": "bun run client/build.ts",
+    "check:pr-budget": "bash scripts/check-pr-budget.sh",
+    "dev": "bun --watch src/index.ts",
+    "extract:bioprospecting": "bun run scripts/extract-bioprospecting.ts",
+    "ingest:docs": "bun run scripts/ingest-docs.ts",
+    "merge:tables": "bun run scripts/merge-multipage-tables.ts",
+    "merge:tables:apply": "bun run scripts/merge-multipage-tables.ts --apply",
+    "migrate": "supabase migration up",
+    "migrate:new": "supabase migration new",
+    "normalize:measurements": "bun run scripts/normalize-measurements.ts",
+    "normalize:taxonomy": "bun run scripts/normalize-taxonomy.ts",
+    "normalize:compounds": "bun run scripts/normalize-compounds.ts",
+    "seed:compounds": "bun run scripts/seed/load-compounds.ts",
+    "redeploy": "GIT_SHA=$(git rev-parse --short HEAD) BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) docker compose build bioagents && docker compose up -d --force-recreate bioagents",
+    "start": "bun src/index.ts",
+    "test": "bun test",
+    "whitelist": "bun scripts/whitelist.ts",
+    "worker": "bun src/worker.ts",
+    "worker:dev": "bun --watch src/worker.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.26",
@@ -56,6 +69,7 @@
     "openai": "^6.6.0",
     "papaparse": "^5.5.3",
     "pdf-parse": "2.4.5",
+    "pdfjs-dist": "5.4.296",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",
     "postgres": "^3.4.7",
@@ -66,17 +80,14 @@
     "xlsx": "^0.18.5",
     "zod": "3"
   },
-  "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
-    "test": "bun test",
-    "worker": "bun src/worker.ts",
-    "worker:dev": "bun --watch src/worker.ts",
-    "build:client": "bun run client/build.ts",
-    "build": "bun run build:client",
-    "migrate": "supabase migration up",
-    "migrate:new": "supabase migration new",
-    "whitelist": "bun scripts/whitelist.ts",
-    "redeploy": "docker compose build bioagents && docker compose up -d --force-recreate bioagents"
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/bun": "latest",
+    "prettier": "^3.6.2",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "prettier-plugin-packagejson": "^2.5.19"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   }
 }

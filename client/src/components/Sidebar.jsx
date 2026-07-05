@@ -1,11 +1,12 @@
 import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
-import { useAuth } from '../hooks';
+import { useAuth, useAdmin } from '../hooks';
 
 export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { logout, isLoggingOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const handleLogout = async () => {
     if (coralGptMode && privyLogout) {
@@ -119,6 +120,24 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               Library
             </Button>
+            <Button
+              variant="ghost"
+              icon="brainCircuit"
+              onClick={() => route('/brain')}
+              className="sidebar-library-btn"
+            >
+              Research Brain
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                icon="settings"
+                onClick={() => route('/admin')}
+                className="sidebar-admin-btn"
+              >
+                Admin
+              </Button>
+            )}
           </>
         )}
         {isCollapsed && (
