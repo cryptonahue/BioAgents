@@ -105,12 +105,14 @@ export async function getConversationsByUser(userId: string) {
 
 export async function getMessagesByConversation(
   conversationId: string,
-  limit?: number
+  limit?: number,
+  userId?: string
 ) {
   console.log("[supabase] Fetching messages for conversation_id:", conversationId);
 
   const data = await apiGet<any[]>(
     `/api/conversations/${encodeURIComponent(conversationId)}/messages`,
+    userId,
   );
 
   // Preserve the previous `.limit(n)` behavior (first n in ascending order).
@@ -148,10 +150,14 @@ export async function createMessage(messageData: Message) {
   return data;
 }
 
-export async function getStatesByConversation(conversationId: string) {
+export async function getStatesByConversation(
+  conversationId: string,
+  userId?: string
+) {
   // Chronological list of message-level states, scoped to the owning user.
   const data = await apiGet<any[]>(
     `/api/conversations/${encodeURIComponent(conversationId)}/states`,
+    userId,
   );
   return data;
 }
@@ -160,8 +166,11 @@ export async function getStatesByConversation(conversationId: string) {
  * Get the latest message-level state for a conversation (descending by
  * created_at). Returns null when the conversation has no states yet.
  */
-export async function getLatestStateByConversation(conversationId: string) {
-  const states = await getStatesByConversation(conversationId);
+export async function getLatestStateByConversation(
+  conversationId: string,
+  userId?: string
+) {
+  const states = await getStatesByConversation(conversationId, userId);
   if (!states || states.length === 0) return null;
   // States arrive in ascending order; the last one is the most recent.
   return states[states.length - 1];
@@ -172,9 +181,13 @@ export async function getLatestStateByConversation(conversationId: string) {
  * This contains the hypothesis, insights, datasets, suggested next steps, etc.
  * Returns null when the conversation has no persistent state.
  */
-export async function getConversationState(conversationId: string) {
+export async function getConversationState(
+  conversationId: string,
+  userId?: string
+) {
   const data = await apiGet<any | null>(
     `/api/conversations/${encodeURIComponent(conversationId)}/state`,
+    userId,
   );
   return data || null;
 }

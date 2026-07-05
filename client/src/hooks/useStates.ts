@@ -115,7 +115,7 @@ export function useStates(
 
         // Fetch message-level state (for thinking steps, etc.) via the
         // auth-gated API; returns the most recent state or null.
-        const data = await getLatestStateByConversation(conversationId);
+        const data = await getLatestStateByConversation(conversationId, userId);
 
         if (mounted) {
           if (data) {
@@ -133,7 +133,7 @@ export function useStates(
 
         // Fetch conversation-level state (for research state - hypothesis, insights, etc.)
         try {
-          const convState = await getConversationState(conversationId);
+          const convState = await getConversationState(conversationId, userId);
           if (mounted) {
             if (convState) {
               console.log("[useStates] Fetched conversation state:", convState);
@@ -182,7 +182,7 @@ export function useStates(
 
       try {
         // Poll for conversation state updates (research state)
-        const convState = await getConversationState(conversationId);
+        const convState = await getConversationState(conversationId, userId);
         if (mounted && convState) {
           // Only update if values changed (use ref to avoid stale closure)
           const currentValues = JSON.stringify(conversationStateRef.current?.values || {});
@@ -269,7 +269,7 @@ export function useStates(
           console.log("[useStates] ConversationState INSERT:", payload);
           // Re-fetch to get the linked state
           try {
-            const convState = await getConversationState(conversationId);
+            const convState = await getConversationState(conversationId, userId);
             if (convState) {
               console.log(
                 "[useStates] Updated conversation state from INSERT:",
@@ -308,7 +308,7 @@ export function useStates(
           } else {
             // If we don't have the conversation state yet, fetch it
             try {
-              const convState = await getConversationState(conversationId);
+              const convState = await getConversationState(conversationId, userId);
               if (convState && convState.id === updatedConvState.id) {
                 console.log(
                   "[useStates] ✅ Fetched and set conversation state from UPDATE",
@@ -338,7 +338,7 @@ export function useStates(
   const refetchConversationState = async () => {
     try {
       console.log("[useStates] Manual refetch triggered");
-      const convState = await getConversationState(conversationId);
+      const convState = await getConversationState(conversationId, userId);
       if (convState) {
         console.log("[useStates] Refetched conversation state:", convState.id);
         setConversationState(convState as ConversationState);

@@ -213,7 +213,7 @@ export function ChatPage({
     if (conversationId !== currentSessionIdRef.current) return;
 
     try {
-      const dbMessages = await getMessagesByConversation(conversationId);
+      const dbMessages = await getMessagesByConversation(conversationId, undefined, userId);
       const updatedMsg = dbMessages.find((m: any) => m.id === messageId);
 
       if (updatedMsg?.content) {
@@ -529,7 +529,7 @@ export function ChatPage({
       if (!messageId) return;
 
       try {
-        const dbMessages = await getMessagesByConversation(currentSessionId);
+        const dbMessages = await getMessagesByConversation(currentSessionId, undefined, userId);
         const targetMsg = dbMessages.find((m: any) => m.id === messageId);
 
         if (targetMsg?.content && mounted) {
@@ -586,7 +586,7 @@ export function ChatPage({
     async function fetchAndAttachStates() {
       try {
         const { getStatesByConversation } = await import("../lib/supabase");
-        const states = await getStatesByConversation(currentSessionId);
+        const states = await getStatesByConversation(currentSessionId, userId);
 
         if (!states || states.length === 0) return false;
 

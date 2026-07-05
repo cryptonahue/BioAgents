@@ -206,7 +206,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
           const sessionsWithMessages = await Promise.all(
             conversations.map(async (conv) => {
               try {
-                const messages = await getMessagesByConversation(conv.id!);
+                const messages = await getMessagesByConversation(conv.id!, undefined, userId);
 
                 // Convert DB messages to UI format
                 const uiMessages = convertDBMessagesToUIMessages(messages);
@@ -346,7 +346,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
       pollCount++;
 
       try {
-        const messages = await getMessagesByConversation(currentSessionId);
+        const messages = await getMessagesByConversation(currentSessionId, undefined, userId);
         if (!mounted) return;
 
         const uiMessages = convertDBMessagesToUIMessages(messages);
@@ -782,7 +782,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
     if (!currentSessionId) return;
 
     try {
-      const messages = await getMessagesByConversation(currentSessionId);
+      const messages = await getMessagesByConversation(currentSessionId, undefined, userId);
       const uiMessages = convertDBMessagesToUIMessages(messages);
 
       setSessions((prev) =>
