@@ -41,7 +41,10 @@ try {
   const { execSync } = await import('child_process');
   gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
 } catch (e) {
-  console.warn('⚠️  Could not read git SHA');
+  // In containers without git (e.g. Dockerfile.coolify) fall back to the
+  // GIT_SHA build arg so the footer still shows a real commit.
+  gitSha = process.env.GIT_SHA || 'unknown';
+  if (gitSha === 'unknown') console.warn('⚠️  Could not read git SHA');
 }
 
 const buildDate = new Date().toISOString();

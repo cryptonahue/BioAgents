@@ -63,6 +63,14 @@ ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 ENV PRIVY_APP_ID=${PRIVY_APP_ID}
 ENV CORALGPT_HERO_VIDEO_URL=${CORALGPT_HERO_VIDEO_URL}
 
+# --- Metadata de versión para el footer ---
+# Coolify expone el commit desplegado como SOURCE_COMMIT. GIT_SHA también se
+# puede setear a mano como Build Variable. build.ts lee process.env.GIT_SHA
+# cuando el binario `git` no está disponible en el contenedor.
+ARG SOURCE_COMMIT=""
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA:-${SOURCE_COMMIT}}
+
 # Build del cliente (Preact -> client/dist).
 RUN cd client && bun run build
 
