@@ -2,6 +2,18 @@ import logger from "./logger";
 import type { PlanTask } from "../types/core";
 
 export type PlanningResult = {
+  /**
+   * Triage decision for the pipeline.
+   * - "research": run the full deep-research cycle (default, backward-safe).
+   * - "clarify": the message is a greeting/smalltalk/off-topic with no research
+   *   topic yet; the pipeline should short-circuit with a conversational reply.
+   * Only the initial planning (no existing plan) can ever produce "clarify".
+   */
+  mode: "clarify" | "research";
+  /**
+   * Short, warm, user-facing message used when mode === "clarify".
+   */
+  clarificationReply?: string;
   currentObjective: string;
   plan: Array<PlanTask>;
 };
@@ -63,6 +75,7 @@ export function extractPlanningResult(
   // Strategy 5: Return minimal default with fallback objective
   method = "default";
   const defaultResult: PlanningResult = {
+    mode: "research",
     currentObjective:
       fallbackObjective || "Continue research based on user query",
     plan: fallbackObjective
@@ -92,6 +105,8 @@ export function extractPlanningResult(
  */
 function extractFieldsWithRegex(content: string): PlanningResult {
   const result: PlanningResult = {
+    // Regex extraction only detects tasks, never a clarify decision.
+    mode: "research",
     currentObjective: "",
     plan: [],
   };
@@ -126,7 +141,19 @@ function extractFieldsWithRegex(content: string): PlanningResult {
  * Normalize result to ensure all required fields exist
  */
 function normalizeResult(result: Partial<PlanningResult>): PlanningResult {
+  // Backward-safe: only an explicit "clarify" gates the pipeline. A missing or
+  // invalid mode defaults to "research" so a real query is never dropped.
+  const mode: "clarify" | "research" =
+    result.mode === "clarify" ? "clarify" : "research";
+  const clarificationReply =
+    typeof result.clarificationReply === "string" &&
+    result.clarificationReply.trim()
+      ? result.clarificationReply
+      : undefined;
+
   return {
+    mode,
+    ...(clarificationReply ? { clarificationReply } : {}),
     currentObjective: result.currentObjective || "",
     plan: (result.plan || []).map((task, index) => ({
       ...task,

@@ -51,6 +51,19 @@ function resolveDatasetPaths(
 }
 
 export type PlanningResult = {
+  /**
+   * Triage decision for the deep-research pipeline.
+   * - "research": run the full cycle (default, backward-safe).
+   * - "clarify": fresh, topic-less message (greeting/smalltalk/off-topic) that
+   *   should short-circuit with a conversational reply. Only produced by the
+   *   initial planning path (no existing plan); the ongoing/"next" path is
+   *   always "research".
+   */
+  mode: "clarify" | "research";
+  /**
+   * Short, warm, user-facing message used when mode === "clarify".
+   */
+  clarificationReply?: string;
   currentObjective: string;
   plan: Array<PlanTask>;
 };
@@ -258,6 +271,12 @@ async function generatePlan(
 
   // Extract planning result with multi-strategy fallback
   const result = extractPlanningResult(rawContent, message.question);
+
+  // The ongoing/"next" planning path never gates the pipeline: a session that
+  // already has a plan is, by definition, established research. Only the
+  // initial-planning path (generateInitialPlan) may emit "clarify".
+  result.mode = "research";
+  result.clarificationReply = undefined;
 
   logger.info(
     {

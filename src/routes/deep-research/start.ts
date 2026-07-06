@@ -1314,6 +1314,67 @@ async function runDeepResearch(params: {
           researchMode,
         });
 
+        // =====================================================================
+        // TRIAGE GATE
+        // The planning agent classifies a fresh, topic-less message (greeting,
+        // smalltalk, off-topic) as "clarify". In that case we short-circuit:
+        // reply conversationally and SKIP task execution, hypothesis,
+        // reflection, and discovery — no empty hypothesis/discovery/state
+        // artifacts are written. Only the initial planning of this message can
+        // gate; any established plan defaults to "research".
+        // =====================================================================
+        if (
+          iterationCount === 1 &&
+          deepResearchPlanningResult.mode === "clarify"
+        ) {
+          const clarifyReply =
+            deepResearchPlanningResult.clarificationReply?.trim() ||
+            "Hi! I'm a bioscience research assistant. Tell me a compound, gene, organism, or research question you'd like me to investigate and I'll get started.";
+
+          logger.info(
+            {
+              messageId: createdMessage.id,
+              conversationId: createdMessage.conversation_id,
+            },
+            "triage_clarify_short_circuit",
+          );
+
+          // Drop the transient "planning" activity and mark the freshly
+          // generated objective trace stale (no research actually ran).
+          await clearConversationActivity({ staleTrace: true });
+
+          // Persist the conversational reply onto the user's message so history
+          // renders normally, then notify the client over the same channel the
+          // normal reply uses.
+          const clarifyResponseTime = Date.now() - iterationStartTime;
+          await updateMessage(createdMessage.id, {
+            content: clarifyReply,
+            summary: clarifyReply,
+            response_time: clarifyResponseTime,
+          });
+          await notifyMessageUpdated(
+            `in-process-${createdMessage.id}`,
+            createdMessage.conversation_id,
+            createdMessage.id,
+          );
+
+          try {
+            await markRunFinished({
+              conversationStateId,
+              result: "completed",
+              rootMessageId,
+              stateId: stateRecord.id,
+            });
+          } catch (error) {
+            logger.warn(
+              { error, conversationStateId, rootMessageId },
+              "deep_research_run_finish_mark_failed_on_clarify",
+            );
+          }
+
+          return;
+        }
+
         const plan = deepResearchPlanningResult.plan;
         currentObjective = deepResearchPlanningResult.currentObjective;
 
