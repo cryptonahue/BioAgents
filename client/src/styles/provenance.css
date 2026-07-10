@@ -83,10 +83,12 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  /* Allow this flex/grid child to shrink below its content so the
-     canvaswrap can own the scroll. */
+  /* Allow this flex/grid child to shrink below its content, and clip
+     to its bounded box, so the canvaswrap's overflow:auto owns the
+     scroll (nested grid→flex scroll boundary). */
   min-height: 0;
   min-width: 0;
+  overflow: hidden;
   background: #1a1a1a;
   color: #ededed;
 }
@@ -369,6 +371,11 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* Clip to the viewport so the flex children stay bounded and the
+     canvaswrap's own overflow:auto owns the scroll. Without this the
+     children can exceed 100vh and body{overflow:hidden} clips the
+     bottom (no scrollbar ever appears). */
+  overflow: hidden;
   background: #0a0a0a;
   color: #ededed;
 }
