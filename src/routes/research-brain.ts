@@ -1198,7 +1198,18 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
         //    deploys.
         let buffer: Buffer | null = null;
 
-        const storage = getStorageProvider();
+        // getStorageProvider() itself can THROW (e.g. STORAGE_PROVIDER=s3
+        // with an incomplete/invalid config) — swallow it so a broken
+        // provider never bypasses the local-disk fallback below.
+        let storage: ReturnType<typeof getStorageProvider> = null;
+        try {
+          storage = getStorageProvider();
+        } catch (err) {
+          logger.warn(
+            { err, sourceId },
+            "research_brain_pdf_storage_init_failed",
+          );
+        }
         if (storage) {
           try {
             buffer = await storage.download(filePath);
