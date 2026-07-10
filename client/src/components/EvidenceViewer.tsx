@@ -3,8 +3,10 @@
  *
  * Used by both the EvidenceLightbox (inline modal) and the
  * dedicated /viewer/:sourceId route. Renders pages of the source
- * PDF at the fixed 1.5× scale and overlays a highlight div at
- * the resolved bbox.
+ * PDF at a dynamic scale (fit-to-width by default, plus optional
+ * manual zoom controls) and overlays a highlight div at the
+ * resolved bbox. The overlay is computed with the SAME live scale
+ * the canvas renders at, so highlights stay aligned at any zoom.
  *
  * The component reads `bbox` and `type` either from props (lightbox
  * usage) or from the URL hash (dedicated route). The hash-derived
@@ -47,6 +49,21 @@ interface EvidenceViewerProps {
   // Called when the URL hash is the source of truth (dedicated
   // route). The parent can use this to set `window.location.hash`.
   onHashChange?: (state: HashState) => void;
+  // Opt-in visible zoom toolbar (− / fit / +). The dedicated
+  // /viewer route sets this true; the lightbox leaves it off to
+  // keep its chrome unchanged. Fit-to-width applies regardless.
+  showZoomControls?: boolean;
+}
+
+// Manual zoom is clamped to a sane range; fit-to-width is clamped
+// to the same bounds so an extreme container size can't produce a
+// degenerate scale.
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 4;
+const ZOOM_STEP = 1.2;
+
+function clampScale(scale: number): number {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
 export function EvidenceViewer({
@@ -59,15 +76,27 @@ export function EvidenceViewer({
   page: pageProp,
   imageUrl: imageUrlProp,
   onHashChange,
+  showZoomControls = false,
 }: EvidenceViewerProps) {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [bbox, setBbox] = useState<BBox | null>(bboxProp ?? null);
   const [type, setType] = useState<ProvenanceType>(typeProp ?? "chunk");
   const [pageRender, setPageRender] = useState<PdfPageProxy | null>(null);
+  // Live render scale. Starts at the legacy fixed value; the fit
+  // effect overrides it to fit-to-width once the page + container
+  // are measured. Manual zoom controls also write here.
+  const [scale, setScale] = useState<number>(PDFJS_RENDER_SCALE);
+  // When true, the scale tracks the container width (recomputed on
+  // resize). Manual − / + turn this OFF; the fit button turns it
+  // back ON.
+  const [fitMode, setFitMode] = useState<boolean>(true);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textLayerRef = useRef<HTMLDivElement | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  // The scroll container (canvaswrap). Its clientWidth minus padding
+  // is the "available width" used for fit-to-width.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Hash sync: when no props are passed, derive state from the URL
   // hash. Re-read on `hashchange` (back/forward navigation).
@@ -117,7 +146,7 @@ export function EvidenceViewer({
         if (!canvas || !textLayer) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const viewport = page.getViewport({ scale: PDFJS_RENDER_SCALE });
+        const viewport = page.getViewport({ scale });
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
         canvas.style.width = `${Math.floor(viewport.width)}px`;
@@ -164,12 +193,12 @@ export function EvidenceViewer({
             item.transform[2] || 0,
             item.transform[3] || 0,
           );
-          const x = item.transform[4] * PDFJS_RENDER_SCALE;
-          const yTop = viewport.height - item.transform[5] * PDFJS_RENDER_SCALE;
+          const x = item.transform[4] * scale;
+          const yTop = viewport.height - item.transform[5] * scale;
           span.style.position = "absolute";
           span.style.left = `${x}px`;
-          span.style.top = `${yTop - fontHeight * PDFJS_RENDER_SCALE}px`;
-          span.style.fontSize = `${fontHeight * PDFJS_RENDER_SCALE}px`;
+          span.style.top = `${yTop - fontHeight * scale}px`;
+          span.style.fontSize = `${fontHeight * scale}px`;
           span.style.whiteSpace = "pre";
           span.style.color = "transparent";
           fragment.appendChild(span);
@@ -191,7 +220,70 @@ export function EvidenceViewer({
         renderTaskRef.current = null;
       }
     };
-  }, [doc, pageNumber]);
+  }, [doc, pageNumber, scale]);
+
+  // Fit-to-width. Computes the scale so the page fills the available
+  // width of the scroll container (clientWidth minus horizontal
+  // padding — NOT the sidebar, which lives outside this container).
+  // Recomputes on container resize while `fitMode` is on. Because
+  // PDF.js returns the same PdfPageProxy instance for a given page,
+  // setting the fit scale settles: once `scale` equals the fit
+  // value, the render effect re-runs with the same page instance and
+  // this effect recomputes the same value, so no update is emitted.
+  useEffect(() => {
+    if (!fitMode) return;
+    const page = pageRender;
+    const container = scrollRef.current;
+    if (!page || !container) return;
+
+    const computeFit = (): number | null => {
+      const naturalWidth = page.getViewport({ scale: 1 }).width;
+      if (!naturalWidth) return null;
+      const styles = window.getComputedStyle(container);
+      const paddingX =
+        (parseFloat(styles.paddingLeft) || 0) +
+        (parseFloat(styles.paddingRight) || 0);
+      const available = container.clientWidth - paddingX;
+      if (available <= 0) return null;
+      return clampScale(available / naturalWidth);
+    };
+
+    let raf = 0;
+    const recompute = () => {
+      const next = computeFit();
+      if (next == null) return;
+      // Skip micro-updates to avoid a resize/render feedback loop.
+      setScale((prev) => (Math.abs(prev - next) > 0.001 ? next : prev));
+    };
+
+    recompute();
+    const observer = new ResizeObserver(() => {
+      // Debounce bursts of resize callbacks into one rAF tick.
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(recompute);
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [fitMode, pageRender]);
+
+  const zoomIn = useCallback(() => {
+    setFitMode(false);
+    setScale((s) => clampScale(s * ZOOM_STEP));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setFitMode(false);
+    setScale((s) => clampScale(s / ZOOM_STEP));
+  }, []);
+
+  const fitToWidth = useCallback(() => {
+    // Re-enabling fit mode makes the fit effect recompute on its
+    // next run (it depends on `fitMode`).
+    setFitMode(true);
+  }, []);
 
   const goToPage = useCallback(
     (next: number) => {
@@ -257,8 +349,44 @@ export function EvidenceViewer({
             provenance: text-only
           </span>
         ) : null}
+        {showZoomControls ? (
+          <div
+            className="provenance-viewer__zoom"
+            role="group"
+            aria-label="Zoom controls"
+          >
+            <button
+              type="button"
+              className="provenance-viewer__nav"
+              onClick={zoomOut}
+              disabled={scale <= MIN_SCALE + 1e-6}
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="provenance-viewer__zoomlevel"
+              onClick={fitToWidth}
+              aria-pressed={fitMode}
+              aria-label="Fit page to width"
+              title="Fit to width"
+            >
+              {Math.round(scale * 100)}%{fitMode ? " · Fit" : ""}
+            </button>
+            <button
+              type="button"
+              className="provenance-viewer__nav"
+              onClick={zoomIn}
+              disabled={scale >= MAX_SCALE - 1e-6}
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+          </div>
+        ) : null}
       </div>
-      <div className="provenance-viewer__canvaswrap">
+      <div ref={scrollRef} className="provenance-viewer__canvaswrap">
         <canvas ref={canvasRef} className="provenance-viewer__canvas" />
         <div
           ref={textLayerRef}
@@ -270,6 +398,7 @@ export function EvidenceViewer({
             bbox={bbox}
             type={type}
             imageUrl={imageUrlProp}
+            scale={scale}
             className="provenance-viewer__overlay"
           />
         ) : null}

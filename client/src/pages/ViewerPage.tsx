@@ -83,6 +83,7 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
           isLoading={isLoading}
           error={error}
           numPages={numPages}
+          showZoomControls
         />
         <aside className="viewer-page__sidebar" aria-label="Evidence list">
           <h3>Evidence</h3>

@@ -20,7 +20,7 @@
  * attribute ships for E2E selectors.
  */
 import { ProvenanceType } from "../hooks/useProvenance";
-import { BBox, bboxToPixels } from "../lib/bbox";
+import { BBox, bboxToPixels, PDFJS_RENDER_SCALE } from "../lib/bbox";
 
 interface BboxOverlayProps {
   bbox: BBox | null;
@@ -34,6 +34,13 @@ interface BboxOverlayProps {
    * the behavior is the pre-change purple class for figures.
    */
   imageUrl?: string;
+  /**
+   * Live render scale of the canvas. The overlay MUST use the
+   * SAME scale the page was rendered at so the highlight stays
+   * aligned under dynamic zoom (fit-to-width + manual controls).
+   * Defaults to `PDFJS_RENDER_SCALE` for backward compatibility.
+   */
+  scale?: number;
 }
 
 const TYPE_CLASS: Record<Exclude<ProvenanceType, "text-only">, string> = {
@@ -53,9 +60,10 @@ export function BboxOverlay({
   type,
   className,
   imageUrl,
+  scale = PDFJS_RENDER_SCALE,
 }: BboxOverlayProps) {
   if (!bbox || type === "text-only") return null;
-  const pixels = bboxToPixels(bbox);
+  const pixels = bboxToPixels(bbox, scale);
   // PR #2: figures resolve to a different class based on
   // `imageUrl`. Tables and chunks resolve via the static map.
   const typeClass =
