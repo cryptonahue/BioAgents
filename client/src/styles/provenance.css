@@ -161,6 +161,31 @@
   background: #2a2a2a;
   padding: 24px;
   text-align: center;
+  /* Force a VISIBLE scrollbar. The content scrolls fine, but the OS
+     default is an overlay scrollbar (0px gutter) that's invisible on
+     this dark background — users read that as "can't scroll". Firefox
+     standard props: */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.06);
+}
+/* WebKit/Chromium: an explicit width forces a classic (non-overlay,
+   always-visible) scrollbar with a reserved gutter. */
+.provenance-viewer__canvaswrap::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.provenance-viewer__canvaswrap::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+.provenance-viewer__canvaswrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.provenance-viewer__canvaswrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+  background-clip: padding-box;
 }
 .provenance-viewer__canvas {
   display: inline-block;
