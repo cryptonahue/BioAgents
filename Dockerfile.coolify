@@ -64,9 +64,15 @@ ENV PRIVY_APP_ID=${PRIVY_APP_ID}
 ENV CORALGPT_HERO_VIDEO_URL=${CORALGPT_HERO_VIDEO_URL}
 
 # --- Metadata de versión para el footer ---
-# Coolify expone el commit desplegado como SOURCE_COMMIT. GIT_SHA también se
-# puede setear a mano como Build Variable. build.ts lee process.env.GIT_SHA
-# cuando el binario `git` no está disponible en el contenedor.
+# OJO: Coolify expone SOURCE_COMMIT como env var de RUNTIME siempre, pero como
+# build-arg SOLO si activás "Include Source Commit in Build" en Advanced (off por
+# defecto, para no romper el cache de capas). Por eso estos ARG llegan vacíos en
+# un build normal y el footer termina mostrando "unknown".
+#
+# Solución recomendada (sin tocar el build ni romper cache): en Coolify definí la
+# env var de RUNTIME  GIT_SHA=$SOURCE_COMMIT . Al ser runtime, pisa el ENV vacío
+# de abajo y version.ts (process.env.GIT_SHA) la lee al primer request.
+# El fallback a `git rev-parse` NO sirve acá: .dockerignore excluye .git/.
 ARG SOURCE_COMMIT=""
 ARG GIT_SHA=""
 ENV GIT_SHA=${GIT_SHA:-${SOURCE_COMMIT}}
