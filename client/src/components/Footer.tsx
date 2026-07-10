@@ -1,9 +1,11 @@
 /**
- * Footer — displays build version (semver + short SHA + build date) and
- * the server-reported version (fetched from /api/version).
+ * Footer — displays the running server version (semver + short SHA + build
+ * date), fetched from /api/version.
  *
- * Renders unobtrusively at the bottom of the app. Falls back to build-time
- * values if the server is unreachable.
+ * The server value is authoritative: it reflects what's actually deployed
+ * and running. Build-time values are only a fallback for when the server is
+ * unreachable (the client bundle can't always bake the git SHA — e.g. the
+ * commit isn't available at build time on some deploy hosts).
  */
 
 import { useEffect, useState } from 'preact/hooks';
@@ -55,10 +57,6 @@ export function Footer() {
   const sha = serverVersion?.sha || BUILD_SHA;
   const buildDate = serverVersion?.buildDate || BUILD_DATE;
 
-  const mismatch =
-    serverVersion &&
-    (serverVersion.version !== BUILD_VERSION || serverVersion.sha !== BUILD_SHA);
-
   return (
     <footer
       style={{
@@ -73,22 +71,13 @@ export function Footer() {
         gap: '12px',
         background: 'var(--color-bg-footer, transparent)',
       }}
-      title={
-        mismatch
-          ? `Build mismatch — bundled: ${BUILD_VERSION} (${shortSha(BUILD_SHA)}), server: ${serverVersion?.version} (${shortSha(serverVersion?.sha || '')})`
-          : `Build ${version} (${shortSha(sha)}) at ${formatDate(buildDate)}`
-      }
+      title={`Build ${version} (${shortSha(sha)}) at ${formatDate(buildDate)}`}
     >
       <span>
         BioAgents <strong>v{version}</strong>
         <span style={{ opacity: 0.6 }}> · {shortSha(sha)}</span>
         <span style={{ opacity: 0.6 }}> · {formatDate(buildDate)}</span>
       </span>
-      {mismatch && (
-        <span style={{ color: 'var(--color-warning, #d97706)' }}>
-          ⚠ version mismatch
-        </span>
-      )}
     </footer>
   );
 }
