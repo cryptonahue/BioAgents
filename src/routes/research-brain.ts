@@ -50,6 +50,7 @@ import {
   downloadFigure,
   FigureNotFoundError,
 } from "../storage/figureStorage";
+import { LocalStorageProvider } from "../storage/providers/local";
 import logger from "../utils/logger";
 
 function getDocsPath(): string {
@@ -1184,31 +1185,62 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
           return { error: "Source has no PDF file" };
         }
 
-        // 2. Storage provider check. No provider means the
-        //    infrastructure is not configured for the proxy — the
-        //    design defers a "PDF not available" fallback to the
-        //    lightbox (no fallback to the local docs path).
+        // 2. Load the PDF bytes. Two sources, tried in order:
+        //    (a) the configured storage provider (S3 in prod), then
+        //    (b) local disk under KNOWLEDGE_DOCS_PATH.
+        //    The fallback matters because Library papers are seeded to
+        //    disk and never uploaded to S3 — `file_path` holds a local
+        //    path (e.g. `docs/marinedrugs/foo.pdf`) that S3 can't
+        //    resolve as a key (NoSuchKey), and the Library's own
+        //    `/api/library/:docId/file` endpoint serves the same file
+        //    straight off disk. Falling back here keeps the provenance
+        //    viewer in sync with the Library viewer on single-node
+        //    deploys.
+        let buffer: Buffer | null = null;
+
         const storage = getStorageProvider();
-        if (!storage) {
+        if (storage) {
+          try {
+            buffer = await storage.download(filePath);
+          } catch (err) {
+            logger.warn(
+              { err, sourceId, filePath },
+              "research_brain_pdf_storage_download_failed",
+            );
+          }
+        }
+
+        if (!buffer || buffer.length === 0) {
+          // Local-disk fallback. LocalStorageProvider carries the
+          // path-traversal guard (resolves `file_path` against the
+          // docs root and refuses `..` escapes).
+          const localRoot =
+            process.env.LOCAL_STORAGE_ROOT ||
+            process.env.KNOWLEDGE_DOCS_PATH ||
+            "docs";
+          try {
+            buffer = await new LocalStorageProvider({
+              rootDir: localRoot,
+            }).download(filePath);
+          } catch (err) {
+            logger.warn(
+              { err, sourceId, filePath, localRoot },
+              "research_brain_pdf_local_fallback_failed",
+            );
+          }
+        }
+
+        if (!buffer || buffer.length === 0) {
           logger.warn(
-            { sourceId, filePath },
-            "research_brain_pdf_storage_unconfigured",
+            { sourceId, filePath, hasStorage: Boolean(storage) },
+            "research_brain_pdf_unavailable",
           );
           set.status = 502;
           return {
-            error: "PDF storage is not configured",
+            error: "PDF unavailable",
             message:
-              "STORAGE_PROVIDER is unset; the PDF proxy is unavailable in this environment.",
+              "The source PDF could not be read from cloud storage or local disk.",
           };
-        }
-
-        // 3. Download the buffer from S3. The StorageProvider.download
-        //    contract is Buffer (Node), and Elysia can serialize a
-        //    Buffer as the response body with explicit headers.
-        const buffer = await storage.download(filePath);
-        if (!buffer || buffer.length === 0) {
-          set.status = 502;
-          return { error: "PDF download returned empty buffer" };
         }
         if (buffer.length > MAX_PDF_BYTES) {
           set.status = 413;
