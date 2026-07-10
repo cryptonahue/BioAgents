@@ -2,11 +2,13 @@ import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
 import { useAuth, useAdmin } from '../hooks';
+import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
 
 export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { logout, isLoggingOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const { version, sha, buildDate } = useVersion();
 
   const handleLogout = async () => {
     if (coralGptMode && privyLogout) {
@@ -53,28 +55,30 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
           <>
             <div className="sidebar-branding">
               <div className="sidebar-logo">
-                <div className="logo-icon">
+                {coralGptMode ? (
                   <img
-                    src="/images/token.png"
-                    alt=""
-                    width={24}
-                    height={24}
+                    src="/images/MesoReefDAO.png"
+                    alt="MesoReefDAO"
+                    className="sidebar-logo-img"
                     decoding="async"
                   />
-                </div>
-                <div className="logo-text">
-                  {coralGptMode ? (
-                    <>
-                      <span className="logo-bio">CORAL</span>
-                      <span className="logo-agents">GPT</span>
-                    </>
-                  ) : (
-                    <>
+                ) : (
+                  <>
+                    <div className="logo-icon">
+                      <img
+                        src="/images/token.png"
+                        alt=""
+                        width={24}
+                        height={24}
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="logo-text">
                       <span className="logo-bio">BIO</span>
                       <span className="logo-agents">AGENTS</span>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="sidebar-header-actions">
                 {/* Close button for mobile */}
@@ -251,6 +255,12 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               {isLoggingOut ? 'Logging out...' : 'Logout'}
             </Button>
+            <div
+              className="sidebar-version"
+              title={`Build ${version} (${shortSha(sha)}) at ${formatDate(buildDate)}`}
+            >
+              BioAgents v{version} · {shortSha(sha)} · {formatDate(buildDate)}
+            </div>
           </div>
         </>
       )}
