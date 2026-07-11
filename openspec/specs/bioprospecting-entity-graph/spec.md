@@ -158,14 +158,14 @@ and MUST NOT execute any database query.
 
 #### Scenario: Each of the three kinds is accepted
 
-- GIVEN an admin caller
+- GIVEN an authenticated caller
 - WHEN the search endpoint is called with `:kind` equal to `bioactivity`,
   then `application_area`, then `assay_model`
 - THEN each call returns HTTP 200 with a valid entity result body
 
 #### Scenario: Unknown kind is rejected before any DB access
 
-- GIVEN an admin caller
+- GIVEN an authenticated caller
 - WHEN the search endpoint is called with `:kind = geography` (a
   deferred/out-of-scope kind) or any other value not in the allowlist
 - THEN the response is HTTP 400 with body
@@ -405,10 +405,12 @@ export async function expandEntity(
 ### Requirement: Search Endpoint GET /api/research-brain/graph/entities/:kind/search
 
 The system MUST expose `GET /api/research-brain/graph/entities/:kind/search`
-in `src/routes/research-brain-graph.ts`, reusing the existing admin-gated
-`authResolver({ required: true, role: "admin" })` pattern already applied
-to `/graph/compounds/search` in the same file. The endpoint returns the
-distinct normalized entity nodes for the given kind.
+in `src/routes/research-brain-graph.ts`, reusing the same
+`authResolver({ required: true })` gate already applied to
+`/graph/compounds/search` in the same file — authentication required, NO
+role restriction, so any authenticated caller (read-only) can read it.
+The endpoint returns the distinct normalized entity nodes for the given
+kind.
 
 **Endpoint contract:**
 
@@ -420,8 +422,9 @@ distinct normalized entity nodes for the given kind.
     When absent, all nodes for the kind (up to `limit`) are returned.
   - `limit` (optional, integer) — page size. Default 20, max 100.
     Out-of-range values are clamped silently.
-- Authentication: admin-only, identical to `/graph/compounds/search`.
-  401 when no auth context, 403 when authenticated but not `admin`.
+- Authentication: `authResolver({ required: true })` — any authenticated
+  caller (read-only), identical to `/graph/compounds/search`. 401 when no
+  auth context. NO role restriction (no 403 for non-admin callers).
 - Response: HTTP 200 with body:
 
 ```json
@@ -446,13 +449,12 @@ distinct normalized entity nodes for the given kind.
   - 400 `{ "error": "unknown entity kind", "allowed": [...] }` on a
     `:kind` not in the allowlist.
   - 401 on no auth (per the resolver's contract).
-  - 403 on non-admin auth.
   - 500 `{ "error": "internal_error" }` on DB error (the service role's
     error message MUST NOT leak into the response body).
 
 #### Scenario: Search returns normalized entity nodes for a kind
 
-- GIVEN an admin caller and a populated facts table
+- GIVEN an authenticated caller and a populated facts table
 - WHEN `GET /api/research-brain/graph/entities/bioactivity/search?q=anti`
   is called
 - THEN the response is HTTP 200
@@ -465,7 +467,7 @@ distinct normalized entity nodes for the given kind.
 #### Scenario: Unknown kind returns 400
 
 - WHEN `GET /api/research-brain/graph/entities/geography/search` is called
-  by an admin
+  by an authenticated caller
 - THEN the response is HTTP 400 with body
   `{ "error": "unknown entity kind", "allowed": ["bioactivity", "application_area", "assay_model"] }`
 
@@ -480,8 +482,9 @@ distinct normalized entity nodes for the given kind.
 
 The system MUST expose
 `GET /api/research-brain/graph/entities/:kind/:value/expand` in
-`src/routes/research-brain-graph.ts`, admin-gated identically to the other
-graph endpoints. The endpoint returns the 1-hop neighborhood
+`src/routes/research-brain-graph.ts`, gated identically to the other
+read-only graph endpoints (`authResolver({ required: true })` — any
+authenticated caller, read-only). The endpoint returns the 1-hop neighborhood
 (compounds / facts / sources) for a single normalized entity value.
 
 **Endpoint contract:**
@@ -496,7 +499,8 @@ graph endpoints. The endpoint returns the 1-hop neighborhood
     node as the normalized form (`antifungal`).
 - Query parameter `limit` (optional, integer) — cap on returned rows per
   collection. Default 20, max 100, clamped silently.
-- Authentication: admin-only (401 / 403 as above).
+- Authentication: `authResolver({ required: true })` — any authenticated
+  caller (read-only). 401 when no auth context; no role restriction.
 - Response: HTTP 200 with body:
 
 ```json
@@ -518,12 +522,12 @@ graph endpoints. The endpoint returns the 1-hop neighborhood
 
 - Behavior on a value with no matching facts: HTTP 200 with empty
   `compounds`, `facts`, and `sources` arrays — NOT a 404 and NOT a 500.
-- Error responses: 400 unknown kind, 401 no auth, 403 non-admin, 500 DB
-  error (`{ "error": "internal_error" }`, no leaked detail).
+- Error responses: 400 unknown kind, 401 no auth, 500 DB error
+  (`{ "error": "internal_error" }`, no leaked detail).
 
 #### Scenario: Expand returns the 1-hop neighborhood
 
-- GIVEN an admin caller and `bioactivity` node `antifungal` linked to 2
+- GIVEN an authenticated caller and `bioactivity` node `antifungal` linked to 2
   compounds, 3 facts, 2 sources
 - WHEN `GET /api/research-brain/graph/entities/bioactivity/antifungal/expand`
   is called
@@ -540,22 +544,36 @@ graph endpoints. The endpoint returns the 1-hop neighborhood
 
 #### Scenario: Expand on a value with no matches returns 200 empty
 
-- GIVEN an admin caller
+- GIVEN an authenticated caller
 - WHEN `GET /api/research-brain/graph/entities/bioactivity/nonexistent/expand`
   is called
 - THEN the response is HTTP 200
 - AND `compounds`, `facts`, and `sources` are all empty arrays
 - AND no error is returned
 
-### Requirement: Admin Authentication Gate
+### Requirement: Authentication Gate (Any Authenticated Caller, Read-Only)
 
-Both entity endpoints MUST be wrapped in
-`authResolver({ required: true, role: "admin" })`, consistent with the
-existing `/graph/compounds/search` route in the same file. The endpoints
-MUST return HTTP 401 when the caller has no auth context and HTTP 403 when
-the caller is authenticated but not in the `admin` role, before executing
-any database query. This change MUST NOT widen `authResolver` to add a new
-role branch.
+Both entity read endpoints —
+`GET /api/research-brain/graph/entities/:kind/search` and
+`GET /api/research-brain/graph/entities/:kind/:value/expand` — MUST be
+gated by `authResolver({ required: true })`: authentication required, NO
+role restriction, so **any authenticated caller (read-only)** — a valid
+JWT of any role, an x402/b402 payment proof, or an api-key — can read
+them. This is what lets the `/graph` explorer page serve all whitelisted
+users, not just admins.
+
+The endpoints MUST return HTTP 401 when the caller has no auth context,
+before executing any database query. An admin caller MUST continue to
+succeed. Both endpoints MUST remain READ-ONLY (no insert, update, or
+delete) and LLM-free — the relaxed gate changes ONLY who may call them,
+never the response contract or the query behavior. This requirement MUST
+NOT widen `authResolver` to add a new role branch, and MUST NOT relax any
+endpoint outside these two.
+
+(History: both endpoints originally shipped with
+`authResolver({ required: true, role: "admin" })` and returned HTTP 403
+for authenticated non-admin callers. The `graph-explorer-page` change
+dropped the role gate on these two read-only GETs.)
 
 #### Scenario: Unauthenticated request returns 401
 
@@ -564,12 +582,25 @@ role branch.
 - THEN the response is HTTP 401
 - AND no database query is executed
 
-#### Scenario: Non-admin authenticated request returns 403
+#### Scenario: Non-admin authenticated request succeeds
 
-- GIVEN a JWT-authenticated user whose role is not `admin`
-- WHEN either entity endpoint is called
-- THEN the response is HTTP 403
-- AND no database query is executed
+- GIVEN a JWT-authenticated caller whose role is NOT `admin`
+- WHEN either entity endpoint is called with valid parameters
+- THEN the response is HTTP 200 with the normal entity/expand body
+- AND no 403 is returned
+
+#### Scenario: Admin request still succeeds
+
+- GIVEN a JWT-authenticated caller whose role is `admin`
+- WHEN either entity endpoint is called with valid parameters
+- THEN the response is HTTP 200 with the normal entity/expand body
+
+#### Scenario: Endpoints remain read-only
+
+- GIVEN the relaxed gating on the two entity endpoints
+- WHEN either endpoint handles a request
+- THEN it performs only read queries
+- AND it never inserts, updates, or deletes any row
 
 ### Requirement: Additive-Only Guarantee (No Write-Path or Schema Change)
 

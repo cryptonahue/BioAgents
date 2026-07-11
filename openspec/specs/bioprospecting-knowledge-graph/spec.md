@@ -579,17 +579,15 @@ hooks (e.g. an EvidencePack list view) consume the same shape.
     `topBioactivities` arrays on each hit. Default `"false"`.
     Any value other than the literal string `"true"` is treated
     as `false`.
-- Authentication: required. The route MUST be wrapped in
-  `authResolver({ required: true, role: "admin" })` from
-  `src/middleware/authResolver.ts`. The role check uses `admin`
-  because the resolver at `src/middleware/authResolver.ts`
-  lines 334-353 only enforces the `admin` role today; gating
-  on `admin` is strictly more restrictive than the eventual
-  `researcher` role and protects the route from anonymous
-  and JWT-but-not-admin traffic. The route MUST return:
+- Authentication: required, no role restriction. The route MUST be
+  wrapped in `authResolver({ required: true })` from
+  `src/middleware/authResolver.ts` so **any authenticated caller
+  (read-only)** can reach it — see the "Authentication Gate (Any
+  Authenticated Caller, Read-Only)" requirement below. The route MUST
+  return:
   - HTTP 401 when the caller has no auth context.
-  - HTTP 403 when the caller is authenticated but not in the
-    `admin` role.
+  - HTTP 200 for an authenticated caller of ANY role (admin included);
+    the endpoint MUST NOT return 403 on a role basis.
 - Response: HTTP 200 with body
   ```json
   {
@@ -633,7 +631,6 @@ hooks (e.g. an EvidencePack list view) consume the same shape.
   - 400 `{ "error": "missing query parameter q" }` on missing
     or empty `q`.
   - 401 on no auth (per the resolver's contract).
-  - 403 on non-admin auth.
   - 500 on DB error with
     `{ "error": "internal_error" }` and no further detail (the
     service role's error message MUST NOT leak to the
@@ -654,7 +651,7 @@ hooks (e.g. an EvidencePack list view) consume the same shape.
 
 #### Scenario: Search returns lightweight results by default
 
-- GIVEN an admin user U and a populated
+- GIVEN an authenticated user U (any role) and a populated
   `research_graph_compound_aggregates` view
 - WHEN `GET /api/research-brain/graph/compounds/search?q=quercetin`
   is called with U's auth token
@@ -687,14 +684,12 @@ hooks (e.g. an EvidencePack list view) consume the same shape.
 - THEN the response is HTTP 401
 - AND no DB query is executed
 
-#### Scenario: Non-admin auth returns 403
+#### Scenario: Non-admin auth succeeds (no role gate)
 
-- GIVEN a JWT-authenticated user with role other than `admin`
-- WHEN the endpoint is called
-- THEN the response is HTTP 403
-- AND the body is
-  `{ "error": "Forbidden", "message": "Admin role required" }`
-  (matching the existing resolver's contract)
+- GIVEN a JWT-authenticated user with a role other than `admin`
+- WHEN the endpoint is called with a valid `q`
+- THEN the response is HTTP 200 with the normal `compounds` body
+- AND no 403 is returned
 
 #### Scenario: limit=500 is clamped to 100
 
@@ -709,6 +704,73 @@ hooks (e.g. an EvidencePack list view) consume the same shape.
 - WHEN the endpoint is called with `q=x` and no `limit`
 - THEN the response is HTTP 200
 - AND the body's `limit` field is `20`
+
+### Requirement: Authentication Gate (Any Authenticated Caller, Read-Only)
+
+The two read-only graph GET endpoints owned by this capability —
+`GET /api/research-brain/graph/compounds/search` and
+`GET /api/research-brain/citations/:sourceId` — MUST be gated by
+`authResolver({ required: true })`: authentication required, NO role
+restriction, so **any authenticated caller (read-only)** — a valid JWT of
+any role, an x402/b402 payment proof, or an api-key — can read them. This
+is what lets the `/graph` explorer page serve all whitelisted users, not
+just admins.
+
+Both endpoints MUST return HTTP 401 when the caller has no auth context,
+before executing any database query. An admin caller MUST continue to
+succeed. Both MUST remain READ-ONLY and LLM-free — the relaxed gate
+changes ONLY who may call them, never the response contract or the query
+behavior. Each handler MUST carry a read-only invariant comment so future
+maintainers do not add a mutation behind the relaxed gate.
+
+The relaxation is **surgical** and MUST NOT widen access to any other
+endpoint. All mutation endpoints and every admin-only surface (review UI,
+cost totals, table merges) MUST remain gated by
+`authResolver({ required: true, role: "admin" })` and MUST continue to
+return HTTP 403 for authenticated non-admin callers.
+
+(History: both read endpoints originally shipped with
+`authResolver({ required: true, role: "admin" })` and returned HTTP 403
+for authenticated non-admin callers. The `graph-explorer-page` change
+dropped the role gate on these two read-only GETs only.)
+
+#### Scenario: Unauthenticated request returns 401
+
+- GIVEN no auth header is sent
+- WHEN `GET /graph/compounds/search` or `GET /citations/:sourceId` is
+  called
+- THEN the response is HTTP 401
+- AND no database query is executed
+
+#### Scenario: Non-admin authenticated request succeeds on the read endpoints
+
+- GIVEN a JWT-authenticated caller whose role is NOT `admin`
+- WHEN `GET /graph/compounds/search?q=...` or
+  `GET /citations/:sourceId` is called with valid parameters
+- THEN the response is HTTP 200 with the normal body
+- AND no 403 is returned
+
+#### Scenario: Admin request still succeeds on the read endpoints
+
+- GIVEN a JWT-authenticated caller whose role is `admin`
+- WHEN either relaxed read endpoint is called with valid parameters
+- THEN the response is HTTP 200 with the normal body
+
+#### Scenario: Non-graph admin endpoints stay admin-only
+
+- GIVEN a JWT-authenticated caller whose role is NOT `admin`
+- WHEN they call any mutation, review-UI, cost-totals, or table-merge
+  admin endpoint (e.g. a `POST`/`DELETE` review or merge route)
+- THEN the response is HTTP 403
+- AND access is unchanged from before the relaxation
+
+#### Scenario: Relaxed endpoints remain read-only
+
+- GIVEN the relaxed gating on the compound-search and citations
+  endpoints
+- WHEN either endpoint handles a request
+- THEN it performs only read queries
+- AND it never inserts, updates, or deletes any row
 
 ### Requirement: Post-Extraction Soft-Fail Refresh Hook
 
@@ -853,14 +915,14 @@ as follow-up changes:
   claim↔claim edge extractor. v2/v3 work.
 - **Discovery persistence** — promoting the `Discovery`
   JSONB blob to a first-class entity. Separate change.
-- **`react-flow` graph visualisation** — the UI graph
-  explorer. The v1 deliverable is the JSON endpoint; a UI
-  list view in `client/src/components/EvidencePack.tsx` is
-  optional and best-effort, not a blocker.
+- **The UI graph explorer** — shipped separately by the
+  `graph-explorer-ui` capability (`/graph`, d3-force + SVG ego
+  graphs). The v1 deliverable of THIS capability is the JSON
+  endpoint only.
 - **Widening `authResolver` to support a `researcher`
-  role** — the route gates on `admin` because the resolver
-  only enforces `admin` today. When the resolver is widened
-  in a follow-up, the route can switch to
-  `role: 'researcher'` (or accept both) without a contract
-  change. The proposal does NOT add a new role-check
-  branch to the resolver.
+  role** — the read endpoints gate on
+  `authResolver({ required: true })` (any authenticated caller,
+  read-only), so no new role branch is needed. If a finer-grained
+  `researcher` role is ever added to the resolver, these routes
+  can adopt it without a contract change. No change to this
+  capability adds a new role-check branch to the resolver.

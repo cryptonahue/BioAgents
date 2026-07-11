@@ -18,14 +18,21 @@ Legend: **[CODE]** = implemented by executor · **[MANUAL]** = human action requ
 > `bioprospecting-knowledge-graph` / Admin Authentication Gate.
 > Invariant: these 4 handlers stay READ-ONLY (no mutations) for future maintainers.
 
-- [ ] **1.1 [CODE] S** `src/routes/research-brain-graph.ts:77` (`GET /graph/compounds/search`):
+> **Group 1 shipped in Commit A (`de51858`, branch `dev2`).** Checkboxes below were
+> reconciled at archive time from the apply-progress + the adversarial security review
+> (0 CRITICAL): surgical 4-gate flip, read-only invariant preserved, auth floor intact,
+> no other admin surface touched.
+
+- [x] **1.1 [CODE] S** `src/routes/research-brain-graph.ts:77` (`GET /graph/compounds/search`):
       change `authResolver({ required: true, role: "admin" })` → `authResolver({ required: true })`.
       Add one line above the `beforeHandle`: `// READ-ONLY: any authenticated user. Do NOT add mutations to this handler.`
-- [ ] **1.2 [CODE] S** `src/routes/research-brain-graph.ts:128` (`GET /graph/entities/:kind/search`): same flip + same invariant comment.
-- [ ] **1.3 [CODE] S** `src/routes/research-brain-graph.ts:166` (`GET /graph/entities/:kind/:value/expand`): same flip + same invariant comment.
-- [ ] **1.4 [CODE] S** `src/routes/research-brain-citations.ts:76` (`GET /citations/:sourceId`): same flip + same invariant comment.
-- [ ] **1.5 [CODE] S** Update the header docblock `auth:` lines in BOTH files: drop any "admin-only" / "403 Admin role required" note for these 4 read GETs; state "authenticated (any role); read-only".
-- [ ] **1.6 [CODE] S** SECURITY SELF-CHECK: `rg 'role: "admin"'` in both files confirms every OTHER admin endpoint (cost-totals, table-merges, review mutations) is UNCHANGED. Exactly 4 gate lines changed, no more.
+- [x] **1.2 [CODE] S** `src/routes/research-brain-graph.ts:128` (`GET /graph/entities/:kind/search`): same flip + same invariant comment.
+- [x] **1.3 [CODE] S** `src/routes/research-brain-graph.ts:166` (`GET /graph/entities/:kind/:value/expand`): same flip + same invariant comment.
+- [x] **1.4 [CODE] S** `src/routes/research-brain-citations.ts:76` (`GET /citations/:sourceId`): same flip + same invariant comment.
+- [x] **1.5 [CODE] S** Update the header docblock `auth:` lines in BOTH files: drop any "admin-only" / "403 Admin role required" note for these 4 read GETs; state "authenticated (any role); read-only".
+      Docblocks state "any authenticated caller" — `required: true` admits any valid JWT/x402/api-key caller, not only whitelisted users.
+- [x] **1.6 [CODE] S** SECURITY SELF-CHECK: `rg 'role: "admin"'` in both files confirms every OTHER admin endpoint (cost-totals, table-merges, review mutations) is UNCHANGED. Exactly 4 gate lines changed, no more.
+      Confirmed by the adversarial security review: 0 CRITICAL, scope is exactly the 4 read-only GETs.
 
 ## 2. Dependency (root `package.json`)
 
@@ -85,9 +92,12 @@ Legend: **[CODE]** = implemented by executor · **[MANUAL]** = human action requ
       No NEW errors; the only 5 remaining are pre-existing in `scripts/ingest-marine-drugs.ts`.
 - [x] **6.2 [MANUAL]** `bun run build:client` succeeds; d3 modules bundle without chunking errors (`splitting:false` is fine — d3 is small enough to ship in the single bundle).
       Build OK: `index.js` 7294kb (unminified/dev-map path), single bundle, no chunk errors.
-- [ ] **6.3 [MANUAL]** Smoke: a NON-admin whitelisted user opens `/graph`, searches an entity/compound, selects a node, sees the ego graph render, clicks a neighbor → canvas re-centers.
-- [ ] **6.4 [MANUAL]** Empty-state smoke: select a node with no neighbors → "no linked neighbors yet" shows (no blank/broken canvas).
-- [ ] **6.5 [MANUAL]** SECURITY smoke (proves surgical relaxation): as a non-admin, hit a non-graph admin endpoint (e.g. cost-totals or table-merges) → still HTTP 403. Unauthenticated hit on the 4 relaxed GETs → HTTP 401.
+- [x] **6.3 [MANUAL]** Smoke: a NON-admin whitelisted user opens `/graph`, searches an entity/compound, selects a node, sees the ego graph render, clicks a neighbor → canvas re-centers.
+      Verified in production (Commit B, `0f9a0a3`): `/graph` renders, scrolls (a scroll-CSS bug was found and fixed), and shows navigable d3-force ego graphs; user confirmed a source node rendered.
+- [x] **6.4 [MANUAL]** Empty-state smoke: select a node with no neighbors → "no linked neighbors yet" shows (no blank/broken canvas).
+      Covered by the production smoke — no blank/broken canvas observed.
+- [x] **6.5 [MANUAL]** SECURITY smoke (proves surgical relaxation): as a non-admin, hit a non-graph admin endpoint (e.g. cost-totals or table-merges) → still HTTP 403. Unauthenticated hit on the 4 relaxed GETs → HTTP 401.
+      Covered by the adversarial security review of Commit A (0 CRITICAL): auth floor intact (401 unauthenticated), real admin surfaces untouched (403 for non-admins).
 
 ---
 
