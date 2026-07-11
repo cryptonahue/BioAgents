@@ -258,7 +258,7 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             <div className="sidebar-powered-by">
               <span className="sidebar-powered-label">powered by</span>
               <img
-                src="/images/BIOLogo-dark.svg"
+                src="/images/BIOLogo-dark.svg?v=2"
                 alt="BioAgents"
                 className="sidebar-powered-logo"
                 decoding="async"
