@@ -15,12 +15,29 @@ export type SourceClaimStatus =
   | "hypothesis"
   | "open_question";
 
+/**
+ * The claims endpoint embeds the linked evidence chunk
+ * (`chunk:research_evidence_chunks(*)`), so a claim carries the
+ * `content` + `page` needed to highlight it in the viewer. Chunks
+ * currently have no stored bbox (the evidence/provenance endpoints
+ * return `bbox: null` for chunks), so the viewer resolves the
+ * highlight via a text-layer search on `content`.
+ */
+export interface SourceClaimChunk {
+  id: string;
+  page?: number | null;
+  content?: string;
+  chunk_index?: number | null;
+}
+
 export interface SourceClaim {
   id: string;
   claim: string;
   claim_type?: string;
   status: SourceClaimStatus;
   confidence?: string;
+  chunk_id?: string | null;
+  chunk?: SourceClaimChunk | null;
 }
 
 interface SourceClaimsResponse {
