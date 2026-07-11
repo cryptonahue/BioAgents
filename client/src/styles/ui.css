@@ -1,0 +1,217 @@
+/**
+ * Shared UI primitives — `components/ui/Modal.tsx` and `components/Toast.tsx`.
+ *
+ * Sibling of `buttons.css`, which already owns `components/ui/Button.tsx`.
+ *
+ * Both components used to be styled entirely through inline `style={{}}` props
+ * with hardcoded dark literals (`#0a0a0a`, `#a1a1a1`, `rgba(255,255,255,.05)`,
+ * …), plus `onMouseOver` / `onMouseOut` handlers that reimplemented `:hover` in
+ * JavaScript. Inline styles cannot be themed, cannot be reviewed by scanning
+ * CSS, and cannot express `:hover` / `:focus-visible` at all — which is how a
+ * white-on-white close button and an inaccessible toast both shipped.
+ *
+ * The markup now carries classes and the presentation lives here.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Modal
+ * ------------------------------------------------------------------------ */
+
+.ui-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: ui-modal-fade-in 0.2s ease-out;
+}
+
+/* The scrim is `--overlay`, the shared token. A scrim does NOT invert between
+   themes — it darkens whatever is behind it in both. It was `rgba(0,0,0,.85)`,
+   which is the same idea with a hardcoded number. */
+.ui-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(8px);
+  animation: ui-modal-fade-in 0.2s ease-out;
+}
+
+.ui-modal__panel {
+  position: relative;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: ui-modal-slide-up 0.3s ease-out;
+}
+
+.ui-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.ui-modal__close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-modal__close:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@keyframes ui-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Toast
+ *
+ * These were saturated fills (`rgba(34,197,94,.95)`) with `color: #fff`, which
+ * is a live WCAG AA failure in BOTH themes and always has been — measured,
+ * white on the composited fill is 2.20:1 for success, 2.18:1 for warning,
+ * 3.43:1 for info and 3.57:1 for error, against a 4.5:1 floor. It was never a
+ * light-mode-only defect; the light theme just made it impossible to ignore.
+ *
+ * They now use the four-slot TINTED CHIP pattern that `theme.css` documents for
+ * exactly this shape — `--x-subtle` background, `--x-subtle-foreground` text,
+ * `--x-border` hairline — which is themed and clears AA in both. The visual
+ * result is a tinted card rather than a saturated block: a deliberate change,
+ * because the saturated block could not be made legible without inverting its
+ * text to black, which reads wrong on an error toast.
+ * ------------------------------------------------------------------------ */
+
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  min-width: 300px;
+  max-width: 500px;
+  word-break: break-word;
+  box-shadow: var(--shadow-lg);
+  animation: toast-slide-in 0.3s ease-out;
+
+  /* Defaults, overridden per variant below. */
+  background: var(--info-subtle);
+  border: 1px solid var(--info-border);
+  color: var(--info-subtle-foreground);
+}
+
+.toast--success {
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+  color: var(--success-subtle-foreground);
+}
+
+.toast--error {
+  background: var(--destructive-subtle);
+  border-color: var(--destructive-border);
+  color: var(--destructive-subtle-foreground);
+}
+
+.toast--warning {
+  background: var(--warning-subtle);
+  border-color: var(--warning-border);
+  color: var(--warning-subtle-foreground);
+}
+
+.toast--info {
+  background: var(--info-subtle);
+  border-color: var(--info-border);
+  color: var(--info-subtle-foreground);
+}
+
+.toast__icon {
+  font-size: 1.2rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.toast__message {
+  flex: 1;
+  white-space: pre-line;
+}
+
+/* `currentColor` so the dismiss control inherits each variant's on-tint text
+   color and never has to be re-declared per variant. */
+.toast__close {
+  background: transparent;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.toast__close:hover {
+  opacity: 1;
+}
+
+.toast__close:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

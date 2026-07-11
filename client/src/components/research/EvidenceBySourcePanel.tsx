@@ -66,10 +66,14 @@ function statusGlyph(status: LiteratureSource["status"]): {
   color: string;
   label: string;
 } {
-  if (status === "ok") return { icon: "✓", color: "#10b981", label: "OK" };
+  // These three ARE statuses (a source resolved, returned nothing, or failed),
+  // so they take the status family rather than a data palette. "No matches" is
+  // not a failure — it is an absence — so it reads as dimmed text, not a hue.
+  if (status === "ok")
+    return { icon: "✓", color: "var(--success)", label: "OK" };
   if (status === "empty")
-    return { icon: "○", color: "#6b7280", label: "No matches" };
-  return { icon: "✗", color: "#ef4444", label: "Failed" };
+    return { icon: "○", color: "var(--text-tertiary)", label: "No matches" };
+  return { icon: "✗", color: "var(--destructive)", label: "Failed" };
 }
 
 /**

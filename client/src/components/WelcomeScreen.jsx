@@ -95,6 +95,13 @@ export function WelcomeScreen({ onExampleClick, coralGptMode = false }) {
               <p className="welcome-subtitle">
                 AI scientist for coral reef research
               </p>
+              {/* This literal is DELIBERATE and must not be tokenized. `.welcome-screen`
+                  is a pinned-dark surface: it renders over a full-bleed photograph
+                  behind a dark scrim, and its `.welcome-subtitle` sibling is likewise
+                  a hardcoded rgba(255,255,255,.82). A theme token here would put dark
+                  teal text on a dark photo the moment the app switches to light. The
+                  substrate is a constant, so the ink must be one too — the same
+                  reasoning as the `--bbox-*` block in theme.css. */}
               <p className="welcome-subtitle" style={{ marginTop: '4px', fontSize: '13px', color: '#2dd4bf' }}>
                 BioAgent powered by $CRLAI
               </p>

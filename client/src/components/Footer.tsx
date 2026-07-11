@@ -18,14 +18,17 @@ export function Footer() {
       style={{
         padding: '8px 16px',
         fontSize: '11px',
-        color: 'var(--color-text-muted, #6b7280)',
+        // --color-text-muted and --color-bg-footer were never declared anywhere,
+        // so this footer only ever rendered its hardcoded fallbacks and did not
+        // follow the theme at all. These are the tokens that actually exist.
+        color: 'var(--text-tertiary)',
         fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, monospace)',
-        borderTop: '1px solid var(--color-border, #e5e7eb)',
+        borderTop: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         gap: '12px',
-        background: 'var(--color-bg-footer, transparent)',
+        background: 'transparent',
       }}
       title={`Build ${version} (${shortSha(sha)}) at ${formatDate(buildDate)}`}
     >

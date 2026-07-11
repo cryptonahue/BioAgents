@@ -165,7 +165,7 @@ export function ContradictionRow({
             </button>
           </>
         ) : (
-          <span style={{ color: "#6b7280" }}>—</span>
+          <span style={{ color: "var(--text-tertiary)" }}>—</span>
         )}
       </td>
     </tr>
@@ -480,7 +480,7 @@ function DedupTab() {
                       Unmerge
                     </button>
                   ) : (
-                    <span style={{ color: "#6b7280" }}>—</span>
+                    <span style={{ color: "var(--text-tertiary)" }}>—</span>
                   )}
                 </td>
               </tr>

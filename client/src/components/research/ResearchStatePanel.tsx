@@ -110,17 +110,28 @@ export function ResearchStatePanel({
   };
 
   const formatStepType = (type: string) => {
+    // `bg` is a separate token rather than an alpha suffix on `color`. The old
+    // code built the chip background as `${color}15` — a hex-alpha concat — and
+    // that idiom cannot survive tokenization: you cannot append "15" to
+    // `var(--task-literature)`.
     const types: Record<
       string,
-      { label: string; icon: string; color: string }
+      { label: string; icon: string; color: string; bg: string }
     > = {
-      LITERATURE: { label: "Literature Search", icon: "📚", color: "#8b5cf6" },
-      ANALYSIS: { label: "Data Analysis", icon: "📊", color: "#06b6d4" },
-      HYPOTHESIS: { label: "Hypothesis", icon: "💡", color: "#f59e0b" },
-      REFLECTION: { label: "Reflection", icon: "🔍", color: "#10b981" },
-      PLANNING: { label: "Planning", icon: "📋", color: "#3b82f6" },
+      LITERATURE: { label: "Literature Search", icon: "📚", color: "var(--task-literature)", bg: "var(--task-literature-subtle)" },
+      ANALYSIS: { label: "Data Analysis", icon: "📊", color: "var(--task-analysis)", bg: "var(--task-analysis-subtle)" },
+      HYPOTHESIS: { label: "Hypothesis", icon: "💡", color: "var(--task-hypothesis)", bg: "var(--task-hypothesis-subtle)" },
+      REFLECTION: { label: "Reflection", icon: "🔍", color: "var(--task-reflection)", bg: "var(--task-reflection-subtle)" },
+      PLANNING: { label: "Planning", icon: "📋", color: "var(--task-planning)", bg: "var(--task-planning-subtle)" },
     };
-    return types[type] || { label: type, icon: "⚡", color: "#6b7280" };
+    return (
+      types[type] || {
+        label: type,
+        icon: "⚡",
+        color: "var(--task-other)",
+        bg: "var(--task-other-subtle)",
+      }
+    );
   };
 
   // Format milliseconds as "12.3s" or "1m 23s" or "1h 5m"
@@ -498,7 +509,7 @@ export function ResearchStatePanel({
                             <div
                               className="research-step-type"
                               style={{
-                                background: `${stepInfo.color}15`,
+                                background: stepInfo.bg,
                                 color: stepInfo.color,
                               }}
                             >

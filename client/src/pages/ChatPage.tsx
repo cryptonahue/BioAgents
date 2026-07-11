@@ -812,8 +812,8 @@ export function ChatPage({
         alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
-        background: 'var(--bg-primary, #0a0a0a)',
-        color: 'var(--text-secondary, #a1a1a1)',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-secondary)',
       }}>
         Loading...
       </div>
@@ -864,48 +864,21 @@ export function ChatPage({
 
           {x402Enabled && !isEmbeddedWalletConnected && (
             <div style={{ margin: "0.75rem 0", padding: "0 2rem" }}>
-              <div style={{
-                padding: "0.75rem 1rem",
-                background: "#0a0a0a",
-                borderRadius: "12px",
-                border: "1px solid #262626",
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                }}>
+              <div className="payment-cta" style={{ padding: "0.75rem 1rem" }}>
+                <div className="wallet-connected__row">
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: "0 0 4px 0", fontSize: "14px", fontWeight: 600, color: "#ffffff" }}>
-                      Connect Your Wallet
-                    </p>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#a1a1a1" }}>
+                    <p className="payment-cta__title">Connect Your Wallet</p>
+                    <p className="payment-cta__body">
                       Create a secure wallet to access paid features
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsWalletModalOpen(true)}
-                    style={{
-                      background: "#10b981",
-                      border: "none",
-                      color: "#000000",
-                      padding: "10px 20px",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      transition: "all 0.2s ease",
-                      boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="wallet-btn wallet-btn--primary"
+                    style={{ whiteSpace: "nowrap", fontSize: "14px", padding: "10px 20px" }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
@@ -923,21 +896,16 @@ export function ChatPage({
           )}
 
           {x402Enabled && x402Error && (
-            <div style={{ marginBottom: "1rem", color: "#b91c1c", fontSize: "0.85rem" }}>
-              {x402Error}
-            </div>
+            <div className="payment-error">{x402Error}</div>
           )}
 
           {x402Enabled && walletAddress && hasInsufficientBalance && (
-            <div style={{
-              margin: "0.75rem 0",
-              padding: "0.75rem 1rem",
-              borderRadius: "8px",
-              background: "rgba(251, 146, 60, 0.15)",
-              border: "1px solid rgba(251, 146, 60, 0.35)",
-              color: "var(--text-primary)",
-            }} role="alert">
-              <strong style={{ display: "block", marginBottom: "0.25rem", color: "#ea580c" }}>
+            <div
+              className="payment-status payment-status--warning"
+              style={{ margin: "0.75rem 0" }}
+              role="alert"
+            >
+              <strong className="payment-status__title">
                 Warning: Insufficient USDC Balance
               </strong>
               <span style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem" }}>
@@ -947,25 +915,20 @@ export function ChatPage({
           )}
 
           {paymentTxHash && (
-            <div style={{
-              margin: "0.75rem 0",
-              padding: "0.75rem 1rem",
-              borderRadius: "8px",
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "1px solid rgba(34, 197, 94, 0.35)",
-              color: "var(--text-primary)",
-            }} role="alert">
-              <strong style={{ display: "block", marginBottom: "0.25rem", color: "#16a34a" }}>
-                Payment Successful
-              </strong>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", wordBreak: "break-all" }}>
+            <div
+              className="payment-status payment-status--success"
+              style={{ margin: "0.75rem 0" }}
+              role="alert"
+            >
+              <strong className="payment-status__title">Payment Successful</strong>
+              <div style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
                 <div>
                   <strong>Transaction:</strong>{" "}
                   <a
                     href={`https://sepolia.basescan.org/tx/${paymentTxHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: "#0052ff", textDecoration: "underline" }}
+                    className="payment-status__link"
                   >
                     {paymentTxHash.slice(0, 10)}...{paymentTxHash.slice(-8)}
                   </a>

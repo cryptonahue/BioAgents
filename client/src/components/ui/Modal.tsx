@@ -8,6 +8,11 @@ interface ModalProps {
   maxWidth?: string;
 }
 
+/**
+ * Presentation lives in `styles/ui.css` (`.ui-modal*`). The only inline style
+ * left is `maxWidth`, which is a genuine per-instance value passed by the
+ * caller — everything else was a hardcoded dark literal and is now a token.
+ */
 export function Modal({ isOpen, onClose, children, maxWidth = "500px" }: ModalProps) {
   // Close on Escape key
   useEffect(() => {
@@ -36,77 +41,18 @@ export function Modal({ isOpen, onClose, children, maxWidth = "500px" }: ModalPr
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-        animation: "fadeIn 0.2s ease-out",
-      }}
-      onClick={onClose}
-    >
-      {/* Backdrop */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.85)",
-          backdropFilter: "blur(8px)",
-          animation: "fadeIn 0.2s ease-out",
-        }}
-      />
+    <div className="ui-modal" onClick={onClose}>
+      <div className="ui-modal__backdrop" />
 
-      {/* Modal Content */}
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth,
-          maxHeight: "90vh",
-          overflowY: "auto",
-          animation: "slideUp 0.3s ease-out",
-        }}
+        className="ui-modal__panel"
+        style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          style={{
-            position: "absolute",
-            top: "16px",
-            right: "16px",
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            color: "#a1a1a1",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s ease",
-            zIndex: 1,
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-            e.currentTarget.style.color = "#ffffff";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-            e.currentTarget.style.color = "#a1a1a1";
-          }}
+          className="ui-modal__close"
           aria-label="Close modal"
         >
           <svg
@@ -126,27 +72,6 @@ export function Modal({ isOpen, onClose, children, maxWidth = "500px" }: ModalPr
 
         {children}
       </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -30,8 +30,8 @@ function LoadingScreen() {
       alignItems: 'center',
       justifyContent: 'center',
       height: '100vh',
-      background: 'var(--bg-primary, #0a0a0a)',
-      color: 'var(--text-secondary, #a1a1a1)',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-secondary)',
     }}>
       Loading...
     </div>

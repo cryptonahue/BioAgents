@@ -16,6 +16,8 @@
  */
 @import "./buttons.css";
 @import "./research.css";
+@import "./ui.css";
+@import "./wallet.css";
 
 * {
   margin: 0;

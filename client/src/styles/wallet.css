@@ -1,0 +1,613 @@
+/**
+ * Wallet + payment surfaces (the x402 flow).
+ *
+ * Covers `EmbeddedWalletAuth.tsx`, `PaymentConfirmationModal.tsx` and the
+ * wallet/payment chrome inside `ChatPage.tsx`.
+ *
+ * These three components between them carried ~130 hardcoded color literals in
+ * inline `style={{}}` props — a hand-rolled dark theme (`#0a0a0a`, `#141414`,
+ * `#262626`, `#a1a1a1`, `#707070`) that PR 2's sweep of `styles/` never saw
+ * because it lived in TSX. In light mode the panels stayed black and the text
+ * stayed grey-on-black, which is the whole of BUG 3.
+ *
+ * The literals map onto the same slate ramp `admin.css` documents:
+ *
+ *   #0a0a0a -> --card            #ffffff -> --text-primary
+ *   #141414 -> --surface-sunken  #a1a1a1 -> --text-secondary
+ *   #262626 -> --border / --bg-tertiary   #707070 -> --text-tertiary
+ *   #404040 -> --border-strong
+ *
+ * `#10b981` is the brand green and stays the brand green: it is `--accent-color`
+ * for FILLS/borders/glows and `--accent-ink` when it is used as TEXT (the raw
+ * green is 2.54:1 on white and fails AA as an ink). Same split `theme.css`
+ * already documents.
+ *
+ * The JS `onMouseOver` / `onMouseOut` handlers that reimplemented `:hover` are
+ * gone; hover is a `:hover` rule, and every interactive control now has a
+ * `:focus-visible` ring it previously lacked entirely.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Shared
+ * ------------------------------------------------------------------------ */
+
+.wallet-panel {
+  background: var(--card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 32px;
+  animation: wallet-slide-in 0.3s ease-out;
+}
+
+.wallet-panel__header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.wallet-panel__title {
+  margin: 0 0 8px 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+.wallet-panel__subtitle {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.wallet-panel__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* The address the code was sent to, echoed back. Brand-colored, so it takes
+   `--accent-ink` and not `--accent-color` — it is text. */
+.wallet-panel__email {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+/* The round brand-tinted icon well above the title. */
+.wallet-panel__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-ink);
+}
+
+.wallet-panel__badge--square {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  margin: 0 auto 20px;
+}
+
+.wallet-panel__badge--round {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+}
+
+.wallet-field {
+  margin-bottom: 20px;
+}
+
+.wallet-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: var(--text-tertiary);
+}
+
+.wallet-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--border-color);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.wallet-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.wallet-input:focus-visible {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+/* The 6-digit OTP field. `--complete` is the "all six entered" state, which was
+   a ternary on the inline border/box-shadow. */
+.wallet-input--otp {
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  text-align: center;
+  letter-spacing: 8px;
+}
+
+.wallet-input--complete {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+.wallet-error {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--destructive-subtle);
+  border: 1px solid var(--destructive-border);
+  color: var(--destructive-subtle-foreground);
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: wallet-slide-in 0.2s ease-out;
+}
+
+.wallet-error__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------ */
+
+.wallet-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wallet-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.wallet-btn--block {
+  width: 100%;
+}
+
+/* Text on the brand fill is `--accent-color-foreground` (black), not white:
+   white on `#10b981` is 2.4:1, black is 8.9:1. Same in both themes, because
+   the fill it sits on is the same in both themes. */
+.wallet-btn--primary {
+  background: var(--accent-color);
+  color: var(--accent-color-foreground);
+  box-shadow: var(--shadow-green);
+}
+
+.wallet-btn--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.wallet-btn--primary:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.wallet-btn--secondary {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.wallet-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.wallet-btn--secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.wallet-btn__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--accent-border);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: wallet-spin 0.6s linear infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * Connected state
+ * ------------------------------------------------------------------------ */
+
+.wallet-connected {
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  animation: wallet-slide-in 0.3s ease-out;
+}
+
+.wallet-connected__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wallet-connected__status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wallet-connected__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent-color);
+  box-shadow: 0 0 8px var(--accent-glow);
+  animation: wallet-pulse 2s ease-in-out infinite;
+}
+
+.wallet-connected__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.wallet-connected__labels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.wallet-connected__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.wallet-connected__balance {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--accent-ink);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+}
+
+.wallet-connected__address {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wallet-connected__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wallet-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wallet-chip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.wallet-chip--accent {
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-ink);
+}
+
+.wallet-chip--accent:hover {
+  background: var(--accent-soft);
+}
+
+.wallet-chip--accent[data-copied="true"] {
+  background: var(--accent-soft);
+}
+
+.wallet-chip--muted {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.wallet-chip--muted:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reassurance footer ("Secure & Self-Custodial")
+ * ------------------------------------------------------------------------ */
+
+.wallet-note {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+}
+
+.wallet-note__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.wallet-note__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-ink);
+}
+
+.wallet-note__title {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wallet-note__body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Payment confirmation modal
+ * ------------------------------------------------------------------------ */
+
+.payment-modal {
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.payment-modal__header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.payment-modal__title {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.payment-modal__subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.payment-modal__details {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.payment-modal__amount-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.payment-modal__amount {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.payment-modal__rows {
+  border-top: 1px solid var(--border-strong);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.payment-modal__row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.payment-modal__row + .payment-modal__row {
+  margin-top: 8px;
+}
+
+.payment-modal__row-key {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.payment-modal__row-value {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.payment-modal__row-value--mono {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+.payment-modal__testnet {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-subtle-foreground);
+}
+
+.payment-modal__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.payment-modal__actions > * {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * ChatPage payment chrome
+ * ------------------------------------------------------------------------ */
+
+.payment-cta {
+  background: var(--card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+}
+
+.payment-cta__title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.payment-cta__body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.payment-status {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.payment-status__title {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.payment-status--warning {
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-subtle-foreground);
+}
+
+.payment-status--warning .payment-status__title {
+  color: var(--warning);
+}
+
+.payment-status--success {
+  background: var(--success-subtle);
+  border: 1px solid var(--success-border);
+  color: var(--success-subtle-foreground);
+}
+
+.payment-status--success .payment-status__title {
+  color: var(--success);
+}
+
+/* The transaction link sits INSIDE the success chip, so it inherits the chip's
+   on-tint ink instead of taking a link blue. Measured, `--info` on the success
+   tint is 4.42:1 in dark — under the 4.5:1 floor, because the blue was picked
+   against the page surface, not against a green tint. Inheriting gives the
+   chip's own contrast (8.30:1 light, 11.57:1 dark) and the underline still
+   carries the affordance, so color is not the only signal (WCAG 1.4.1). */
+.payment-status__link {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.payment-error {
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--destructive);
+}
+
+/* ------------------------------------------------------------------------ */
+
+@keyframes wallet-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wallet-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes wallet-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

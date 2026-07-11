@@ -55,7 +55,14 @@
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.963 0.002 197.1);
-  --muted-foreground: oklch(0.56 0.021 213.5);
+  /* SECONDARY TEXT — see the TEXT RAMP note below the `.dark` block.
+     5.95:1 on `--background` / `--card`, 5.73:1 on `--sidebar`, 5.54:1 on
+     `--surface-sunken`, 5.41:1 on `--accent-light`, 5.35:1 on `--muted`.
+     The previous value, oklch(0.56 …), cleared AA on `--background` (4.61:1)
+     and FAILED on every other surface it renders against — 4.45:1 on
+     `--sidebar`, 4.30:1 on `--surface-sunken`, 4.20:1 on `--accent-light` and
+     4.15:1 on `--muted`. Measuring it on white was the whole mistake. */
+  --muted-foreground: oklch(0.5 0.021 213.5);
   --accent: oklch(0.963 0.002 197.1);
   --accent-foreground: oklch(0.218 0.008 223.9);
   --destructive: oklch(0.577 0.245 27.325);
@@ -125,6 +132,34 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.68 0.021 213.5);
 }
+
+/**
+ * TEXT RAMP, LIGHT THEME (`--muted-foreground` vs. `--text-tertiary`).
+ *
+ * The light ramp used to be INVERTED. `--muted-foreground` (which the bridge
+ * below exposes as `--text-secondary`) sat at oklch(0.56 …) while
+ * `--text-tertiary` sat at oklch(0.54 …) — so the DIMMER step was the DARKER,
+ * more prominent one. Secondary text was quieter than tertiary text.
+ *
+ * That happened because the two were fixed at different times against different
+ * yardsticks: `--text-tertiary` was measured on `--muted` and pulled down to
+ * 0.54 to clear it, and `--muted-foreground` was never re-measured off
+ * `--background` at all.
+ *
+ * `--muted-foreground` is now oklch(0.5 …): darker than `--text-tertiary`, so
+ * the ramp reads primary > secondary > tertiary again, and clear of 4.5:1 on
+ * every surface (worst case 5.35:1, on `--muted`).
+ *
+ * The two steps are only 0.04 L apart, which is tight. That is not a choice —
+ * it is the squeeze WCAG imposes once BOTH steps have to clear 4.5:1 on
+ * `--muted`, the darkest surface either lands on. `--text-tertiary` is at
+ * 4.52:1 there: it passes, but only just, and it is the token to watch if the
+ * neutral ramp is ever retuned.
+ *
+ * The DARK values need no such correction — measured, `--muted-foreground`
+ * (oklch(0.723 …)) is 7.12:1 on `--card`, 7.65:1 on `--surface-sunken` and
+ * 6.06:1 on `--muted`.
+ */
 
 /**
  * FOCUS RING (`--ring` / `--sidebar-ring`).
@@ -557,6 +592,83 @@
   --graph-edge-reports: #60a5fa; /* blue-400   — 6.83:1 on `--card` */
   --graph-edge-spoke: #475569; /* slate-600 */
   --graph-edge-spoke-alt: #334155; /* slate-700 */
+}
+
+/**
+ * Research task-type data colors.
+ *
+ * The deep-research pipeline tags every step with a type — LITERATURE,
+ * ANALYSIS, HYPOTHESIS, REFLECTION, PLANNING, CODE_EXEC — and both
+ * `SuggestedSteps.tsx` and `ResearchStatePanel.tsx` render that type as a
+ * colored chip. Those hues used to be hardcoded 500-weight literals in the
+ * components (`#8b5cf6`, `#06b6d4`, …) and never went through the token sweep,
+ * so every one of them was a 500-weight hue used as TEXT on a near-white chip
+ * in light mode.
+ *
+ * They get their own `--task-*` names rather than aliasing `--violet` /
+ * `--warning` / `--success` / `--info`, for the reason the `--graph-*` block
+ * above gives: a data palette and a status palette are different jobs. Amber
+ * here means HYPOTHESIS, not "warning", and retuning the warning chip must not
+ * silently repaint the research timeline. The hues are aligned with those
+ * families on purpose so the app still reads as one system.
+ *
+ * Two slots each, the same shape as the status tokens:
+ *   --task-*         the INK: the chip's icon and label.
+ *   --task-*-subtle  the chip's background TINT, which the ink sits on.
+ *
+ * Contrast is measured INK-ON-TINT (that is the surface it actually renders
+ * against), not ink-on-background. Worst case is 4.79:1 in light (ANALYSIS)
+ * and 5.87:1 in dark (REFLECTION); every pair clears the 4.5:1 AA text floor.
+ *
+ * The light inks are 700/800-weight because the tint is a pale 100-weight and
+ * a 500-weight hue on it is unreadable; the dark inks are 300/400-weight over
+ * a translucent tint on the dark card. As everywhere else in this file, the
+ * light ramp is NOT an inversion of the dark one.
+ */
+:root {
+  /* violet-700 on violet-100 — 5.98:1 */
+  --task-literature: #6d28d9;
+  --task-literature-subtle: #ede9fe;
+  /* cyan-700 on cyan-100 — 4.79:1 */
+  --task-analysis: #0e7490;
+  --task-analysis-subtle: #cffafe;
+  /* amber-800 on amber-100 — 6.37:1. amber-700 lands at 4.51:1, which is
+     inside the noise of the 4.5:1 floor rather than over it. */
+  --task-hypothesis: #92400e;
+  --task-hypothesis-subtle: #fef3c7;
+  /* emerald-700 on emerald-100 — 4.84:1 */
+  --task-reflection: #047857;
+  --task-reflection-subtle: #d1fae5;
+  /* blue-700 on blue-100 — 5.49:1 */
+  --task-planning: #1d4ed8;
+  --task-planning-subtle: #dbeafe;
+  /* pink-700 on pink-100 — 5.14:1 */
+  --task-code: #be185d;
+  --task-code-subtle: #fce7f3;
+  /* slate-600 on slate-200 — 6.15:1. The fallback for an unrecognized type. */
+  --task-other: #475569;
+  --task-other-subtle: #e2e8f0;
+}
+
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
+  /* violet-300 — 6.49:1 on its tint. violet-400 is 4.40:1 and misses AA. */
+  --task-literature: #c4b5fd;
+  --task-literature-subtle: rgba(139, 92, 246, 0.16);
+  --task-analysis: #22d3ee;
+  --task-analysis-subtle: rgba(6, 182, 212, 0.16);
+  --task-hypothesis: #fbbf24;
+  --task-hypothesis-subtle: rgba(245, 158, 11, 0.14);
+  --task-reflection: #34d399;
+  --task-reflection-subtle: rgba(16, 185, 129, 0.14);
+  --task-planning: #93c5fd;
+  --task-planning-subtle: rgba(59, 130, 246, 0.14);
+  --task-code: #f9a8d4;
+  --task-code-subtle: rgba(236, 72, 153, 0.14);
+  --task-other: #cbd5e1;
+  --task-other-subtle: rgba(100, 116, 139, 0.16);
 }
 
 /**
