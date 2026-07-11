@@ -84,15 +84,17 @@ body {
 .app-content > .admin-page,
 .app-content > .corpus-page,
 .app-content > .settings-page,
+.app-content > .graph-page,
 .app-content > .viewer-page {
   flex: 1;
   min-height: 0;
   height: auto;
 }
 
-/* Admin/Corpus roots have no internal scroll region — let the root scroll. */
+/* Admin/Corpus/Graph roots have no internal scroll region — let the root scroll. */
 .app-content > .admin-page,
-.app-content > .corpus-page {
+.app-content > .corpus-page,
+.app-content > .graph-page {
   overflow-y: auto;
 }
 
