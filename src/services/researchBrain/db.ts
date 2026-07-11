@@ -351,6 +351,42 @@ export async function replaceClaimsForSource(
   return (data || []) as ResearchClaim[];
 }
 
+export async function getEvidenceChunks(
+  sourceId: string,
+): Promise<ResearchEvidenceChunk[]> {
+  const { data, error } = await supabase
+    .from("research_evidence_chunks")
+    .select("*")
+    .eq("source_id", sourceId)
+    .order("chunk_index", { ascending: true });
+  if (error) throw error;
+  return (data || []) as ResearchEvidenceChunk[];
+}
+
+/**
+ * Compare a source's stored evidence chunks against incoming chunk contents.
+ * Used by ingestion to avoid a destructive chunk replace when nothing changed:
+ * replaceEvidenceChunks deletes chunk rows and research_claims.chunk_id is
+ * ON DELETE SET NULL, so replacing identical chunks would orphan every claim's
+ * provenance link. Returns the existing chunks so the caller can reuse them.
+ */
+export async function compareEvidenceChunks(
+  sourceId: string,
+  contents: string[],
+): Promise<{ unchanged: boolean; existing: ResearchEvidenceChunk[] }> {
+  const existing = await getEvidenceChunks(sourceId);
+  let unchanged = existing.length > 0 && existing.length === contents.length;
+  if (unchanged) {
+    for (let i = 0; i < contents.length; i++) {
+      if (existing[i].content !== contents[i]) {
+        unchanged = false;
+        break;
+      }
+    }
+  }
+  return { unchanged, existing };
+}
+
 export async function createClaimEdges(claims: ResearchClaim[]): Promise<void> {
   const edges = claims
     .filter((claim) => claim.source_id)

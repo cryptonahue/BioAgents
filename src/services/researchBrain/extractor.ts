@@ -1,5 +1,6 @@
 import logger from "../../utils/logger";
 import {
+  compareEvidenceChunks,
   createClaimEdges,
   extractDoi,
   getSource,
@@ -186,25 +187,47 @@ export async function registerDocumentAsResearchSource(params: {
     extractionStatus: "pending_extraction",
   });
 
-  const evidenceChunks = await replaceEvidenceChunks(
+  // Guard against the re-ingestion orphaning bug. replaceEvidenceChunks
+  // deletes chunk rows, and research_claims.chunk_id is ON DELETE SET NULL, so
+  // replacing chunks that have not changed strips every existing claim's
+  // provenance link. Compare the incoming chunk contents to what is stored:
+  //  - identical + already extracted -> nothing to do, preserve chunks/claims.
+  //  - identical + not yet extracted -> reuse existing chunks, run extraction.
+  //  - changed                       -> replace chunks and (re-)extract so the
+  //                                      claims relink to the new chunks.
+  const { unchanged, existing } = await compareEvidenceChunks(
     source.id,
-    params.chunks.map((chunk, index) => ({
-      documentId: chunk.id || null,
-      content: chunk.content,
-      section: chunk.metadata?.section || guessSection(chunk.content),
-      page: chunk.metadata?.page,
-      chunkIndex: Number(chunk.metadata?.chunkIndex ?? index),
-      metadata: {
-        ...chunk.metadata,
-        title: chunk.title,
-      },
-    })),
+    params.chunks.map((c) => c.content),
   );
 
-  if (
-    params.runExtraction !== false &&
-    source.extraction_status !== "extracted"
-  ) {
+  if (unchanged && source.extraction_status === "extracted") {
+    logger.info(
+      { sourceId: source.id, title: source.title },
+      "research_brain_ingest_unchanged_skipped",
+    );
+    return source;
+  }
+
+  const evidenceChunks = unchanged
+    ? existing
+    : await replaceEvidenceChunks(
+        source.id,
+        params.chunks.map((chunk, index) => ({
+          documentId: chunk.id || null,
+          content: chunk.content,
+          section: chunk.metadata?.section || guessSection(chunk.content),
+          page: chunk.metadata?.page,
+          chunkIndex: Number(chunk.metadata?.chunkIndex ?? index),
+          metadata: {
+            ...chunk.metadata,
+            title: chunk.title,
+          },
+        })),
+      );
+
+  // Reaching here means either the content changed or the source was never
+  // extracted, so extraction should run (subject to the caller's opt-out).
+  if (params.runExtraction !== false) {
     await extractClaimsForSource(source.id, evidenceChunks);
   }
 
