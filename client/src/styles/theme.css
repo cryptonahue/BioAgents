@@ -1,0 +1,167 @@
+/**
+ * Design tokens.
+ *
+ * This file is the single source of truth for every color token in the
+ * client. It defines two layers:
+ *
+ *   1. The Basecoat token set (`--background`, `--foreground`, `--primary`,
+ *      …) for `:root` (light) and `.dark` (dark). Basecoat's own components
+ *      read these through its `@theme` block, so overriding them here
+ *      re-skins every Basecoat component.
+ *
+ *   2. A legacy token bridge. The hand-written CSS in this directory uses an
+ *      older token vocabulary (`--bg-primary`, `--text-secondary`, …). Those
+ *      names are kept, but their values now DERIVE from the Basecoat tokens
+ *      above. That makes ~435 existing `var()` call sites theme-aware without
+ *      touching a single component.
+ *
+ * Because `.dark` is applied to `<html>` (the same element `:root` matches),
+ * both blocks target the same element and the later one wins. The bridge is
+ * declared once and resolves against whichever token set is active.
+ *
+ * The `dark` class on `<html>` is required by Basecoat, whose dark variant is
+ * defined as `@custom-variant dark (&:is(html.dark *))`.
+ */
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.52 0.105 223.128);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.81 0.117 11.638);
+  --chart-2: oklch(0.645 0.246 16.439);
+  --chart-3: oklch(0.586 0.253 17.585);
+  --chart-4: oklch(0.514 0.222 16.935);
+  --chart-5: oklch(0.455 0.188 13.697);
+  --radius: 0;
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.609 0.126 221.723);
+  --sidebar-primary-foreground: oklch(0.984 0.019 200.873);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
+}
+
+.dark {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.45 0.085 224.283);
+  --primary-foreground: oklch(0.984 0.019 200.873);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.81 0.117 11.638);
+  --chart-2: oklch(0.645 0.246 16.439);
+  --chart-3: oklch(0.586 0.253 17.585);
+  --chart-4: oklch(0.514 0.222 16.935);
+  --chart-5: oklch(0.455 0.188 13.697);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.715 0.143 215.221);
+  --sidebar-primary-foreground: oklch(0.302 0.056 229.695);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+
+/**
+ * Legacy token bridge.
+ *
+ * These names previously lived in `global.css` with hardcoded dark hex values.
+ * They now derive from the Basecoat tokens above, so both themes work and the
+ * ~435 existing `var()` call sites become theme-aware without being touched.
+ *
+ * Most entries are a plain `var()` alias. Three surfaces have no Basecoat
+ * equivalent and are declared literally in BOTH blocks instead:
+ *
+ *   --bg-hover      Basecoat's neutral ramp only has three surface steps
+ *                   (background < card < muted). The legacy palette has four,
+ *                   and `--bg-hover` is the fourth. Aliasing it to `--accent`
+ *                   would make it identical to `--bg-tertiary` and flatten
+ *                   every hover state.
+ *   --text-tertiary A third, dimmer text step below `--muted-foreground`.
+ *   --card-bg       A translucent card surface.
+ *
+ * Do NOT express these with `color-mix()`. Tailwind's lightningcss pass
+ * rewrites `color-mix()` inside custom properties into a lossy fallback and
+ * only re-declares the FIRST one per block behind `@supports`; the rest are
+ * silently flattened to a single operand. Literal per-theme values are the
+ * only reliable option through this build pipeline.
+ *
+ * Deliberate exceptions:
+ *   - `--accent-color` / `--accent-hover` / `--accent-light` / `--accent-glow`
+ *     are the BRAND GREEN. Basecoat's `--accent` is a neutral grey and
+ *     `--primary` is teal; mapping the brand onto either would silently erase
+ *     the brand color across the whole product. They stay literal and are
+ *     identical in both themes.
+ *   - `--assistant-msg-bg` stays `transparent` by design.
+ *   - `--sidebar-width` is a layout value, not a color.
+ */
+:root {
+  --bg-primary: var(--background);
+  --bg-secondary: var(--card);
+  --bg-tertiary: var(--muted);
+  --bg-hover: oklch(0.945 0.004 214.3);
+
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-tertiary: oklch(0.68 0.016 213.5);
+
+  --border-color: var(--border);
+
+  /* Brand green — intentionally NOT derived from Basecoat tokens. */
+  --accent-color: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.1);
+  --accent-glow: rgba(16, 185, 129, 0.15);
+
+  --user-msg-bg: var(--bg-hover);
+  --assistant-msg-bg: transparent;
+
+  --error-color: var(--destructive);
+
+  /* A 60%-black drop shadow reads as depth on a dark surface and as grime on
+     a light one, so the shadow is themed too. The green glow is brand. */
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-green: 0 4px 16px rgba(16, 185, 129, 0.15);
+
+  --sidebar-width: 260px;
+
+  --card-bg: oklch(1 0 0 / 80%);
+  --card-hover: var(--bg-hover);
+}
+
+.dark {
+  --bg-hover: oklch(0.32 0.012 216.9);
+  --text-tertiary: oklch(0.55 0.015 213.5);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --card-bg: oklch(0.218 0.008 223.9 / 80%);
+}

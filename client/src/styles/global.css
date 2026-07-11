@@ -1,4 +1,19 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+/*
+ * The Inter webfont used to be pulled in here with
+ * `@import url("https://fonts.googleapis.com/…")`. It is gone: the app now uses
+ * self-hosted IBM Plex Sans.
+ *
+ * The @font-face rules deliberately do NOT live in the bundled CSS — Bun
+ * base64-inlines every font referenced by `url()` and offers no way to opt out,
+ * which tripled this stylesheet. They live in `client/public/fonts/fonts.css`,
+ * which the build copies to `dist/assets/fonts/` and index.html links directly.
+ * See the header of that file for the full reasoning.
+ *
+ * The family is applied in two places, and BOTH are required:
+ *   - `body { font-family: … }` below, for the hand-written legacy CSS.
+ *   - `--font-sans` in ./basecoat.css, for Basecoat/Tailwind components, which
+ *     resolve `font-sans` from the Tailwind theme token rather than inheriting.
+ */
 @import "./buttons.css";
 @import "./research.css";
 
@@ -8,32 +23,18 @@
   box-sizing: border-box;
 }
 
-:root {
-  --bg-primary: #020913;
-  --bg-secondary: #06101f;
-  --bg-tertiary: #0b1a30;
-  --bg-hover: #12233c;
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1a1;
-  --text-tertiary: #707070;
-  --border-color: #16273d;
-  --accent-color: #10b981;
-  --accent-hover: #059669;
-  --accent-light: rgba(16, 185, 129, 0.1);
-  --accent-glow: rgba(16, 185, 129, 0.15);
-  --user-msg-bg: #12233c;
-  --assistant-msg-bg: transparent;
-  --error-color: #ef4444;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  --shadow-green: 0 4px 16px rgba(16, 185, 129, 0.15);
-  --sidebar-width: 260px;
-  --card-bg: rgba(20, 20, 20, 0.8);
-  --card-hover: rgba(26, 26, 26, 0.95);
-}
+/*
+ * The design tokens that used to live here (--bg-primary, --text-primary,
+ * --accent-color, …) now live in ./theme.css, where they derive from the
+ * Basecoat token set and therefore respond to the light/dark theme.
+ * theme.css is pulled in via ./basecoat.css, which index.jsx imports before
+ * this file. Do not redeclare tokens here — theme.css is the single source
+ * of truth.
+ */
 
 body {
   font-family:
-    "Inter",
+    "IBM Plex Sans",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",

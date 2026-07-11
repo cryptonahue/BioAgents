@@ -1,9 +1,11 @@
-import { AlertCircle, AlertTriangle, Info, X } from 'lucide-preact';
+// Phosphor equivalents of the Lucide icons this used to import:
+// AlertCircle -> WarningCircle, AlertTriangle -> Warning, Info -> Info, X -> X.
+import { Info, Warning, WarningCircle, X } from '@phosphor-icons/react';
 
 export function ErrorMessage({ message, onClose, type = 'error' }) {
   const icons = {
-    error: AlertCircle,
-    warning: AlertTriangle,
+    error: WarningCircle,
+    warning: Warning,
     info: Info,
   };
 

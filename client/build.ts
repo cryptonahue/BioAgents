@@ -8,6 +8,7 @@
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, watch } from 'fs';
 import { join, resolve } from 'path';
+import tailwind from 'bun-plugin-tailwind';
 
 const clientDir = import.meta.dir;
 const distDir = join(clientDir, 'dist');
@@ -79,6 +80,9 @@ async function build() {
       'import.meta.env.CORALGPT_HERO_VIDEO_URL': JSON.stringify(process.env.CORALGPT_HERO_VIDEO_URL || ''),
     },
     plugins: [
+      // Compiles the Tailwind v4 layers and resolves the `@apply` directives
+      // that Basecoat's component CSS is written against.
+      tailwind,
       {
         name: 'react-to-preact-alias',
         setup(build) {
@@ -137,6 +141,34 @@ async function build() {
       const src = join(publicDir, entry.name);
       const dest = join(distAssetsDir, entry.name);
       cpSync(src, dest, { recursive: true });
+    }
+  }
+
+  // Copy the self-hosted IBM Plex Sans woff2 files out of @fontsource and next
+  // to the @font-face rules in dist/assets/fonts/ (which came from public/).
+  //
+  // The fonts are NOT imported through the CSS bundler on purpose: Bun
+  // base64-inlines every font referenced by `url()` in CSS with no way to opt
+  // out, which inflated index.css from 533kb to 1.6mb. Copying the files keeps
+  // them as ordinary cacheable assets, served by the existing /assets/* route.
+  //
+  // Keep this list in sync with client/public/fonts/fonts.css.
+  const fontWeights = [400, 500, 600, 700];
+  const fontSubsets = ['latin', 'latin-ext'];
+  const fontSourceDir = join(clientDir, '..', 'node_modules', '@fontsource', 'ibm-plex-sans', 'files');
+  const fontDestDir = join(distAssetsDir, 'fonts');
+  mkdirSync(fontDestDir, { recursive: true });
+  for (const subset of fontSubsets) {
+    for (const weight of fontWeights) {
+      const fontFile = `ibm-plex-sans-${subset}-${weight}-normal.woff2`;
+      const src = join(fontSourceDir, fontFile);
+      if (!existsSync(src)) {
+        throw new Error(
+          `Missing font file: ${src}. Is @fontsource/ibm-plex-sans installed? ` +
+            `If the package changed its file naming, update client/public/fonts/fonts.css too.`
+        );
+      }
+      cpSync(src, join(fontDestDir, fontFile));
     }
   }
 

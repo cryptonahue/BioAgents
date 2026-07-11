@@ -44,7 +44,9 @@
     "@elysiajs/cors": "^1.4.0",
     "@elysiajs/html": "^1.4.0",
     "@elysiajs/static": "^1.4.4",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@google/genai": "^1.25.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@privy-io/react-auth": "^3.26.1",
     "@privy-io/server-auth": "^1.32.5",
     "@supabase/supabase-js": "^2.76.1",
@@ -53,6 +55,7 @@
     "@x402/fetch": "^2.2.0",
     "archiver": "^7.0.1",
     "axios": "^1.12.2",
+    "basecoat-css": "^1.0.2",
     "bullmq": "^5.66.0",
     "canvas": "^3.2.0",
     "cohere-ai": "^7.19.0",
@@ -67,7 +70,6 @@
     "front-matter": "^4.0.2",
     "ioredis": "^5.8.2",
     "jose": "^6.1.0",
-    "lucide-preact": "^0.546.0",
     "mammoth": "^1.11.0",
     "marked": "^16.4.1",
     "natural": "^8.1.0",
@@ -92,9 +94,11 @@
     "@types/d3-force": "^3.0.10",
     "@types/d3-selection": "^3.0.11",
     "@types/d3-zoom": "^3.0.8",
+    "bun-plugin-tailwind": "^0.1.2",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.3.0",
-    "prettier-plugin-packagejson": "^2.5.19"
+    "prettier-plugin-packagejson": "^2.5.19",
+    "tailwindcss": "^4.3.2"
   },
   "peerDependencies": {
     "typescript": "^5"
