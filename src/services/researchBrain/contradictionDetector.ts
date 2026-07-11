@@ -186,7 +186,8 @@ export interface ContradictionDetectionOptions {
  * Orchestrates contradiction detection for a source:
  * 1. Fetches all bioprospecting facts for the source
  * 2. Runs rule-based detection
- * 3. Runs LLM detection (if flag is enabled and LLM is available)
+ * 3. Runs LLM detection (only when BIOPROSPECTING_CONTRADICTION_LLM=true —
+ *    a separate, default-OFF flag — and an LLM is available)
  *
  * Returns the total number of contradictions inserted.
  */
@@ -209,10 +210,23 @@ export async function runContradictionDetection(params: {
   }
 
   const ruleBased = await runRuleBasedDetection({ facts, sourceId, runId: params.runId });
-  const llm = await runLLMDetection({ facts, sourceId });
+
+  // The LLM tier is gated by its own flag (BIOPROSPECTING_CONTRADICTION_LLM,
+  // default OFF) inside runLLMDetection, so the free rule-based tier can run
+  // without spending. `runId` is threaded through so the call is cost-tracked.
+  const llmResult = await runLLMDetection({ facts, sourceId, runId: params.runId });
+  const llm = llmResult.inserted;
 
   logger.info(
-    { sourceId, ruleBased, llm, total: ruleBased + llm },
+    {
+      sourceId,
+      ruleBased,
+      llm,
+      llmProposed: llmResult.proposed,
+      llmResolved: llmResult.resolved,
+      llmDropped: llmResult.dropped,
+      total: ruleBased + llm,
+    },
     "runContradictionDetection_completed",
   );
 

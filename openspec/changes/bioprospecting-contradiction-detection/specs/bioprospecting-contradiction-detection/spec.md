@@ -23,9 +23,21 @@ The system MUST provide a `bioprospecting-contradiction-detection` capability th
 - WHEN corpus ingestion completes for a source
 - THEN a `ContradictionDetectionJobData` job is enqueued to the `bioprospecting` queue
 - AND rule-based detection runs
-- AND LLM-assisted detection runs (if LLM provider available)
+- AND LLM-assisted detection runs ONLY IF `BIOPROSPECTING_CONTRADICTION_LLM=true`
+  (a separate, default-OFF flag, AMENDED by `contradiction-detection-fix` PR1) and an
+  LLM provider is available. The free rule-based tier therefore runs without spending.
 
 ### Requirement: research_bioprospecting_contradictions Table
+
+> **AMENDED by `contradiction-detection-fix` (PR1).** The column names below are the
+> LIVE schema. The names originally specified here (`source_fact_id`,
+> `conflicting_fact_id`, `contradiction_type`, `evidence_pack`, `resolution_status`,
+> `created_at`) were never the ones the database ended up with, and the divergence was
+> only visible in `20260617000000_fix_get_contradiction_stats_rpc.sql`. That migration
+> now performs the rename idempotently, so the migration chain reproduces this schema
+> from scratch. Every backend module (`contradictionDb.ts`, `reviewService.ts`,
+> `types.ts:ResearchBioprospectingContradiction`) already speaks this shape; the admin
+> client now does too.
 
 The system MUST create a `research_bioprospecting_contradictions` table with the following schema:
 
@@ -33,42 +45,50 @@ The system MUST create a `research_bioprospecting_contradictions` table with the
 CREATE TABLE IF NOT EXISTS public.research_bioprospecting_contradictions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source_id UUID REFERENCES public.research_sources(id) ON DELETE CASCADE,
-  source_fact_id UUID REFERENCES public.research_bioprospecting_facts(id) ON DELETE CASCADE,
-  conflicting_fact_id UUID REFERENCES public.research_bioprospecting_facts(id) ON DELETE CASCADE,
-  contradiction_type TEXT NOT NULL,
-  evidence_pack JSONB NOT NULL DEFAULT '{}',
-  rule_version TEXT,
-  llm_version TEXT,
-  resolution_status TEXT NOT NULL DEFAULT 'unresolved',
+  fact_a_id UUID REFERENCES public.research_bioprospecting_facts(id) ON DELETE CASCADE,
+  fact_b_id UUID REFERENCES public.research_bioprospecting_facts(id) ON DELETE CASCADE,
+  conflict_type TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'medium'
+    CHECK (severity IN ('low', 'medium', 'high')),
+  explanation TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'open'
+    CHECK (status IN ('open', 'resolved', 'dismissed')),
   resolved_by UUID,
   resolved_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  resolution_note TEXT,
+  detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
 **Columns:**
 - `id`: Primary key
 - `source_id`: Parent source this contradiction belongs to
-- `source_fact_id`: First conflicting fact (FK to `research_bioprospecting_facts`)
-- `conflicting_fact_id`: Second conflicting fact (FK to `research_bioprospecting_facts`)
-- `contradiction_type`: Type of conflict (e.g., `measurement_direction`, `relation_type`)
-- `evidence_pack`: JSON object containing both facts' evidence (see below)
-- `rule_version`: Version of rule set that detected this (null if LLM-only)
-- `llm_version`: Version of LLM prompt that detected this (null if rule-only)
-- `resolution_status`: `unresolved`, `resolved`, `dismissed`
-- `resolved_by`: User ID who resolved (null if unresolved)
-- `resolved_at`: Timestamp of resolution (null if unresolved)
-- `created_at`: Creation timestamp
-- `updated_at`: Last update timestamp
+- `fact_a_id`: First conflicting fact (FK to `research_bioprospecting_facts`)
+- `fact_b_id`: Second conflicting fact (FK to `research_bioprospecting_facts`)
+- `conflict_type`: Type of conflict — the check-constraint values are
+  `compound_mismatch`, `bioactivity_mismatch`, `organism_mismatch`,
+  `measurement_mismatch` (NOTE: the detector currently stores a
+  `measurement_direction` conflict as `compound_mismatch` and a `relation_type`
+  conflict as `bioactivity_mismatch`; correcting those labels is a tracked follow-up)
+- `severity`: `low` | `medium` | `high` (defaults to `medium`)
+- `explanation`: Human-readable conflict explanation (LLM tier writes it; the rule
+  tier leaves it NULL and puts its summary in `metadata.conflict_summary`)
+- `metadata`: JSON evidence pack for both facts (see below)
+- `status`: `open` (the unresolved state) | `resolved` | `dismissed`. The admin route
+  accepts the caller-facing filter value `unresolved` and maps it to `open`.
+- `resolved_by`: User ID who resolved (null while `open`)
+- `resolved_at`: Timestamp of resolution (null while `open`)
+- `resolution_note`: Optional operator note recorded on resolve/dismiss
+- `detected_at`: Creation timestamp (the admin feed orders by `detected_at DESC`)
 
 **Indexes:**
 ```sql
 CREATE INDEX IF NOT EXISTS idx_contradictions_source ON public.research_bioprospecting_contradictions (source_id);
-CREATE INDEX IF NOT EXISTS idx_contradictions_fact_a ON public.research_bioprospecting_contradictions (source_fact_id);
-CREATE INDEX IF NOT EXISTS idx_contradictions_fact_b ON public.research_bioprospecting_contradictions (conflicting_fact_id);
-CREATE INDEX IF NOT EXISTS idx_contradictions_type ON public.research_bioprospecting_contradictions (contradiction_type);
-CREATE INDEX IF NOT EXISTS idx_contradictions_status ON public.research_bioprospecting_contradictions (resolution_status);
+CREATE INDEX IF NOT EXISTS idx_contradictions_fact_a_id ON public.research_bioprospecting_contradictions (fact_a_id);
+CREATE INDEX IF NOT EXISTS idx_contradictions_fact_b_id ON public.research_bioprospecting_contradictions (fact_b_id);
+CREATE INDEX IF NOT EXISTS idx_contradictions_status_col ON public.research_bioprospecting_contradictions (status);
+CREATE INDEX IF NOT EXISTS idx_contradictions_detected_at ON public.research_bioprospecting_contradictions (detected_at DESC);
 ```
 
 **Evidence Pack Structure:**

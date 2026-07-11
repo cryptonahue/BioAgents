@@ -1,235 +1,502 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import type { BioprospectingFact } from "../types";
+import * as realLlmCost from "../llm-cost";
 
 /**
- * Unit tests for contradictionLlM.ts — LLM-assisted detection.
- * Tests flag guard, LLM availability check, and output parsing logic.
+ * Tests for the REAL `contradictionLlM` module.
+ *
+ * The previous version of this file copy-pasted `extractJsonArray`, the
+ * validator and the grouping logic INTO the test and asserted against the
+ * copies. That is why the id-contract bug shipped and survived: the module
+ * asked the LLM for fact UUIDs it never put in the payload, every proposal
+ * failed to join, and the run still logged `{ llmInserted: 0 }` as a
+ * success. A test that duplicates the implementation cannot catch a
+ * contract mismatch — so everything below imports the real module and
+ * asserts the real contract:
+ *
+ *   1. `buildFactsJson` puts each fact's `id` in the payload.
+ *   2. A model response referencing REAL ids resolves and inserts.
+ *   3. A response referencing UNKNOWN ids is counted as `dropped` and
+ *      logged at ERROR level (join-rate failure) — never a silent skip.
+ *   4. The LLM tier is gated by its own flag and its cost is recorded.
  */
 
-describe("contradictionLlM — LLM detection logic unit tests", () => {
-  describe("BIOPROSPECTING_CONTRADICTION_DETECTION flag guard", () => {
-    it("should return 0 when flag is not set", () => {
-      const flag = process.env.BIOPROSPECTING_CONTRADICTION_DETECTION;
-      const shouldRun = flag === "true";
-      expect(shouldRun).toBe(false);
-    });
+// ---------------------------------------------------------------------------
+// Mocks — installed BEFORE the module under test is imported.
+// ---------------------------------------------------------------------------
 
-    it("should return 0 when flag is 'false'", () => {
-      const flag = "false";
-      const shouldRun = flag === "true";
-      expect(shouldRun).toBe(false);
-    });
+type UpsertCall = {
+  factAId: string;
+  factBId: string;
+  conflictType: string;
+  explanation?: string | null;
+  metadata?: Record<string, unknown>;
+};
 
-    it("should allow execution when flag is 'true'", () => {
-      const flag = "true";
-      const shouldRun = flag === "true";
-      expect(shouldRun).toBe(true);
-    });
-  });
+let upsertCalls: UpsertCall[] = [];
+let upsertReturnsNull = false;
 
-  describe("LLM availability check", () => {
-    it("should return null llm when no API key is set", () => {
-      // Simulate resolveResearchBrainLLM behavior when no key is available
-      const hasKey = !!process.env.ANTHROPIC_API_KEY || !!process.env.OPENAI_API_KEY ||
- !!process.env.GOOGLE_API_KEY || !!process.env.OPENROUTER_API_KEY;
-      expect(hasKey).toBe(false); // In test environment no keys are set
-    });
-  });
+mock.module("../contradictionDb", () => ({
+  upsertBioprospectingContradiction: async (params: UpsertCall) => {
+    upsertCalls.push(params);
+    return upsertReturnsNull ? null : { id: `contradiction-${upsertCalls.length}` };
+  },
+}));
 
-  describe("extractJsonArray parsing", () => {
-    function extractJsonArray(text: string): any[] {
-      const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      const candidate = (fenced?.[1] || text) as string;
-      // Walk from the end: for each ']', find the matching '[' and try to parse.
-      // This handles inputs with multiple concatenated arrays (e.g. "[1,2,3][4,5,6]")
-      // by always returning the LAST well-formed array.
-      for (let end = candidate.lastIndexOf("]"); end > 0; end = candidate.lastIndexOf("]", end - 1)) {
-        let depth = 0;
-        for (let start = end; start >= 0; start--) {
-          const ch = candidate[start];
-          if (ch === "]") depth++;
-          else if (ch === "[") {
-            depth--;
-            if (depth === 0) {
-              try {
-                const parsed = JSON.parse(candidate.slice(start, end + 1));
-                if (Array.isArray(parsed)) return parsed;
-              } catch {
-                // try the previous closing bracket
-              }
-              break;
-            }
-          }
+let llmPrompts: string[] = [];
+let llmResponse: { content: string; usage?: { promptTokens: number; completionTokens: number } } =
+  { content: "[]" };
+let llmAvailable = true;
+
+mock.module("../llm", () => ({
+  resolveResearchBrainLLM: () =>
+    llmAvailable
+      ? {
+          llm: {
+            createChatCompletion: async (req: { messages: Array<{ content: string }> }) => {
+              llmPrompts.push(req.messages[0].content);
+              return llmResponse;
+            },
+          },
+          providerName: "anthropic",
+          model: "claude-3-haiku",
         }
-      }
-      return [];
-    }
+      : { llm: null, providerName: null, model: null },
+}));
 
-    it("should parse fenced JSON array", () => {
-      const text = '```json\n[{"sourceFactId":"f1","conflictingFactId":"f2","contradictionType":"contextual","explanation":"test"}]\n```';
-      const result = extractJsonArray(text);
-      expect(result.length).toBe(1);
-      expect(result[0].sourceFactId).toBe("f1");
+let recordedCalls: Array<{ runId: string; entry: any }> = [];
+
+// Only `recordLlmCall` is stubbed (it would otherwise reach Supabase). The REAL
+// `calculateCost` is re-exported: bun's `mock.module` is process-wide, and
+// replacing the whole module would silently break `costService.test.ts`, which
+// asserts the real pricing math.
+mock.module("../llm-cost", () => ({
+  ...realLlmCost,
+  recordLlmCall: async (runId: string, entry: any) => {
+    recordedCalls.push({ runId, entry });
+  },
+}));
+
+type LogCall = { payload: any; message?: string };
+const logCalls: Record<"info" | "error" | "warn" | "debug", LogCall[]> = {
+  info: [],
+  error: [],
+  warn: [],
+  debug: [],
+};
+
+function capture(level: keyof typeof logCalls) {
+  return (payload?: any, message?: string) => {
+    if (typeof payload === "string") logCalls[level].push({ payload: {}, message: payload });
+    else logCalls[level].push({ payload, message });
+  };
+}
+
+mock.module("../../../utils/logger", () => ({
+  default: {
+    info: capture("info"),
+    error: capture("error"),
+    warn: capture("warn"),
+    debug: capture("debug"),
+  },
+}));
+
+import {
+  buildFactsJson,
+  extractJsonArray,
+  isLLMContradiction,
+  mapLLMContradictionType,
+  runLLMDetection,
+  JOIN_RATE_ERROR_THRESHOLD,
+} from "../contradictionLlM";
+
+// ---------------------------------------------------------------------------
+// Fixtures — two facts in the SAME compound|bioactivity group, with real
+// UUID-shaped ids (the join key the whole contract hangs on).
+// ---------------------------------------------------------------------------
+
+const FACT_A_ID = "11111111-1111-1111-1111-111111111111";
+const FACT_B_ID = "22222222-2222-2222-2222-222222222222";
+const UNKNOWN_ID = "99999999-9999-9999-9999-999999999999";
+
+function makeFact(overrides: Partial<BioprospectingFact>): BioprospectingFact {
+  return {
+    id: FACT_A_ID,
+    source_id: "source-1",
+    status: "supported",
+    confidence: "medium",
+    compound: "Bryostatin",
+    bioactivity: "PKC",
+    measurement_direction: "agonist",
+    relation_type: "activates",
+    result_summary: "Bryostatin activates PKC",
+    page: 3,
+    source: { id: "source-1", title: "Paper A" },
+    ...overrides,
+  } as BioprospectingFact;
+}
+
+const FACTS: BioprospectingFact[] = [
+  makeFact({ id: FACT_A_ID }),
+  makeFact({
+    id: FACT_B_ID,
+    measurement_direction: "antagonist",
+    relation_type: "inhibits",
+    result_summary: "Bryostatin inhibits PKC",
+    source: { id: "source-2", title: "Paper B" } as any,
+  }),
+];
+
+function modelResponse(items: unknown[]) {
+  return { content: JSON.stringify(items), usage: { promptTokens: 1200, completionTokens: 80 } };
+}
+
+beforeEach(() => {
+  upsertCalls = [];
+  upsertReturnsNull = false;
+  llmPrompts = [];
+  llmAvailable = true;
+  llmResponse = { content: "[]" };
+  recordedCalls = [];
+  logCalls.info = [];
+  logCalls.error = [];
+  logCalls.warn = [];
+  logCalls.debug = [];
+  process.env.BIOPROSPECTING_CONTRADICTION_DETECTION = "true";
+  process.env.BIOPROSPECTING_CONTRADICTION_LLM = "true";
+});
+
+afterEach(() => {
+  delete process.env.BIOPROSPECTING_CONTRADICTION_DETECTION;
+  delete process.env.BIOPROSPECTING_CONTRADICTION_LLM;
+});
+
+// ---------------------------------------------------------------------------
+// 1. buildFactsJson — THE id contract
+// ---------------------------------------------------------------------------
+
+describe("buildFactsJson (real module)", () => {
+  it("includes each fact's id in the payload sent to the model", () => {
+    const lines = buildFactsJson(FACTS).split("\n").filter(Boolean);
+    expect(lines).toHaveLength(2);
+
+    const parsed = lines.map((l) => JSON.parse(l));
+    expect(parsed.map((p) => p.id)).toEqual([FACT_A_ID, FACT_B_ID]);
+    // The rest of the payload the prompt documents is still there.
+    expect(parsed[0].compound).toBe("Bryostatin");
+    expect(parsed[0].bioactivity).toBe("PKC");
+    expect(parsed[0].measurement_direction).toBe("agonist");
+    expect(parsed[1].source_title).toBe("Paper B");
+  });
+
+  it("skips singleton compound|bioactivity groups", () => {
+    const payload = buildFactsJson([
+      makeFact({ id: FACT_A_ID }),
+      makeFact({ id: FACT_B_ID, compound: "Caulerpenyne" }),
+    ]);
+    expect(payload).toBe("");
+  });
+
+  it("puts the ids in the prompt the LLM actually receives", async () => {
+    llmResponse = modelResponse([]);
+    await runLLMDetection({ facts: FACTS, sourceId: "source-1", runId: "run-1" });
+
+    expect(llmPrompts).toHaveLength(1);
+    expect(llmPrompts[0]).toContain(FACT_A_ID);
+    expect(llmPrompts[0]).toContain(FACT_B_ID);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Happy path — real ids resolve and insert
+// ---------------------------------------------------------------------------
+
+describe("runLLMDetection — proposals referencing real ids", () => {
+  it("resolves and inserts them", async () => {
+    llmResponse = modelResponse([
+      {
+        sourceFactId: FACT_A_ID,
+        conflictingFactId: FACT_B_ID,
+        contradictionType: "directional_conflict",
+        explanation: "agonist vs antagonist on the same target",
+      },
+    ]);
+
+    const result = await runLLMDetection({
+      facts: FACTS,
+      sourceId: "source-1",
+      runId: "run-1",
     });
 
-    it("should parse raw JSON array without fences", () => {
-      const text = '[{"sourceFactId":"f1","conflictingFactId":"f2","contradictionType":"contextual","explanation":"test"}]';
-      const result = extractJsonArray(text);
-      expect(result.length).toBe(1);
-    });
+    expect(result).toEqual({ proposed: 1, resolved: 1, dropped: 0, inserted: 1 });
 
-    it("should return empty array when no array found", () => {
-      const text = '{"sourceFactId":"f1"}';
-      const result = extractJsonArray(text);
-      expect(result).toEqual([]);
-    });
+    expect(upsertCalls).toHaveLength(1);
+    expect(upsertCalls[0].factAId).toBe(FACT_A_ID);
+    expect(upsertCalls[0].factBId).toBe(FACT_B_ID);
+    expect(upsertCalls[0].conflictType).toBe("measurement_mismatch");
+    expect((upsertCalls[0].metadata as any).source_a.fact_id).toBe(FACT_A_ID);
+    expect((upsertCalls[0].metadata as any).source_b.provenance).toContain("page 3");
 
-    it("should return empty array when JSON is invalid", () => {
-      const text = '[{"sourceFactId":}]';
-      const result = extractJsonArray(text);
-      expect(result).toEqual([]);
-    });
+    // A healthy join rate is NOT an error.
+    expect(logCalls.error).toHaveLength(0);
 
-    it("should return empty array when text is empty", () => {
-      const result = extractJsonArray('');
-      expect(result).toEqual([]);
-    });
-
-    it("should extract last array when multiple arrays present", () => {
-      const text = '[1,2,3][4,5,6]';
-      const result = extractJsonArray(text);
-      expect(result).toEqual([4, 5, 6]);
+    // The summary carries the join counters, not just `inserted`.
+    const summary = logCalls.info.find((c) => c.message === "runLLMDetection_completed");
+    expect(summary).toBeDefined();
+    expect(summary!.payload).toMatchObject({
+      llmProposed: 1,
+      llmResolved: 1,
+      llmDropped: 0,
+      llmInserted: 1,
     });
   });
 
-  describe("LLM output validation", () => {
-    interface LLMContradiction {
-      sourceFactId: string;
-      conflictingFactId: string;
-      contradictionType: "contextual" | "measurement_impossibility" | "directional_conflict";
-      explanation: string;
-    }
-
-    function validateContradiction(item: unknown): item is LLMContradiction {
-      return (
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as any).sourceFactId === "string" &&
-        typeof (item as any).conflictingFactId === "string" &&
-        typeof (item as any).contradictionType === "string" &&
-        typeof (item as any).explanation === "string"
-      );
-    }
-
-    it("should validate a correct contradiction object", () => {
-      const item = {
-        sourceFactId: "f1",
-        conflictingFactId: "f2",
+  it("counts a duplicate (already-existing) contradiction as resolved but not inserted", async () => {
+    upsertReturnsNull = true;
+    llmResponse = modelResponse([
+      {
+        sourceFactId: FACT_A_ID,
+        conflictingFactId: FACT_B_ID,
         contradictionType: "contextual",
-        explanation: "Opposite effects under different conditions",
-      };
-      expect(validateContradiction(item)).toBe(true);
+        explanation: "dup",
+      },
+    ]);
+
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+    expect(result).toEqual({ proposed: 1, resolved: 1, dropped: 0, inserted: 0 });
+    expect(logCalls.error).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. The regression that shipped — unknown ids must be LOUD, not silent
+// ---------------------------------------------------------------------------
+
+describe("runLLMDetection — proposals referencing unknown ids", () => {
+  it("counts them as dropped and logs a join-rate failure at ERROR level", async () => {
+    llmResponse = modelResponse([
+      {
+        sourceFactId: UNKNOWN_ID,
+        conflictingFactId: FACT_B_ID,
+        contradictionType: "contextual",
+        explanation: "model invented an id",
+      },
+    ]);
+
+    const result = await runLLMDetection({
+      facts: FACTS,
+      sourceId: "source-1",
+      runId: "run-1",
     });
 
-    it("should reject item with missing sourceFactId", () => {
-      const item = {
-        conflictingFactId: "f2",
-        contradictionType: "contextual",
-        explanation: "test",
-      };
-      expect(validateContradiction(item)).toBe(false);
-    });
+    expect(result).toEqual({ proposed: 1, resolved: 0, dropped: 1, inserted: 0 });
+    expect(upsertCalls).toHaveLength(0);
 
-    it("should reject item with non-string sourceFactId", () => {
-      const item = {
+    const failure = logCalls.error.find(
+      (c) => c.message === "runLLMDetection_join_rate_failure",
+    );
+    expect(failure).toBeDefined();
+    expect(failure!.payload).toMatchObject({
+      sourceId: "source-1",
+      llmProposed: 1,
+      llmResolved: 0,
+      llmDropped: 1,
+      threshold: JOIN_RATE_ERROR_THRESHOLD,
+    });
+    expect(failure!.payload.unknownFactIdSample).toContain(UNKNOWN_ID);
+  });
+
+  it("logs the failure when the join rate falls below the threshold (1 of 3)", async () => {
+    llmResponse = modelResponse([
+      {
+        sourceFactId: FACT_A_ID,
+        conflictingFactId: FACT_B_ID,
+        contradictionType: "contextual",
+        explanation: "real",
+      },
+      {
+        sourceFactId: UNKNOWN_ID,
+        conflictingFactId: FACT_B_ID,
+        contradictionType: "contextual",
+        explanation: "bogus",
+      },
+      {
+        sourceFactId: FACT_A_ID,
+        conflictingFactId: UNKNOWN_ID,
+        contradictionType: "contextual",
+        explanation: "bogus",
+      },
+    ]);
+
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+
+    expect(result.proposed).toBe(3);
+    expect(result.resolved).toBe(1);
+    expect(result.dropped).toBe(2);
+    expect(result.resolved / result.proposed).toBeLessThan(JOIN_RATE_ERROR_THRESHOLD);
+    expect(
+      logCalls.error.some((c) => c.message === "runLLMDetection_join_rate_failure"),
+    ).toBe(true);
+  });
+
+  it("does not log a failure when nothing was proposed", async () => {
+    llmResponse = modelResponse([]);
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+    expect(result).toEqual({ proposed: 0, resolved: 0, dropped: 0, inserted: 0 });
+    expect(logCalls.error).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Flags — the LLM tier has its own switch and defaults to OFF
+// ---------------------------------------------------------------------------
+
+describe("runLLMDetection — flag gating", () => {
+  it("does not call the LLM when BIOPROSPECTING_CONTRADICTION_LLM is unset", async () => {
+    delete process.env.BIOPROSPECTING_CONTRADICTION_LLM;
+
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+
+    expect(result).toEqual({ proposed: 0, resolved: 0, dropped: 0, inserted: 0 });
+    expect(llmPrompts).toHaveLength(0);
+    expect(recordedCalls).toHaveLength(0);
+  });
+
+  it("does not call the LLM when the feature flag is off, even with the LLM flag on", async () => {
+    process.env.BIOPROSPECTING_CONTRADICTION_DETECTION = "false";
+
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+
+    expect(result.proposed).toBe(0);
+    expect(llmPrompts).toHaveLength(0);
+  });
+
+  it("skips when no LLM provider is configured", async () => {
+    llmAvailable = false;
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+    expect(result.inserted).toBe(0);
+    expect(llmPrompts).toHaveLength(0);
+  });
+
+  it("skips when fewer than two facts are given", async () => {
+    const result = await runLLMDetection({
+      facts: [makeFact({ id: FACT_A_ID })],
+      sourceId: "s",
+      runId: "run-1",
+    });
+    expect(result.proposed).toBe(0);
+    expect(llmPrompts).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Cost tracking — the tier is no longer invisible spend
+// ---------------------------------------------------------------------------
+
+describe("runLLMDetection — cost accounting", () => {
+  it("records the call against the run, even when every proposal is dropped", async () => {
+    llmResponse = modelResponse([
+      {
+        sourceFactId: UNKNOWN_ID,
+        conflictingFactId: UNKNOWN_ID,
+        contradictionType: "contextual",
+        explanation: "bogus",
+      },
+    ]);
+
+    await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-42" });
+
+    expect(recordedCalls).toHaveLength(1);
+    expect(recordedCalls[0].runId).toBe("run-42");
+    expect(recordedCalls[0].entry).toMatchObject({
+      provider: "anthropic",
+      model: "claude-3-haiku",
+      inputTokens: 1200,
+      outputTokens: 80,
+    });
+    expect(recordedCalls[0].entry.costUsd).toBeGreaterThan(0);
+  });
+
+  it("warns instead of recording when no runId is available", async () => {
+    llmResponse = modelResponse([]);
+    await runLLMDetection({ facts: FACTS, sourceId: "s" });
+
+    expect(recordedCalls).toHaveLength(0);
+    expect(
+      logCalls.warn.some((c) => c.message === "runLLMDetection_cost_not_attributed"),
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Parsing / validation helpers — the REAL exports, not copies
+// ---------------------------------------------------------------------------
+
+describe("extractJsonArray (real module)", () => {
+  it("parses a fenced JSON array", () => {
+    const text = '```json\n[{"sourceFactId":"f1"}]\n```';
+    expect(extractJsonArray(text)[0].sourceFactId).toBe("f1");
+  });
+
+  it("parses a raw JSON array", () => {
+    expect(extractJsonArray('[{"a":1}]')).toEqual([{ a: 1 }]);
+  });
+
+  it("returns [] for invalid or empty input", () => {
+    expect(extractJsonArray('[{"sourceFactId":}]')).toEqual([]);
+    expect(extractJsonArray("")).toEqual([]);
+    expect(extractJsonArray('{"sourceFactId":"f1"}')).toEqual([]);
+  });
+
+  it("returns the last well-formed array when several are present", () => {
+    expect(extractJsonArray("[1,2,3][4,5,6]")).toEqual([4, 5, 6]);
+  });
+});
+
+describe("isLLMContradiction (real module)", () => {
+  it("accepts a well-formed proposal", () => {
+    expect(
+      isLLMContradiction({
+        sourceFactId: FACT_A_ID,
+        conflictingFactId: FACT_B_ID,
+        contradictionType: "contextual",
+        explanation: "x",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects malformed proposals", () => {
+    expect(isLLMContradiction(null)).toBe(false);
+    expect(isLLMContradiction("string")).toBe(false);
+    expect(
+      isLLMContradiction({ conflictingFactId: FACT_B_ID, contradictionType: "contextual", explanation: "x" }),
+    ).toBe(false);
+    expect(
+      isLLMContradiction({
         sourceFactId: 123,
-        conflictingFactId: "f2",
+        conflictingFactId: FACT_B_ID,
         contradictionType: "contextual",
-        explanation: "test",
-      };
-      expect(validateContradiction(item)).toBe(false);
-    });
-
-    it("should reject item with invalid contradictionType", () => {
-      const item = {
-        sourceFactId: "f1",
-        conflictingFactId: "f2",
-        contradictionType: "invalid_type",
-        explanation: "test",
-      };
-      expect(validateContradiction(item)).toBe(true); // type check is string, not enum
-    });
-
-    it("should reject null", () => {
-      expect(validateContradiction(null)).toBe(false);
-    });
-
-    it("should reject non-object", () => {
-      expect(validateContradiction("string")).toBe(false);
-      expect(validateContradiction(123)).toBe(false);
-    });
-
-    it("should filter array to valid contradictions only", () => {
-      const raw = [
-        { sourceFactId: "f1", conflictingFactId: "f2", contradictionType: "contextual", explanation: "a" },
-        { sourceFactId: "f2", conflictingFactId: "f3", contradictionType: "directional_conflict", explanation: "b" },
-        { sourceFactId: "f3", conflictingFactId: "f4", contradictionType: "measurement_impossibility", explanation: "c" },
-        { sourceFactId: "f4", conflictingFactId: "f5" }, // missing explanation
-        { sourceFactId: "f5", conflictingFactId: "f6", contradictionType: "contextual", explanation: "d" },
-      ];
-
-      const valid = raw.filter(validateContradiction);
-      expect(valid.length).toBe(4);
-    });
+        explanation: "x",
+      }),
+    ).toBe(false);
   });
 
-  describe("factsJson grouping", () => {
-    it("should group facts by compound|bioactivity", () => {
-      const facts = [
-        { compound: "Bryostatin", bioactivity: "PKC" },
-        { compound: "Bryostatin", bioactivity: "PKC" },
-        { compound: "Caulerpenyne", bioactivity: "PKC" },
-      ];
+  it("drops malformed proposals before they reach the join", async () => {
+    llmResponse = modelResponse([
+      { sourceFactId: FACT_A_ID, conflictingFactId: FACT_B_ID }, // no type/explanation
+    ]);
 
-      const grouped = new Map<string, typeof facts>();
-      for (const fact of facts) {
-        const key = `${fact.compound ?? ""}|${fact.bioactivity ?? ""}`;
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(fact);
-      }
-
-      expect(grouped.size).toBe(2);
-      expect(grouped.get("Bryostatin|PKC")!.length).toBe(2);
-      expect(grouped.get("Caulerpenyne|PKC")!.length).toBe(1);
-    });
-
-    it("should handle null compound and bioactivity", () => {
-      const facts = [
-        { compound: null, bioactivity: "PKC" },
-        { compound: "Bryostatin", bioactivity: "PKC" },
-      ];
-
-      const grouped = new Map<string, typeof facts>();
-      for (const fact of facts) {
-        const key = `${fact.compound ?? ""}|${fact.bioactivity ?? ""}`;
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(fact);
-      }
-
-      expect(grouped.size).toBe(2);
-    });
+    const result = await runLLMDetection({ facts: FACTS, sourceId: "s", runId: "run-1" });
+    expect(result).toEqual({ proposed: 0, resolved: 0, dropped: 0, inserted: 0 });
+    expect(upsertCalls).toHaveLength(0);
   });
+});
 
-  describe("empty facts handling", () => {
-    it("should return0 for insufficient facts", () => {
-      const facts: any[] = [];
-      const insufficient = facts.length < 2;
-      expect(insufficient).toBe(true);
-    });
-
-    it("should return 0 for single fact", () => {
-      const facts = [{ id: "f1" }];
-      const insufficient = facts.length < 2;
-      expect(insufficient).toBe(true);
-    });
+describe("mapLLMContradictionType (real module)", () => {
+  it("maps to the schema's conflict_type check-constraint values", () => {
+    expect(mapLLMContradictionType("contextual")).toBe("bioactivity_mismatch");
+    expect(mapLLMContradictionType("measurement_impossibility")).toBe("measurement_mismatch");
+    expect(mapLLMContradictionType("directional_conflict")).toBe("measurement_mismatch");
+    expect(mapLLMContradictionType("nonsense")).toBe("bioactivity_mismatch");
   });
 });

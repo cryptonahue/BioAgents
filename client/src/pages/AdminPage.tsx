@@ -1,6 +1,7 @@
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import {
+  isContradictionOpen,
   useAdmin,
   useAdminContradictions,
   useAdminStats,
@@ -96,6 +97,80 @@ const CONTRAS_STATUSES: { value: AdminContradictionStatus | "all"; label: string
 ];
 
 const PAGE_SIZE = 50;
+
+/**
+ * Render helpers. Both are defensive on purpose: the previous version of
+ * this table called `row.source_fact_id.slice(0, 8)` against a column
+ * that does not exist on a real row, so the very first contradiction
+ * ever detected would have crashed the tab with a TypeError.
+ */
+function shortId(id: string | null | undefined): string {
+  return id ? id.slice(0, 8) : "—";
+}
+
+function formatTimestamp(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+export interface ContradictionRowProps {
+  row: AdminContradiction;
+  selected: boolean;
+  onToggle: () => void;
+  onAct: (resolutionStatus: "resolved" | "dismissed") => void | Promise<void>;
+}
+
+/**
+ * One contradiction row. Presentational and hook-free on purpose: it can
+ * be invoked directly in a test (no DOM required) so the DB→UI column
+ * contract is asserted against the REAL row shape.
+ */
+export function ContradictionRow({
+  row,
+  selected,
+  onToggle,
+  onAct,
+}: ContradictionRowProps) {
+  return (
+    <tr>
+      <td>
+        <input type="checkbox" checked={selected} onChange={onToggle} />
+      </td>
+      <td>{row.conflict_type}</td>
+      <td>{row.severity}</td>
+      <td>
+        <code>{shortId(row.fact_a_id)}</code>
+      </td>
+      <td>
+        <code>{shortId(row.fact_b_id)}</code>
+      </td>
+      <td>
+        <span class={`admin-status-badge status-${row.status}`}>
+          {row.status}
+        </span>
+      </td>
+      <td>{formatTimestamp(row.detected_at)}</td>
+      <td>
+        {isContradictionOpen(row) ? (
+          <>
+            <button
+              class="admin-btn admin-btn-success"
+              onClick={() => onAct("resolved")}
+            >
+              Resolve
+            </button>{" "}
+            <button class="admin-btn" onClick={() => onAct("dismissed")}>
+              Dismiss
+            </button>
+          </>
+        ) : (
+          <span style={{ color: "#6b7280" }}>—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
 
 function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
   const [statusFilter, setStatusFilter] = useState<AdminContradictionStatus | "all">(
@@ -220,69 +295,30 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
                 />
               </th>
               <th>Type</th>
-              <th>Source fact</th>
-              <th>Conflicting fact</th>
+              <th>Severity</th>
+              <th>Fact A</th>
+              <th>Fact B</th>
               <th>Status</th>
-              <th>Created</th>
+              <th>Detected</th>
               <th style={{ width: 220 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.id)}
-                    onChange={() => toggleRow(row.id)}
-                  />
-                </td>
-                <td>{row.contradiction_type}</td>
-                <td><code>{row.source_fact_id.slice(0, 8)}</code></td>
-                <td><code>{row.conflicting_fact_id.slice(0, 8)}</code></td>
-                <td>
-                  <span
-                    class={`admin-status-badge status-${row.resolution_status}`}
-                  >
-                    {row.resolution_status}
-                  </span>
-                </td>
-                <td>{new Date(row.created_at).toLocaleString()}</td>
-                <td>
-                  {row.resolution_status === "unresolved" ? (
-                    <>
-                      <button
-                        class="admin-btn admin-btn-success"
-                        onClick={async () => {
-                          try {
-                            await resolveOne(row.id, "resolved");
-                            await refetch();
-                          } catch (err: any) {
-                            setActionMessage(err?.message || "Failed");
-                          }
-                        }}
-                      >
-                        Resolve
-                      </button>{" "}
-                      <button
-                        class="admin-btn"
-                        onClick={async () => {
-                          try {
-                            await resolveOne(row.id, "dismissed");
-                            await refetch();
-                          } catch (err: any) {
-                            setActionMessage(err?.message || "Failed");
-                          }
-                        }}
-                      >
-                        Dismiss
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{ color: "#6b7280" }}>—</span>
-                  )}
-                </td>
-              </tr>
+              <ContradictionRow
+                key={row.id}
+                row={row}
+                selected={selectedIds.has(row.id)}
+                onToggle={() => toggleRow(row.id)}
+                onAct={async (resolutionStatus) => {
+                  try {
+                    await resolveOne(row.id, resolutionStatus);
+                    await refetch();
+                  } catch (err: any) {
+                    setActionMessage(err?.message || "Failed");
+                  }
+                }}
+              />
             ))}
           </tbody>
         </table>

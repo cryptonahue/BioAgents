@@ -37,25 +37,50 @@ async function jsonOrError(res: Response, fallback: string): Promise<any> {
 // `src/services/researchBrain/types.ts` and `reviewService.ts`.
 // ---------------------------------------------------------------------------
 
+/**
+ * Caller-facing status filter. `unresolved` is the historical
+ * vocabulary the route accepts; the DB (and therefore every row the
+ * route returns) uses `open` for the same state — the mapping happens
+ * server-side in `reviewService.listContradictionsGlobal`.
+ */
 export type AdminContradictionStatus =
   | "unresolved"
   | "resolved"
   | "dismissed";
 
+/** The status values actually present on a row (`status` column). */
+export type ContradictionRowStatus = "open" | "resolved" | "dismissed";
+
+/**
+ * A contradiction row EXACTLY as the DB stores it and the route returns
+ * it (`listContradictionsGlobal` selects `*` and passes the rows
+ * straight through). Mirrors `ResearchBioprospectingContradiction` in
+ * `src/services/researchBrain/types.ts`.
+ *
+ * This previously declared the stale spec schema
+ * (`source_fact_id` / `contradiction_type` / `evidence_pack` /
+ * `resolution_status` / `created_at`), none of which exist on a real
+ * row — so the table threw a TypeError on the first row it rendered
+ * and the Resolve/Dismiss buttons never appeared.
+ */
 export interface AdminContradiction {
   id: string;
-  source_id: string;
-  source_fact_id: string;
-  conflicting_fact_id: string;
-  contradiction_type: string;
-  evidence_pack: Record<string, unknown>;
-  rule_version: string | null;
-  llm_version: string | null;
-  resolution_status: string;
-  resolved_by: string | null;
+  fact_a_id: string;
+  fact_b_id: string;
+  conflict_type: string;
+  severity: string;
+  explanation: string | null;
+  status: ContradictionRowStatus | string;
+  detected_at: string;
   resolved_at: string | null;
-  created_at: string;
-  updated_at: string;
+  resolved_by: string | null;
+  resolution_note: string | null;
+  metadata: Record<string, unknown>;
+}
+
+/** True when a row is still awaiting operator triage (DB status `open`). */
+export function isContradictionOpen(row: AdminContradiction): boolean {
+  return row.status === "open";
 }
 
 export interface AdminContradictionsResponse {

@@ -25,10 +25,34 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { createElement, render } from "preact";
 import { useEffect } from "preact/hooks";
 import {
+  isContradictionOpen,
   useAdminContradictions,
   useBulkResolveContradictions,
   useUnmergeFact,
+  type AdminContradiction,
 } from "../useAdminReview";
+
+/**
+ * A contradiction row in the shape the DB (and therefore the route)
+ * ACTUALLY returns — `fact_a_id` / `fact_b_id` / `conflict_type` /
+ * `severity` / `status` / `detected_at` / `metadata`. The old fixture
+ * used the stale spec schema, which is why the client/server contract
+ * mismatch shipped unnoticed.
+ */
+const REAL_ROW: AdminContradiction = {
+  id: "c-1",
+  fact_a_id: "00000000-0000-0000-0000-0000000000f1",
+  fact_b_id: "00000000-0000-0000-0000-0000000000f2",
+  conflict_type: "measurement_mismatch",
+  severity: "medium",
+  explanation: "agonist vs antagonist",
+  status: "open",
+  detected_at: "2026-06-15T00:00:00Z",
+  resolved_at: null,
+  resolved_by: null,
+  resolution_note: null,
+  metadata: {},
+};
 
 // ---------------------------------------------------------------------------
 // Mock fetch — programmable per-URL responses.
@@ -107,29 +131,13 @@ async function driveHook<T>(probe: (out: { current: T | null }) => void) {
 // ---------------------------------------------------------------------------
 
 describe("useAdminContradictions", () => {
-  it("fetches and caches the unresolved list", async () => {
+  it("fetches and caches the unresolved list, preserving the real row schema", async () => {
     setMockResponses([
       {
         urlPattern: /\/api\/research-brain\/contradictions/,
         status: 200,
         body: {
-          contradictions: [
-            {
-              id: "c-1",
-              source_id: "s-1",
-              source_fact_id: "f-1",
-              conflicting_fact_id: "f-2",
-              contradiction_type: "measurement_direction",
-              evidence_pack: {},
-              rule_version: "1.0",
-              llm_version: "1.0",
-              resolution_status: "unresolved",
-              resolved_by: null,
-              resolved_at: null,
-              created_at: "2026-06-15T00:00:00Z",
-              updated_at: "2026-06-15T00:00:00Z",
-            },
-          ],
+          contradictions: [REAL_ROW],
           total: 1,
           limit: 50,
           offset: 0,
@@ -137,12 +145,13 @@ describe("useAdminContradictions", () => {
       },
     ]);
 
-    await driveHook<{ rows: number; total: number } | null>((out) => {
+    const ref = await driveHook<{ row: AdminContradiction } | null>((out) => {
       const { data, isLoading } = useAdminContradictions({
         status: "unresolved",
         page: 0,
       });
-      out.current = isLoading ? null : { rows: data?.contradictions.length ?? 0, total: data?.total ?? 0 };
+      const row = data?.contradictions[0];
+      out.current = isLoading || !row ? null : { row };
     });
 
     // Verify the fetch was made with the right URL pattern.
@@ -151,6 +160,40 @@ describe("useAdminContradictions", () => {
     expect(last.url).toContain("/api/research-brain/contradictions");
     expect(last.url).toContain("status=unresolved");
     expect(last.url).toContain("limit=50");
+
+    // The row is passed through untouched — the fields the table renders
+    // must be the DB's, not the stale spec's.
+    expect(ref.current).not.toBeNull();
+    const { row } = ref.current!;
+    expect(row.fact_a_id).toBe(REAL_ROW.fact_a_id);
+    expect(row.fact_b_id).toBe(REAL_ROW.fact_b_id);
+    expect(row.conflict_type).toBe("measurement_mismatch");
+    expect(row.status).toBe("open");
+    expect(row.detected_at).toBe("2026-06-15T00:00:00Z");
+    // The columns the table used to read do NOT exist on a real row.
+    expect((row as any).source_fact_id).toBeUndefined();
+    expect((row as any).resolution_status).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 1b. isContradictionOpen — the pending-row predicate the table uses to
+//     decide whether Resolve/Dismiss render. The old check compared
+//     against "unresolved", a value the DB never emits.
+// ---------------------------------------------------------------------------
+
+describe("isContradictionOpen", () => {
+  it("is true for the DB's open status", () => {
+    expect(isContradictionOpen(REAL_ROW)).toBe(true);
+  });
+
+  it("is false for resolved and dismissed rows", () => {
+    expect(isContradictionOpen({ ...REAL_ROW, status: "resolved" })).toBe(false);
+    expect(isContradictionOpen({ ...REAL_ROW, status: "dismissed" })).toBe(false);
+  });
+
+  it("is false for the stale 'unresolved' value the DB never returns", () => {
+    expect(isContradictionOpen({ ...REAL_ROW, status: "unresolved" })).toBe(false);
   });
 });
 

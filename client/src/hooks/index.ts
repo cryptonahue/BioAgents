@@ -27,6 +27,7 @@ export {
   useDedupEvents,
   useUnmergeFact,
   useAdminStats,
+  isContradictionOpen,
 } from './useAdminReview';
 export { useLibraryList, usePaperMeta, askPaper, getPaperHistory } from './useLibrary';
 export type { LibraryPaper, PaperMeta, AskResult, AskSource, AskHistoryItem } from './useLibrary';
@@ -44,6 +45,7 @@ export type {
   AdminContradiction,
   AdminContradictionStatus,
   AdminContradictionsResponse,
+  ContradictionRowStatus,
   AdminStats,
   AdminDedupEventsResponse,
   BulkResolveResult,
