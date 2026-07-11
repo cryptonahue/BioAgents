@@ -177,7 +177,7 @@ const app = new Elysia()
       (process.env.PRIVY_APP_ID
         ? "Ask questions, run deep research, and discover evidence-backed insights about coral health, bleaching, and restoration. BioAgent powered by $CRLAI."
         : "AI-powered chat interface");
-    const faviconUrl = process.env.FAVICON_URL || "/images/token.png";
+    const faviconUrl = process.env.FAVICON_URL || "/images/favicon.png";
     const ogImageUrl =
       process.env.OG_IMAGE_URL || "https://bioagents.xyz/og-image.png";
 
@@ -522,7 +522,7 @@ app
       (process.env.PRIVY_APP_ID
         ? "Ask questions, run deep research, and discover evidence-backed insights about coral health, bleaching, and restoration. BioAgent powered by $CRLAI."
         : "AI-powered chat interface");
-    const faviconUrl = process.env.FAVICON_URL || "/images/token.png";
+    const faviconUrl = process.env.FAVICON_URL || "/images/favicon.png";
     const ogImageUrl =
       process.env.OG_IMAGE_URL || "https://bioagents.xyz/og-image.png";
 
