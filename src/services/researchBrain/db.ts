@@ -345,6 +345,7 @@ export async function replaceClaimsForSource(
         confidence: claim.confidence || (hasEvidence ? "medium" : "low"),
         source_id: source.id,
         chunk_id: evidence?.id || null,
+        quote: claim.quote?.trim() || null,
         doi: source.doi || null,
         trust_tier: source.trust_tier,
         metadata: {

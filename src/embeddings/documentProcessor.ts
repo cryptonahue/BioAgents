@@ -7,6 +7,19 @@ import path from "path";
 import { PDFParse } from "pdf-parse";
 import logger from "../utils/logger";
 
+/**
+ * Maps a cumulative character range in {@link ProcessedDocument.content} to the
+ * 1-indexed PDF page that produced it. `start` is inclusive, `end` exclusive.
+ * Only populated for PDFs (other file types have no intrinsic page structure).
+ * The ranges are computed against the SAME string returned as `content`, so a
+ * chunk's `chunkStart` offset can be mapped straight through to a page.
+ */
+export interface PageOffset {
+  page: number;
+  start: number;
+  end: number;
+}
+
 export interface ProcessedDocument {
   title: string;
   content: string;
@@ -16,6 +29,8 @@ export interface ProcessedDocument {
     size: number;
     lastModified: Date;
     contentHash: string;
+    /** Present only for PDFs — offset→page map (see {@link PageOffset}). */
+    pageOffsets?: PageOffset[];
     [key: string]: any;
   };
 }
@@ -89,6 +104,7 @@ export class DocumentProcessor {
 
     let content: string;
     let frontMatterData: any = {};
+    let pageOffsets: PageOffset[] | undefined;
 
     try {
       switch (ext) {
@@ -114,7 +130,46 @@ export class DocumentProcessor {
             const parser = new PDFParse({ url: filePath });
             const pdfResult = await parser.getText();
             await parser.destroy();
-            content = pdfResult.text;
+
+            // pdf-parse exposes per-page text (`pdfResult.pages`) alongside the
+            // flattened `pdfResult.text`. We re-assemble `content` ourselves
+            // from the pages so the offset→page map is guaranteed consistent
+            // with the exact string we return (rather than trusting an unknown
+            // internal join). If pages are unavailable we fall back to the
+            // flattened text with no page map (page stays null downstream).
+            const pages = pdfResult.pages || [];
+            if (pages.length > 0) {
+              const PAGE_SEPARATOR = "\n\n";
+              let assembled = "";
+              const rawOffsets: PageOffset[] = [];
+              for (let i = 0; i < pages.length; i++) {
+                const pageText = pages[i]?.text ?? "";
+                const start = assembled.length;
+                assembled += pageText;
+                rawOffsets.push({
+                  page: pages[i]?.num ?? i + 1,
+                  start,
+                  end: assembled.length,
+                });
+                if (i < pages.length - 1) assembled += PAGE_SEPARATOR;
+              }
+
+              // Downstream returns `content.trim()`. Trimming leading
+              // whitespace would shift every offset, so we trim HERE and
+              // rebase the offsets against the trimmed string. The outer
+              // `.trim()` then becomes idempotent and offsets stay valid.
+              const leadingTrim =
+                assembled.length - assembled.trimStart().length;
+              const trimmed = assembled.trim();
+              content = trimmed;
+              pageOffsets = rawOffsets.map((o) => ({
+                page: o.page,
+                start: Math.max(0, Math.min(o.start - leadingTrim, trimmed.length)),
+                end: Math.max(0, Math.min(o.end - leadingTrim, trimmed.length)),
+              }));
+            } else {
+              content = pdfResult.text;
+            }
           } catch (pdfError: any) {
             logger.error(
               `PDF parsing error for ${fileName}: ${pdfError.message}`,
@@ -139,6 +194,7 @@ export class DocumentProcessor {
           size: identity.size,
           lastModified: identity.lastModified,
           contentHash: identity.contentHash,
+          ...(pageOffsets ? { pageOffsets } : {}),
           ...frontMatterData,
         },
       };

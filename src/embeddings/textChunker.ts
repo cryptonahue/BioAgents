@@ -1,4 +1,5 @@
 import { CONFIG } from "./config";
+import type { PageOffset } from "./documentProcessor";
 
 export interface Chunk {
   title: string;
@@ -6,6 +7,26 @@ export interface Chunk {
   metadata: any;
   chunkIndex: number;
   totalChunks: number;
+}
+
+/**
+ * Map a character offset in the document to its 1-indexed page using the
+ * offset→page ranges produced by the PDF parser. Returns undefined when there
+ * is no page map (non-PDF documents) or the offset falls outside every range.
+ */
+function pageForOffset(
+  offset: number,
+  pageOffsets?: PageOffset[],
+): number | undefined {
+  if (!pageOffsets || pageOffsets.length === 0) return undefined;
+  let fallback: number | undefined;
+  for (const range of pageOffsets) {
+    if (offset >= range.start && offset < range.end) return range.page;
+    // Track the last page whose range begins at or before the offset so an
+    // offset landing in the separator between pages still resolves sensibly.
+    if (offset >= range.start) fallback = range.page;
+  }
+  return fallback ?? pageOffsets[0].page;
 }
 
 export class TextChunker {
@@ -20,6 +41,13 @@ export class TextChunker {
     metadata: any;
   }): Chunk[] {
     const text = doc.content;
+    // `pageOffsets` is present only for PDFs. Strip it from the metadata we
+    // spread onto each chunk so the (potentially large) map is not duplicated
+    // into every chunk row — the resolved `page` is all downstream needs.
+    const { pageOffsets, ...baseMetadata } = (doc.metadata || {}) as {
+      pageOffsets?: PageOffset[];
+      [key: string]: any;
+    };
 
     // If document is small enough, return as single chunk
     if (text.length <= this.maxChunkSize) {
@@ -28,7 +56,8 @@ export class TextChunker {
           title: doc.title,
           content: text,
           metadata: {
-            ...doc.metadata,
+            ...baseMetadata,
+            page: pageForOffset(0, pageOffsets),
             isFullDocument: true,
             chunkIndex: 0,
             totalChunks: 1,
@@ -70,9 +99,10 @@ export class TextChunker {
           title: doc.title,
           content: chunkContent,
           metadata: {
-            ...doc.metadata,
+            ...baseMetadata,
             chunkStart: start,
             chunkEnd: actualEnd,
+            page: pageForOffset(start, pageOffsets),
             isChunk: true,
             chunkIndex,
             totalChunks: 0, // Will be updated after all chunks are created

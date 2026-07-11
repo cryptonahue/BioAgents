@@ -56,6 +56,8 @@ export type ResearchClaim = {
   confidence: string;
   source_id?: string | null;
   chunk_id?: string | null;
+  /** Verbatim sentence/span from the source chunk that supports this claim. */
+  quote?: string | null;
   doi?: string | null;
   trust_tier: ResearchTrustTier;
   metadata?: Record<string, unknown>;
@@ -211,6 +213,8 @@ export type ExtractedClaim = {
   claimType?: string;
   status?: ResearchClaimStatus;
   confidence?: string;
+  /** Verbatim supporting span copied from the source chunk (for highlighting). */
+  quote?: string;
   chunkIndex?: number;
   entities?: string[];
 };

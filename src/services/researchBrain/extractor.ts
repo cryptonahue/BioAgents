@@ -80,6 +80,9 @@ function heuristicClaimsFromChunks(
       claimType: "finding",
       status: "supported",
       confidence: "low",
+      // The heuristic claim IS a verbatim sentence lifted from the chunk, so it
+      // doubles as the supporting quote for client-side text highlighting.
+      quote: evidenceSentence,
       chunkIndex: chunk.chunk_index ?? undefined,
       entities: [],
     });
@@ -100,7 +103,7 @@ async function llmClaimsFromChunks(
     .slice(0, 18)
     .map(
       (chunk) =>
-        `[chunk_index=${chunk.chunk_index ?? 0}]\n${chunk.content.slice(0, 1800)}`,
+        `[chunk_index=${chunk.chunk_index ?? 0}${chunk.page ? ` page=${chunk.page}` : ""}]\n${chunk.content.slice(0, 1800)}`,
     )
     .join("\n\n---\n\n");
 
@@ -108,7 +111,9 @@ async function llmClaimsFromChunks(
 
 Strict rules:
 - Return ONLY valid JSON array.
-- Each item must have: claim, claimType, status, confidence, chunkIndex, entities.
+- Each item must have: claim, claimType, status, confidence, quote, chunkIndex, entities.
+- quote MUST be an EXACT verbatim span (sentence or clause) copied character-for-character from the supporting chunk — do NOT paraphrase, summarize, or fix typos. It is used to text-search-highlight the sentence on the source PDF page, so it must match the chunk text literally.
+- chunkIndex MUST be the chunk_index of the chunk the quote came from.
 - Use status "supported" whenever the claim is stated or clearly demonstrated in the chunk, EVEN IF PARTIAL (e.g., mentions an activity but not specific MIC values — that is still supported, not an open question).
 - Only use "open_question" when the paper EXPLICITLY says the question is unanswered, e.g. "further studies are needed" or "this remains to be determined". Do NOT mark a claim as open_question just because the chunk is partial.
 - Use "hypothesis" for the authors' own speculative interpretations (rare).
@@ -142,6 +147,10 @@ ${context}`;
           : "supported",
       confidence:
         typeof item.confidence === "string" ? item.confidence : "medium",
+      quote:
+        typeof item.quote === "string" && item.quote.trim().length > 0
+          ? item.quote.trim()
+          : undefined,
       chunkIndex:
         typeof item.chunkIndex === "number" ? item.chunkIndex : undefined,
       entities: Array.isArray(item.entities)
