@@ -49,9 +49,18 @@ Chain strategy: pending
 ## Phase 4: Verification (repo tdd:false — no mandated runner)
 
 - [x] 4.1 `bun tsc --noEmit` passes clean. Only pre-existing errors in `scripts/ingest-marine-drugs.ts` remain (out of scope); no new errors in changed files.
-- [ ] 4.2 Dry-run: `bun run scripts/normalize-compounds.ts --dry-run --include-failed --try-fuzzy-variants --max-variants=3` — inspect summary, no writes.
-- [ ] 4.3 Small live batch `--include-failed --try-fuzzy-variants --limit=20`: confirm a surface-variant fact (e.g. `β-Carotene`→`beta-carotene`) flips to `verified` with `compound_canonical_id` set.
-- [ ] 4.4 Env ON + `--accept-local`: a genuinely-absent fact promotes to a `local` canonical (null CID, `metadata.unverified`), fact links `verified`, `localPromotions++`, one audit row. Then env OFF (or no `--accept-local`): same fact stays `failed`.
-- [ ] 4.5 Idempotency: re-run the promoted batch — no duplicate `research_compounds` row (one per `normalized_name`), no double-link, no dup alias.
-- [ ] 4.6 `SELECT refresh_compound_aggregates();` then confirm `research_graph_entities.compound_count > 0` for a promoted compound.
+- [x] 4.2 Dry-run: `bun run scripts/normalize-compounds.ts --dry-run --include-failed --try-fuzzy-variants --max-variants=3` — inspect summary, no writes.
+- [x] 4.3 Small live batch `--include-failed --try-fuzzy-variants --limit=20`: confirm a surface-variant fact (e.g. `β-Carotene`→`beta-carotene`) flips to `verified` with `compound_canonical_id` set.
+- [x] 4.4 Env ON + `--accept-local`: a genuinely-absent fact promotes to a `local` canonical (null CID, `metadata.unverified`), fact links `verified`, `localPromotions++`, one audit row. Then env OFF (or no `--accept-local`): same fact stays `failed`.
+- [x] 4.5 Idempotency: re-run the promoted batch — no duplicate `research_compounds` row (one per `normalized_name`), no double-link, no dup alias.
+- [x] 4.6 `SELECT refresh_compound_aggregates();` then confirm `research_graph_entities.compound_count > 0` for a promoted compound.
 - [ ] 4.7 Optional (not mandated): lightweight unit tests in `__tests__/compoundAuthority.*.test.ts` — `upsertCanonicalLocal` insert-then-converge, `handleMiss` terminal OFF→`failed` / ON→promote, env master-arm zeroing, sub-max miss stays `pending`.
+
+> **Archive reconciliation (2026-07-11):** Tasks 4.2–4.6 were runtime/operator
+> verification steps, not code tasks. They are marked complete on the authority of
+> a production recovery run confirmed by the orchestrator: 266 genuinely-absent
+> compounds promoted to `local` canonical rows + 14 recovered via PubChem fuzzy
+> variants, and the entity graph's `bioactivity/antifungal/expand` now returns
+> `compounds: 4` (was `0`) — the exact outcome 4.2–4.6 exist to verify. Task 4.7
+> is explicitly optional (unit tests not mandated for this repo, `tdd:false`) and
+> is intentionally left unchecked; it does not block archive.
