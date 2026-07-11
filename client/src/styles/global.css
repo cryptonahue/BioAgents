@@ -55,6 +55,45 @@ body {
   position: relative;
 }
 
+/* Shared authenticated layout: Sidebar + routed page (non-chat pages).
+   Mirrors the .app / .main-content height chain so wrapped pages scroll
+   INSIDE the content area rather than the viewport. */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+.app-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+/* Wrapped page roots fill the content area instead of the full viewport.
+   Scoped to `.app-content >` so standalone (unwrapped) usage is untouched. */
+.app-content > .library-page,
+.app-content > .paper-page,
+.app-content > .admin-page,
+.app-content > .corpus-page {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* Admin/Corpus roots have no internal scroll region — let the root scroll. */
+.app-content > .admin-page,
+.app-content > .corpus-page {
+  overflow-y: auto;
+}
+
 /* Mobile overlay */
 .sidebar-overlay {
   display: none;

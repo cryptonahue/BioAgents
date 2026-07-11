@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts';
 import { ProvenanceProvider } from './contexts/ProvenanceContext';
 import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, ViewerPage, LibraryViewerPage } from './pages';
 import { useAuth } from './hooks';
+import { AppLayout } from './components/AppLayout';
 import { Footer } from './components/Footer';
 import './styles/global.css';
 import './styles/coralgpt.css';
@@ -71,13 +72,13 @@ function LegacyAppShell() {
       <Router onChange={handleRouteChange}>
         <LoginPage path="/login" />
         <ChatPage path="/chat/:sessionId?" />
-        <LibraryPage path="/library" />
-        <PaperPage path="/library/:docId" />
+        <LayoutRoute path="/library" component={LibraryPage} />
+        <LayoutRoute path="/library/:docId" component={PaperPage} />
         <LibraryViewerPage path="/library/:docId/viewer" />
         <ViewerPage path="/viewer/:sourceId" />
-        <ResearchBrainPage path="/brain" />
-        <CorpusDashboardPage path="/corpus" />
-        <AdminPage path="/admin" />
+        <LayoutRoute path="/brain" component={ResearchBrainPage} />
+        <LayoutRoute path="/corpus" component={CorpusDashboardPage} />
+        <LayoutRoute path="/admin" component={AdminPage} />
         <Redirect path="/" to="/chat" />
         <NotFound default redirectTo="/chat" />
       </Router>
@@ -123,16 +124,28 @@ function CoralAppShell() {
         <LandingPage path="/" />
         <AccessPendingPage path="/access-pending" />
         <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
-        <LibraryPage path="/library" coralGptMode />
-        <PaperPage path="/library/:docId" coralGptMode />
+        <LayoutRoute path="/library" component={LibraryPage} coralGptMode privyLogout={privyLogout} />
+        <LayoutRoute path="/library/:docId" component={PaperPage} coralGptMode privyLogout={privyLogout} />
         <LibraryViewerPage path="/library/:docId/viewer" coralGptMode />
         <ViewerPage path="/viewer/:sourceId" coralGptMode />
-        <ResearchBrainPage path="/brain" coralGptMode />
-        <AdminPage path="/admin" />
+        <LayoutRoute path="/brain" component={ResearchBrainPage} coralGptMode privyLogout={privyLogout} />
+        <LayoutRoute path="/admin" component={AdminPage} coralGptMode privyLogout={privyLogout} />
         <NotFound default redirectTo="/" />
       </Router>
       <Footer />
     </>
+  );
+}
+
+// Wraps a routed page in the shared AppLayout (Sidebar + content area).
+// preact-router matches on the `path` prop of this wrapper, then injects the
+// matched route params; we forward those to the page and strip the props that
+// are layout-only (component, coralGptMode, privyLogout).
+function LayoutRoute({ component: Page, coralGptMode, privyLogout, ...rest }) {
+  return (
+    <AppLayout coralGptMode={coralGptMode} privyLogout={privyLogout}>
+      <Page {...rest} coralGptMode={coralGptMode} />
+    </AppLayout>
   );
 }
 
