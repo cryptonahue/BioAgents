@@ -289,20 +289,15 @@ body {
 }
 
 /*
- * Focus ring. Deliberately NOT --ring, which is the token the rest of the app
- * reaches for (.provenance-badge, .paper-action). Measured in a real browser
- * against --bg-primary, --ring lands at 4.28:1 in dark but only 2.44:1 in
- * light — under the 3:1 WCAG 1.4.11 floor for a focus indicator. That is a
- * pre-existing defect in the token itself, not something this button caused,
- * and it should be fixed at source in theme.css (it silently weakens every
- * focus ring in the app in light theme).
- *
- * Until that lands, this control uses --primary-ink, an existing semantic
- * token that carries the same brand hue and measures 8.25:1 dark / 5.28:1
- * light — comfortably over the floor in BOTH themes. No new token, no literal.
+ * Focus ring. This used to use --primary-ink as a workaround, because --ring
+ * itself measured 2.44:1 on white and failed the 3:1 WCAG 1.4.11 floor. That
+ * defect is now fixed at source in theme.css (--ring is 4.32:1 at worst in
+ * light, 5.17:1 at worst in dark, measured on every surface a ring lands on),
+ * so this control goes back to the app-wide token. One focus-ring color, one
+ * place to change it.
  */
 .theme-toggle-btn:focus-visible {
-  outline: 2px solid var(--primary-ink);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 

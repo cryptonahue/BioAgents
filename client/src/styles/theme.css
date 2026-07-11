@@ -61,7 +61,12 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.925 0.005 214.3);
   --input: oklch(0.925 0.005 214.3);
-  --ring: oklch(0.723 0.014 214.4);
+  /* FOCUS RING — see the FOCUS RING note below the `.dark` block.
+     4.81:1 on `--background` / `--card`, 4.32:1 on `--muted`, 4.48:1 on
+     `--surface-sunken`, 4.64:1 on `--sidebar`. The value PR 1 shipped,
+     oklch(0.723 …), was 2.44:1 on white — below the 3:1 WCAG 1.4.11 floor for
+     a non-text focus indicator on EVERY light surface. */
+  --ring: oklch(0.55 0.021 213.5);
   --chart-1: oklch(0.81 0.117 11.638);
   --chart-2: oklch(0.645 0.246 16.439);
   --chart-3: oklch(0.586 0.253 17.585);
@@ -75,7 +80,7 @@
   --sidebar-accent: oklch(0.963 0.002 197.1);
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
-  --sidebar-ring: oklch(0.723 0.014 214.4);
+  --sidebar-ring: oklch(0.55 0.021 213.5);
 }
 
 /* See PINNED-DARK MARKETING SURFACES at the top of this file. */
@@ -99,7 +104,13 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.56 0.021 213.5);
+  /* 6.90:1 on `--background`, 6.08:1 on `--card` / `--sidebar`, 5.17:1 on
+     `--muted`, 6.51:1 on `--surface-sunken`. The previous value,
+     oklch(0.56 …), cleared 3:1 on `--background` (4.27:1) but landed at
+     3.20:1 on `--muted` — inside the margin of error of the floor. Every
+     input in the app renders on `--muted` or `--surface-sunken`, so the ring
+     has to be measured there, not on `--background`. */
+  --ring: oklch(0.68 0.021 213.5);
   --chart-1: oklch(0.81 0.117 11.638);
   --chart-2: oklch(0.645 0.246 16.439);
   --chart-3: oklch(0.586 0.253 17.585);
@@ -112,8 +123,35 @@
   --sidebar-accent: oklch(0.275 0.011 216.9);
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.56 0.021 213.5);
+  --sidebar-ring: oklch(0.68 0.021 213.5);
 }
+
+/**
+ * FOCUS RING (`--ring` / `--sidebar-ring`).
+ *
+ * `--ring` has TWO consumers and they read it differently.
+ *
+ *   1. The hand-written CSS, which paints it OPAQUE:
+ *      `outline: 2px solid var(--ring)` (`provenance.css`, `global.css`) and
+ *      `border-color: var(--ring)` (`admin.css`).
+ *
+ *   2. Basecoat, through Tailwind's `--color-ring: var(--ring)` theme key —
+ *      67 call sites in the emitted bundle. It uses shadcn's focus idiom:
+ *      an OPAQUE border at `var(--color-ring)` plus a 3px halo at
+ *      `color-mix(in oklab, var(--color-ring) 50%, transparent)`.
+ *
+ * Both hang the indicator off the OPAQUE value, so that is what the 3:1 WCAG
+ * 1.4.11 non-text floor applies to — and it is what the numbers above measure.
+ * The 50% halo is a soft glow layered on top of the opaque border, not the
+ * indicator itself; it can never reach 3:1 on a white field at any `--ring`,
+ * which is upstream's design and not something a token value can fix.
+ *
+ * Both values are measured against every surface a ring actually lands on —
+ * `--background`, `--card`, `--muted`, `--surface-sunken`, `--sidebar` — not
+ * just `--background`. That distinction is the whole bug: the old light value
+ * scored 2.44:1 on white and the old dark value scored 3.20:1 on `--muted`,
+ * and `--muted` is where every input in the app sits.
+ */
 
 /**
  * Legacy token bridge.
