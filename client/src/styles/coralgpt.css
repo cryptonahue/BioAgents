@@ -156,17 +156,140 @@ body.coralgpt-scroll {
   font-weight: 500;
 }
 
+.landing-badge--sm {
+  padding: 4px 11px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+/* App-window screenshot frame */
+
+.landing-shot {
+  margin: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  line-height: 0;
+}
+
+.landing-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Hero product shot (below the hero copy) */
+
+.landing-hero-shot-wrap {
+  max-width: 1040px;
+  margin: -48px auto 0;
+  padding: 0 24px;
+  position: relative;
+  z-index: 2;
+}
+
+.landing-hero-shot {
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+
 .landing-section {
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 24px;
 }
 
+.landing-section--token {
+  padding-top: 24px;
+}
+
 .landing-section-title {
   font-size: 1.75rem;
   font-weight: 600;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   text-align: center;
+}
+
+.landing-section-lead {
+  max-width: 640px;
+  margin: 0 auto 48px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Feature rows */
+
+.landing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+}
+
+.landing-feature {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.landing-feature--reverse .landing-feature-media {
+  order: 2;
+}
+
+.landing-feature-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ff6b6b;
+  margin-bottom: 12px;
+}
+
+.landing-feature-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 16px;
+}
+
+.landing-feature-body {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* Trust cards */
+
+.landing-trust {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px;
+}
+
+.landing-trust-card {
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+}
+
+.landing-trust-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--accent-secondary);
+}
+
+.landing-trust-body {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .landing-steps {
@@ -242,6 +365,25 @@ body.coralgpt-scroll {
   line-height: 1.7;
   max-width: 680px;
   margin: 0 auto 24px;
+}
+
+/* Downplayed token card: smaller, quieter, secondary */
+.landing-token-card--muted {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 28px;
+  background: var(--bg-tertiary, var(--bg-secondary));
+}
+
+.landing-token-card--muted h3 {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.landing-token-card--muted p {
+  font-size: 0.9rem;
+  max-width: 560px;
 }
 
 .landing-token-actions {
@@ -519,6 +661,29 @@ body.coralgpt-scroll {
   color: var(--text-tertiary);
 }
 
+@media (max-width: 860px) {
+  .landing-feature {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .landing-feature--reverse .landing-feature-media {
+    order: 0;
+  }
+
+  .landing-feature-title {
+    font-size: 1.4rem;
+  }
+
+  .landing-hero-shot-wrap {
+    margin-top: -24px;
+  }
+
+  .landing-features {
+    gap: 56px;
+  }
+}
+
 @media (max-width: 640px) {
   .landing-header {
     padding: 12px 16px;
@@ -530,5 +695,10 @@ body.coralgpt-scroll {
 
   .landing-hero {
     min-height: 50vh;
+  }
+
+  .landing-hero-shot-wrap {
+    padding: 0 16px;
+    margin-top: -16px;
   }
 }
