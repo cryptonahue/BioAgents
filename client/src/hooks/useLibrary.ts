@@ -11,6 +11,10 @@ export interface LibraryPaper {
   type?: string;
   size?: number;
   chunkCount?: number;
+  /** Number of Research Brain claims extracted from this paper. Omitted when
+   * the count could not be computed (so the UI hides the pill instead of
+   * showing a misleading 0). */
+  evidenceCount?: number;
   lastModified?: string;
 }
 

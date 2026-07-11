@@ -6,6 +6,7 @@ import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
 import logger from "../utils/logger";
 import { resolveLLM } from "../chat-agent/llm-config";
+import { getClaimCountsByTitle } from "../services/researchBrain/db";
 
 /**
  * Library Route - Paper library + per-paper grounded Q&A.
@@ -240,6 +241,17 @@ export const libraryRoute = new Elysia()
       try {
         const vs = await getVectorSearch();
         const docs = await vs.listDocuments();
+
+        // Enrich with the count of Research Brain claims per paper (joined by
+        // title). Non-fatal: if this fails, the field is omitted so the client
+        // hides the evidence pill rather than showing a misleading "0".
+        let evidenceCounts: Record<string, number> | null = null;
+        try {
+          evidenceCounts = await getClaimCountsByTitle();
+        } catch (e: any) {
+          logger.warn({ err: e }, "library_evidence_counts_failed");
+        }
+
         return {
           papers: docs.map((d: any) => ({
             docId: encodeDocId(d.title),
@@ -247,6 +259,9 @@ export const libraryRoute = new Elysia()
             type: d.type,
             size: d.size,
             chunkCount: d.chunkCount,
+            ...(evidenceCounts
+              ? { evidenceCount: evidenceCounts[d.title] ?? 0 }
+              : {}),
             lastModified: d.lastModified,
           })),
         };

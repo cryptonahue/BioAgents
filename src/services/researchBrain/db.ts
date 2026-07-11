@@ -1947,6 +1947,27 @@ function normalizeMeasurementDirection(value: unknown): string | null {
   return null;
 }
 
+/**
+ * Count extracted research claims per source, keyed by source title.
+ * `research_sources.title` equals the Library paper title (both are the
+ * document filename), so the Library list maps counts by title. Uses a
+ * single embedded-aggregate query (no N+1, no migration).
+ */
+export async function getClaimCountsByTitle(): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from("research_sources")
+    .select("title, research_claims(count)");
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of (data as any[]) || []) {
+    const title = row?.title;
+    if (!title) continue;
+    const count = Number(row?.research_claims?.[0]?.count ?? 0);
+    counts[title] = (counts[title] || 0) + count;
+  }
+  return counts;
+}
+
 export async function listSources(): Promise<ResearchSource[]> {
   const { data, error } = await supabase
     .from("research_sources")

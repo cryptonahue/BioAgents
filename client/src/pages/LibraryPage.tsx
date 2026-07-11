@@ -115,6 +115,22 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
                     <div className="paper-card-body">
                       <h3 className="paper-card-title">{paper.title}</h3>
                       <div className="paper-card-meta">
+                        {typeof paper.evidenceCount === "number" && (
+                          <span
+                            className={`paper-evidence${
+                              paper.evidenceCount === 0
+                                ? " paper-evidence--empty"
+                                : ""
+                            }`}
+                          >
+                            <Icon name="microscope" size={12} />
+                            {paper.evidenceCount === 0
+                              ? "Sin evidencias"
+                              : `${paper.evidenceCount} evidencia${
+                                  paper.evidenceCount === 1 ? "" : "s"
+                                }`}
+                          </span>
+                        )}
                         {paper.type && (
                           <span className="paper-tag">{paper.type.toUpperCase()}</span>
                         )}
