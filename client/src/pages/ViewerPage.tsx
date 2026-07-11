@@ -19,6 +19,7 @@ import { route } from "preact-router";
 import { EvidenceViewer } from "../components/EvidenceViewer";
 import { usePdfDocument } from "../hooks/usePdfDocument";
 import { useSourceEvidence } from "../hooks/useSourceEvidence";
+import { useSourceClaims } from "../hooks/useSourceClaims";
 import { useTableChain, computeTableChain } from "../hooks/useTableChain";
 import { parseViewerHash } from "../hooks/useProvenance";
 
@@ -30,6 +31,7 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
   const id = sourceId ?? "";
   const { doc, isLoading, error, numPages, goToPage } = usePdfDocument(id);
   const { data: evidence } = useSourceEvidence(id);
+  const { claims } = useSourceClaims(id);
 
   // Hash-driven state. We re-read on every render via the viewer
   // (which already listens to `hashchange`), but on first mount we
@@ -87,6 +89,23 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
         />
         <aside className="viewer-page__sidebar" aria-label="Evidence list">
           <h3>Evidence</h3>
+          {claims.length ? (
+            <section>
+              <h4>Claims ({claims.length})</h4>
+              <ul className="viewer-page__claims">
+                {claims.map((c) => (
+                  <li key={c.id} className="viewer-page__claim">
+                    <span
+                      className={`claim-status claim-status--${c.status}`}
+                    >
+                      {c.status.replace(/_/g, " ")}
+                    </span>
+                    <span className="claim-text">{c.claim}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           {evidence?.tables?.length ? (
             <section>
               <h4>Tables ({evidence.tables.length})</h4>
@@ -138,7 +157,9 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
               </ul>
             </section>
           ) : null}
-          {!evidence?.tables?.length && !evidence?.figures?.length ? (
+          {!claims.length &&
+          !evidence?.tables?.length &&
+          !evidence?.figures?.length ? (
             <p className="viewer-page__sidebar-empty">
               No extracted evidence for this source.
             </p>
