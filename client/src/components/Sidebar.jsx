@@ -142,6 +142,16 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 Admin
               </Button>
             )}
+            {isAdmin && !coralGptMode && (
+              <Button
+                variant="ghost"
+                icon="folder"
+                onClick={() => route('/corpus')}
+                className="sidebar-admin-btn"
+              >
+                Corpus
+              </Button>
+            )}
           </>
         )}
         {isCollapsed && (

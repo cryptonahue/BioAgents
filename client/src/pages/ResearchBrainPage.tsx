@@ -324,28 +324,6 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
 
   return (
     <div className="library-page">
-      <header className="library-topbar">
-        <div className="library-brand" onClick={() => route("/chat")}>
-          <img src="/images/token.png" alt="" width={24} height={24} />
-          <span className="library-brand-text">
-            {coralGptMode ? "CoralGPT" : "BioAgents"} · Research Brain
-          </span>
-        </div>
-        <div className="brain-topbar-actions">
-          <button
-            className="library-link-btn"
-            onClick={() => route("/library")}
-          >
-            <Icon name="bookOpen" size={16} />
-            <span>Library</span>
-          </button>
-          <button className="library-link-btn" onClick={() => route("/chat")}>
-            <Icon name="messageSquare" size={16} />
-            <span>Chat</span>
-          </button>
-        </div>
-      </header>
-
       <main className="library-main brain-main">
         <div className="library-heading brain-heading">
           <div>

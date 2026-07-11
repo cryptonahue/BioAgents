@@ -1,4 +1,3 @@
-import { route } from "preact-router";
 import { useState, useCallback } from "preact/hooks";
 import {
   useIngestionRuns,
@@ -168,17 +167,6 @@ export function CorpusDashboardPage() {
 
   return (
     <div class="corpus-page">
-      <header class="corpus-topbar">
-        <div class="corpus-brand" onClick={() => route("/chat")}>
-          <span>BioAgents · Corpus</span>
-        </div>
-        <div class="corpus-topbar-links">
-          <button class="corpus-link-btn" onClick={() => route("/library")}>Library</button>
-          <button class="corpus-link-btn" onClick={() => route("/chat")}>Chat</button>
-          <button class="corpus-link-btn" onClick={() => route("/brain")}>Research Brain</button>
-        </div>
-      </header>
-
       <main class="corpus-main">
         <div class="corpus-header">
           <h1>Ingestion Dashboard</h1>

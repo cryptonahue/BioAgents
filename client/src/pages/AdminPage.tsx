@@ -46,23 +46,6 @@ export function AdminPage() {
 
   return (
     <div class="admin-page">
-      <header class="admin-topbar">
-        <div class="admin-brand" onClick={() => route("/chat")}>
-          BioAgents · Admin
-        </div>
-        <div class="admin-topbar-links">
-          <button class="admin-link-btn" onClick={() => route("/brain")}>
-            Research Brain
-          </button>
-          <button class="admin-link-btn" onClick={() => route("/corpus")}>
-            Corpus
-          </button>
-          <button class="admin-link-btn" onClick={() => route("/chat")}>
-            Chat
-          </button>
-        </div>
-      </header>
-
       <main class="admin-main">
         <div class="admin-header">
           <h1>Bioprospecting Review</h1>

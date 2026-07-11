@@ -140,17 +140,9 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
   return (
     <div className="paper-page">
       <header className="library-topbar">
-        <div className="library-brand" onClick={() => route("/library")}>
-          <Icon name="chevronLeft" size={18} />
-          <span className="library-brand-text">Library</span>
-        </div>
         <div className="paper-topbar-title" title={meta?.title}>
           {meta?.title || (isLoading ? "Loading…" : "Paper")}
         </div>
-        <button className="library-link-btn" onClick={() => route("/chat")}>
-          <Icon name="messageSquare" size={16} />
-          <span>General chat</span>
-        </button>
       </header>
 
       {error && (

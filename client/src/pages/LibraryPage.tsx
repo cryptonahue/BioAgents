@@ -222,23 +222,6 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
 
   return (
     <div className="library-page">
-      <header className="library-topbar">
-        <div className="library-brand" onClick={() => route("/chat")}>
-          <img src="/images/token.png" alt="" width={24} height={24} />
-          <span className="library-brand-text">
-            {coralGptMode ? "CoralGPT" : "BioAgents"} · Library
-          </span>
-        </div>
-        <button className="library-link-btn" onClick={() => route("/chat")}>
-          <Icon name="messageSquare" size={16} />
-          <span>Go to chat</span>
-        </button>
-        <button className="library-link-btn" onClick={() => route("/brain")}>
-          <Icon name="brainCircuit" size={16} />
-          <span>Research Brain</span>
-        </button>
-      </header>
-
       <main className="library-main">
         <div className="library-heading">
           <h1>Paper library</h1>
