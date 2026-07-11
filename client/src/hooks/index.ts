@@ -11,6 +11,7 @@ export { useTypingAnimation } from './useTypingAnimation';
 export { useAutoScroll } from './useAutoScroll';
 export { useAutoResize } from './useAutoResize';
 export { useAuth } from './useAuth';
+export { useTheme } from './useTheme';
 export { useX402Payment } from './useX402Payment';
 export { useToast } from './useToast';
 export { useEmbeddedWallet } from './useEmbeddedWallet';
