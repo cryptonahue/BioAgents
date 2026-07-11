@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
 import { useAuth, useAdmin } from '../hooks';
@@ -15,6 +15,38 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
   const path = currentPath || (typeof window !== 'undefined' ? window.location.pathname : '');
   const navActive = (prefix) => (path === prefix || path.startsWith(prefix + '/') ? ' active' : '');
 
+  // Session search (client-side filter over the session list).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
+
+  const openSearch = () => {
+    setSearchOpen(true);
+    // Focus after the input mounts.
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
+
+  // ⌘K / Ctrl+K opens the search.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        openSearch();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const q = searchQuery.trim().toLowerCase();
+  const visibleSessions = q
+    ? sessions.filter((s) => (s.title || 'New conversation').toLowerCase().includes(q))
+    : sessions;
+
   const handleLogout = async () => {
     if (coralGptMode && privyLogout) {
       await privyLogout();
@@ -30,7 +62,7 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
     const yesterday = [];
     const older = [];
 
-    sessions.forEach((session) => {
+    visibleSessions.forEach((session) => {
       if (!session.createdAt) {
         today.push(session);
         return;
@@ -104,15 +136,40 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 />
               </div>
             </div>
-            <Button
-              variant="ghost"
-              icon="search"
-              title="Search chats"
-              className="sidebar-search-btn"
-            >
-              <span>Search chats</span>
-              <kbd className="kbd">⌘K</kbd>
-            </Button>
+            {searchOpen ? (
+              <div className="sidebar-search-input-wrap">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="sidebar-search-input"
+                  placeholder="Search chats…"
+                  value={searchQuery}
+                  onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') closeSearch();
+                  }}
+                />
+                <IconButton
+                  icon="close"
+                  size={14}
+                  onClick={closeSearch}
+                  title="Close search"
+                  variant="ghost"
+                  className="sidebar-search-close"
+                />
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                icon="search"
+                title="Search chats"
+                onClick={openSearch}
+                className="sidebar-search-btn"
+              >
+                <span>Search chats</span>
+                <kbd className="kbd">⌘K</kbd>
+              </Button>
+            )}
             <Button
               variant="secondary"
               icon="plus"
@@ -264,6 +321,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                   </div>
                 ))}
               </>
+            )}
+            {q && visibleSessions.length === 0 && (
+              <div className="sessions-empty">No chats found</div>
             )}
           </div>
 
