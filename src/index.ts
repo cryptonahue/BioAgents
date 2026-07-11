@@ -265,7 +265,11 @@ const app = new Elysia()
           ? "image/jpeg"
           : ext === "webp"
             ? "image/webp"
-            : "application/octet-stream";
+            : ext === "svg"
+              ? "image/svg+xml"
+              : ext === "gif"
+                ? "image/gif"
+                : "application/octet-stream";
     return new Response(file, { headers: { "Content-Type": contentType } });
   })
 
