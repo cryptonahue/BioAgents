@@ -15,9 +15,11 @@ import { zoom, zoomIdentity } from "d3-zoom";
 
 /**
  * GraphCanvas — a self-contained SVG node-link renderer for the Knowledge
- * Graph explorer. It lays out an *ego graph* (a focus node plus its 1-hop
- * neighbors) with `d3-force` and renders it as an SVG the component fully
- * controls: `<line>` per edge, `<circle>` + `<text>` per node.
+ * Graph explorer. It lays out the *neighborhood subgraph* returned by
+ * `GET /api/research-brain/graph/neighborhood` (a focus node, its 1-hop
+ * neighbors, AND the induced edges between those neighbors) with `d3-force`
+ * and renders it as an SVG the component fully controls: `<line>` per edge,
+ * `<circle>` + `<text>` per node.
  *
  * The library decision (design.md banner) is d3-force + SVG, NOT cytoscape:
  * only the small, tree-shaken `d3-force` / `d3-selection` / `d3-drag` /
@@ -31,6 +33,17 @@ import { zoom, zoomIdentity } from "d3-zoom";
 
 export type GraphNodeType = "entity" | "compound" | "source";
 
+/**
+ * Closed set of edge types, mirroring `GraphEdgeType` in
+ * `src/services/researchBrain/graphService.ts`. Facts are EDGES, never nodes.
+ */
+export type GraphEdgeType =
+  | "has_compound" // focus entity  -> compound        (spoke)
+  | "has_source" // focus entity  -> source          (spoke)
+  | "reports" // compound     <-> source          (fact-backed)
+  | "co_occurs_with" // compound     <-> compound        (shared sources)
+  | "related_source"; // source       <-> source          (citation graph)
+
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
   label: string;
@@ -40,6 +53,10 @@ export interface GraphNode extends SimulationNodeDatum {
 export interface GraphEdge extends SimulationLinkDatum<GraphNode> {
   source: string | GraphNode;
   target: string | GraphNode;
+  /** Required: the neighborhood endpoint is the only producer of edges. */
+  type: GraphEdgeType;
+  /** Required. Comparable WITHIN a type only — normalized per type below. */
+  weight: number;
   label?: string;
 }
 
@@ -47,6 +64,8 @@ interface GraphCanvasProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onNodeClick?: (node: GraphNode) => void;
+  /** Edge types to drop before layout (legend filter / hairball control). */
+  hiddenEdgeTypes?: GraphEdgeType[];
 }
 
 // Node fill by type — three distinct colors mirroring the design.
@@ -62,7 +81,63 @@ const NODE_RADIUS: Record<GraphNodeType, number> = {
   source: 13,
 };
 
-export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
+/**
+ * Stroke per edge type. Spokes stay structural grey; the CROSS-EDGES are the
+ * story of this graph (they are what makes it a subgraph and not a star), so
+ * they get the node-matching hues and a much higher opacity.
+ */
+export const EDGE_STROKE: Record<GraphEdgeType, string> = {
+  has_compound: "#475569", // grey (spoke)
+  has_source: "#334155", // darker grey (spoke)
+  reports: "#60a5fa", // slate-blue (compound <-> source)
+  co_occurs_with: "#4ade80", // green, matches the compound fill
+  related_source: "#a78bfa", // purple, matches the source fill
+};
+
+const EDGE_OPACITY: Record<GraphEdgeType, number> = {
+  has_compound: 0.45,
+  has_source: 0.45,
+  reports: 0.9,
+  co_occurs_with: 0.9,
+  related_source: 0.9,
+};
+
+export const EDGE_LABEL: Record<GraphEdgeType, string> = {
+  has_compound: "has compound",
+  has_source: "has source",
+  reports: "reports",
+  co_occurs_with: "co-occurs with",
+  related_source: "related source",
+};
+
+/**
+ * Peak weight per edge type over the current edge array. Weights are only
+ * comparable WITHIN a type (a `related_source` 11 and a `co_occurs_with` 11
+ * are different units), so stroke width is normalized per type — never
+ * globally.
+ */
+function maxWeightByType(list: GraphEdge[]): Map<GraphEdgeType, number> {
+  const max = new Map<GraphEdgeType, number>();
+  for (const e of list) {
+    const w = Number.isFinite(e.weight) ? e.weight : 0;
+    max.set(e.type, Math.max(max.get(e.type) ?? 0, w));
+  }
+  return max;
+}
+
+function strokeWidth(edge: GraphEdge, max: Map<GraphEdgeType, number>): number {
+  const peak = max.get(edge.type) ?? 0;
+  const w = Number.isFinite(edge.weight) ? edge.weight : 0;
+  const ratio = peak > 0 ? w / peak : 0;
+  return Math.min(4, Math.max(1, 1 + 3 * ratio));
+}
+
+export function GraphCanvas({
+  nodes,
+  edges,
+  onNodeClick,
+  hiddenEdgeTypes,
+}: GraphCanvasProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const viewportRef = useRef<SVGGElement | null>(null);
   const linksRef = useRef<SVGGElement | null>(null);
@@ -72,6 +147,8 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
   clickRef.current = onNodeClick;
 
   const hasNeighbors = nodes.length > 1;
+  // Stable dep for the effect: `hiddenEdgeTypes` is a fresh array each render.
+  const hiddenKey = (hiddenEdgeTypes ?? []).slice().sort().join(",");
 
   useEffect(() => {
     if (!hasNeighbors) return;
@@ -89,13 +166,18 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
     // link endpoints from ids to node references.
     const simNodes: GraphNode[] = nodes.map((n) => ({ ...n }));
     const byId = new Map(simNodes.map((n) => [n.id, n]));
+    const hidden = new Set<string>(hiddenEdgeTypes ?? []);
     const simLinks: GraphEdge[] = edges
       .filter((e) => {
+        if (hidden.has(e.type)) return false;
         const s = typeof e.source === "string" ? e.source : e.source.id;
         const t = typeof e.target === "string" ? e.target : e.target.id;
         return byId.has(s) && byId.has(t);
       })
       .map((e) => ({ ...e }));
+
+    // Per-type peak weight, computed over the edges actually being drawn.
+    const peakByType = maxWeightByType(simLinks);
 
     const simulation: Simulation<GraphNode, GraphEdge> = forceSimulation(
       simNodes,
@@ -121,9 +203,16 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
       .selectAll<SVGLineElement, GraphEdge>("line")
       .data(simLinks)
       .join("line")
-      .attr("stroke", "#334155")
-      .attr("stroke-width", 1.5)
-      .attr("stroke-opacity", 0.7);
+      .attr("stroke", (d) => EDGE_STROKE[d.type] ?? "#334155")
+      .attr("stroke-width", (d) => strokeWidth(d, peakByType))
+      .attr("stroke-opacity", (d) => EDGE_OPACITY[d.type] ?? 0.7);
+
+    // Hover inspection: "co-occurs with · 7".
+    link
+      .selectAll<SVGTitleElement, GraphEdge>("title")
+      .data((d) => [d])
+      .join("title")
+      .text((d) => `${EDGE_LABEL[d.type] ?? d.type} · ${d.weight}`);
 
     // --- Nodes -------------------------------------------------------------
     const node = select(nodesEl)
@@ -205,7 +294,7 @@ export function GraphCanvas({ nodes, edges, onNodeClick }: GraphCanvasProps) {
       select(linksEl).selectAll("*").remove();
       select(nodesEl).selectAll("*").remove();
     };
-  }, [nodes, edges, hasNeighbors]);
+  }, [nodes, edges, hasNeighbors, hiddenKey]);
 
   if (!hasNeighbors) {
     return (

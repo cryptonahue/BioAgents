@@ -37,14 +37,23 @@ Delivery: 2 commits. Commit 1 = backend (this batch). Commit 2 = frontend.
       header + design.md Part 4. Live numbers to be recorded in the verify
       report (known from prod: ~278/472 facts carry a canonical compound).
 
-## Phase 2 — Frontend (commit 2, NOT in this batch)
+## Phase 2 — Frontend (commit 2)
 
-- [ ] 2.1 `GraphCanvas.tsx`: `GraphEdgeType`, required `GraphEdge.{type,weight}`,
-      per-type stroke color/opacity, per-type normalized stroke width,
-      `hiddenEdgeTypes` prop, `<title>` hover.
-- [ ] 2.2 `GraphExplorerPage.tsx`: delete `stitchEntityExpansion`,
-      `stitchCompound`, `overlayCitations` + the overlay merge memo; fetch
-      `/graph/neighborhood`; route every node click through one `focusNode()`.
+- [x] 2.1 `GraphCanvas.tsx`: `GraphEdgeType`, required `GraphEdge.{type,weight}`,
+      per-type stroke color/opacity (spokes 0.45, cross-edges 0.9), per-type
+      normalized stroke width (`1 + 3*(w/maxOfItsType)`, clamped `[1,4]`),
+      `hiddenEdgeTypes` prop, `<title>` hover. Exports `EDGE_STROKE` /
+      `EDGE_LABEL` for the page legend.
+- [x] 2.2 `GraphExplorerPage.tsx`: deleted `stitchEntityExpansion`,
+      `stitchCompound`, `overlayCitations` + the `canvasElements` overlay merge
+      memo and the `overlay` state; one `GET /graph/neighborhood` call per
+      focus; every node click routes through one `focusOn(FocusNode)`; new
+      `source` focus type; DetailCard keeps its own `/expand` +
+      `/compounds/search?expand=true` fetches, fired in parallel; explicit
+      canvas error state (401 -> error + Retry, never a blank canvas);
+      stale-response guard via a request-sequence ref.
+- [x] 2.3 `graph.css`: `.graph-legend*` (edge-type legend / toggle filter),
+      `.graph-canvas-error` + `.graph-retry-btn`.
 
 ## Verification (Phase 1)
 
@@ -54,4 +63,15 @@ Delivery: 2 commits. Commit 1 = backend (this batch). Commit 2 = frontend.
 - researchBrain + graph/citation route suites: 399 pass / 30 fail, identical to
   the 30 pre-existing baseline failures (compoundAuthority fuzzy-recovery +
   stale admin-only auth assertions). Zero new failures.
+
+## Verification (Phase 2)
+
+- `bun tsc --noEmit` — no new errors (pre-existing: `scripts/ingest-marine-drugs.ts`).
+- `bun tsc --noEmit -p client/tsconfig.json` — zero errors in `GraphCanvas.tsx` /
+  `GraphExplorerPage.tsx` (the client baseline has ~15 pre-existing errors in
+  other files: `ProvenanceBadge`, `SuggestedSteps`, `useSessions`,
+  `useX402Payment`, `ResearchBrainPage`, `PrivyProvider`, `CDPProvider`).
+- `bun run build:client` — succeeds (index.js 7300kb, index.css 132kb).
+- Manual: `/graph` -> search+select -> cross-edges (`co_occurs_with`,
+  `related_source`, `reports`) render BETWEEN neighbors, not only as spokes.
 </content>

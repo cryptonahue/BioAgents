@@ -236,6 +236,86 @@
   max-width: 320px;
 }
 
+/* Neighborhood fetch failed (401 / 500 / network) — explicit error state,
+   never a blank canvas. */
+.graph-canvas-error {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.graph-canvas-error p {
+  margin: 0;
+  color: #fecaca;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.graph-canvas-error span {
+  color: #9ca3af;
+  font-size: 13px;
+  max-width: 360px;
+}
+
+.graph-retry-btn {
+  margin-top: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.graph-retry-btn:hover {
+  background: #374151;
+}
+
+/* ---- Edge-type legend / filter ------------------------------------------*/
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    border-color 0.15s;
+}
+
+.graph-legend-item:hover {
+  border-color: #374151;
+}
+
+.graph-legend-item.muted {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.graph-legend-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: #334155;
+}
+
 /* ---- Detail card ---------------------------------------------------------*/
 .graph-detail-card {
   background: #111827;

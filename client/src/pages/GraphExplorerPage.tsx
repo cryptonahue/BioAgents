@@ -1,8 +1,11 @@
-import { useMemo, useState } from "preact/hooks";
+import { useMemo, useRef, useState } from "preact/hooks";
 import { Icon } from "../components/icons";
 import {
+  EDGE_LABEL,
+  EDGE_STROKE,
   GraphCanvas,
   type GraphEdge,
+  type GraphEdgeType,
   type GraphNode,
 } from "../components/graph/GraphCanvas";
 import { openProvenanceLightbox } from "../utils/provenanceTrigger";
@@ -17,15 +20,27 @@ function openSourceViewer(sourceId: string): void {
  *
  * Master-detail layout: the left panel searches entities (bioactivity /
  * application_area / assay_model) or compounds; selecting a result becomes the
- * focus node, whose 1-hop neighborhood is fetched from the read-only graph API
- * and stitched client-side into an ego graph rendered by `GraphCanvas`
- * (d3-force + SVG). A detail card shows the focus node's linked facts with
- * provenance (quote / page / DOI). Clicking a node in the canvas re-centers on
- * it; clicking a source node overlays citation (source↔source) edges.
+ * focus node, whose neighborhood is fetched in ONE call from
+ * `GET /api/research-brain/graph/neighborhood` and rendered by `GraphCanvas`
+ * (d3-force + SVG).
+ *
+ * v2 (`graph-neighborhood-edges`): the page no longer stitches the graph
+ * client-side. The old `stitchEntityExpansion` / `stitchCompound` /
+ * `overlayCitations` helpers could only ever draw a STAR — every edge started
+ * at the focus node, because one `expand` payload carries no neighbor-to-
+ * neighbor information. The endpoint now returns the induced subgraph
+ * (`reports`, `co_occurs_with`, `related_source` cross-edges included) and the
+ * page renders `{ nodes, edges }` verbatim.
+ *
+ * The DetailCard keeps its OWN fetches (`/expand`,
+ * `/compounds/search?expand=true`): it needs fact quotes / pages / DOIs, which
+ * the graph payload deliberately does not carry. A graph endpoint returns a
+ * graph, not a view model. Those run in parallel with the neighborhood call.
  *
  * All fetches reuse the shared `getAuthHeaders()` pattern (Bearer
- * `bioagents_auth_token` + `credentials: "include"`); the four graph GETs are
- * open to any authenticated user, so this page is NOT admin-gated.
+ * `bioagents_auth_token` + `credentials: "include"`); the graph GETs are open
+ * to any authenticated user, so this page is NOT admin-gated. A 401 surfaces
+ * as an explicit error state, never as a blank canvas.
  */
 
 interface Props {
@@ -98,14 +113,63 @@ interface CompoundSearchHit {
   topBioactivities?: TopStringBucket[];
 }
 
+// ---- Neighborhood payload (mirrors NeighborhoodResult in graphService.ts)
+type GraphNodeType = "entity" | "compound" | "source";
+
+interface NeighborhoodNodeDto {
+  id: string; // "entity:{kind}:{value}" | "compound:{uuid}" | "source:{uuid}"
+  type: GraphNodeType;
+  label: string;
+  meta?: {
+    kind?: string;
+    value?: string;
+    factCount?: number;
+    doi?: string | null;
+    url?: string | null;
+  };
+}
+interface NeighborhoodEdgeDto {
+  source: string;
+  target: string;
+  type: GraphEdgeType;
+  weight: number;
+  label?: string;
+}
+interface NeighborhoodResult {
+  focus: NeighborhoodNodeDto;
+  nodes: NeighborhoodNodeDto[];
+  edges: NeighborhoodEdgeDto[];
+  meta: {
+    limit: number;
+    fanout: number;
+    elapsed: number;
+    counts: { nodes: number; edges: number };
+  };
+}
+
 type FocusNode =
   | { type: "entity"; kind: EntityKind; value: string; display: string }
-  | { type: "compound"; compoundId: string; name: string };
+  | { type: "compound"; compoundId: string; name: string }
+  | { type: "source"; sourceId: string; title: string };
 
 interface GraphElements {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
+
+/** Source detail, read straight off the neighborhood focus node's meta. */
+interface SourceDetail {
+  id: string;
+  title: string;
+  doi: string | null;
+  url: string | null;
+  factCount: number;
+}
+
+const EMPTY_ELEMENTS: GraphElements = { nodes: [], edges: [] };
+
+const NEIGHBORHOOD_LIMIT = 20;
+const NEIGHBORHOOD_FANOUT = 3;
 
 const KIND_OPTIONS: Array<{ key: SelectorKind; label: string }> = [
   { key: "bioactivity", label: "Bioactivity" },
@@ -148,96 +212,63 @@ function doiHref(doi: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Client-side ego-graph stitchers.
+// Focus <-> node-id plumbing.
 // ---------------------------------------------------------------------------
 
-function stitchEntityExpansion(
-  focus: Extract<FocusNode, { type: "entity" }>,
-  expansion: EntityExpansion,
-): GraphElements {
-  const centerId = `entity:${focus.kind}:${focus.value}`;
-  const nodes: GraphNode[] = [
-    { id: centerId, label: focus.display || focus.value, type: "entity" },
-  ];
-  const edges: GraphEdge[] = [];
-  const seen = new Set<string>([centerId]);
-  const connected = new Set<string>();
-
-  for (const c of expansion.compounds) {
-    const id = `compound:${c.id}`;
-    if (!seen.has(id)) {
-      nodes.push({ id, label: c.canonical_name, type: "compound" });
-      seen.add(id);
-    }
-    edges.push({ source: centerId, target: id });
-    connected.add(id);
+/** Build the `/graph/neighborhood` query string for a focus node. */
+function neighborhoodUrl(focus: FocusNode): string {
+  const base = "/api/research-brain/graph/neighborhood";
+  const tail = `&limit=${NEIGHBORHOOD_LIMIT}&fanout=${NEIGHBORHOOD_FANOUT}`;
+  if (focus.type === "entity") {
+    return (
+      `${base}?type=entity&kind=${encodeURIComponent(focus.kind)}` +
+      `&value=${encodeURIComponent(focus.value)}${tail}`
+    );
   }
-
-  for (const s of expansion.sources) {
-    const id = `source:${s.id}`;
-    if (!seen.has(id)) {
-      nodes.push({ id, label: s.title || "Source", type: "source" });
-      seen.add(id);
-    }
-  }
-
-  for (const f of expansion.facts) {
-    if (!f.source_id) continue;
-    const sId = `source:${f.source_id}`;
-    if (!seen.has(sId)) continue;
-    const cId = f.compound_canonical_id
-      ? `compound:${f.compound_canonical_id}`
-      : null;
-    if (cId && seen.has(cId)) {
-      edges.push({
-        source: cId,
-        target: sId,
-        label: f.result_summary ?? undefined,
-      });
-      connected.add(sId);
-    }
-  }
-
-  // Keep any orphan source attached to the center so the ego graph stays
-  // connected instead of floating disconnected nodes.
-  for (const s of expansion.sources) {
-    const id = `source:${s.id}`;
-    if (!connected.has(id)) edges.push({ source: centerId, target: id });
-  }
-
-  return { nodes, edges };
+  const id = focus.type === "compound" ? focus.compoundId : focus.sourceId;
+  return `${base}?type=${focus.type}&id=${encodeURIComponent(id)}${tail}`;
 }
 
-function stitchCompound(
-  focus: Extract<FocusNode, { type: "compound" }>,
-  hit: CompoundSearchHit,
-): GraphElements {
-  const centerId = `compound:${focus.compoundId}`;
-  const nodes: GraphNode[] = [
-    { id: centerId, label: focus.name, type: "compound" },
-  ];
-  const edges: GraphEdge[] = [];
-  const seen = new Set<string>([centerId]);
-
-  for (const co of hit.topCoOccurring ?? []) {
-    const id = `compound:${co.compound_id}`;
-    if (id === centerId) continue;
-    if (!seen.has(id)) {
-      nodes.push({ id, label: co.canonical_name, type: "compound" });
-      seen.add(id);
-    }
-    edges.push({ source: centerId, target: id });
+/**
+ * Parse a canvas node id back into a focus. Entity ids are
+ * `entity:{kind}:{value}` and the VALUE MAY CONTAIN COLONS, so only the first
+ * two segments are split off.
+ */
+function focusFromNode(node: GraphNode): FocusNode | null {
+  if (node.type === "entity") {
+    const parts = node.id.split(":");
+    const kind = parts[1] as EntityKind;
+    const value = parts.slice(2).join(":");
+    if (!kind || !value) return null;
+    return { type: "entity", kind, value, display: node.label };
   }
-
-  for (const b of hit.topBioactivities ?? []) {
-    const id = `entity:bioactivity:${b.value}`;
-    if (!seen.has(id)) {
-      nodes.push({ id, label: b.value, type: "entity" });
-      seen.add(id);
-    }
-    edges.push({ source: centerId, target: id });
+  if (node.type === "compound") {
+    const compoundId = node.id.slice("compound:".length);
+    if (!compoundId) return null;
+    return { type: "compound", compoundId, name: node.label };
   }
+  const sourceId = node.id.slice("source:".length);
+  if (!sourceId) return null;
+  return { type: "source", sourceId, title: node.label };
+}
 
+/** The endpoint's payload IS the canvas model — no stitching, no filler edges. */
+function toElements(payload: NeighborhoodResult): GraphElements {
+  const nodes: GraphNode[] = (payload.nodes ?? []).map((n) => ({
+    id: n.id,
+    label: n.label,
+    type: n.type,
+  }));
+  const known = new Set(nodes.map((n) => n.id));
+  const edges: GraphEdge[] = (payload.edges ?? [])
+    .filter((e) => known.has(e.source) && known.has(e.target))
+    .map((e) => ({
+      source: e.source,
+      target: e.target,
+      type: e.type,
+      weight: e.weight,
+      label: e.label,
+    }));
   return { nodes, edges };
 }
 
@@ -249,35 +280,29 @@ export function GraphExplorerPage(_props: Props) {
     [],
   );
   const [focusNode, setFocusNode] = useState<FocusNode | null>(null);
-  const [elements, setElements] = useState<GraphElements>({
-    nodes: [],
-    edges: [],
-  });
-  const [overlay, setOverlay] = useState<GraphElements>({
-    nodes: [],
-    edges: [],
-  });
+  const [elements, setElements] = useState<GraphElements>(EMPTY_ELEMENTS);
   const [expansion, setExpansion] = useState<EntityExpansion | null>(null);
   const [compoundDetail, setCompoundDetail] = useState<CompoundSearchHit | null>(
     null,
   );
+  const [sourceDetail, setSourceDetail] = useState<SourceDetail | null>(null);
+  const [hiddenEdgeTypes, setHiddenEdgeTypes] = useState<GraphEdgeType[]>([]);
   const [searching, setSearching] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const [error, setError] = useState("");
+  const [graphError, setGraphError] = useState("");
 
-  // Merge the base ego graph with any citation overlay (dedup by node id).
-  const canvasElements = useMemo<GraphElements>(() => {
-    if (overlay.nodes.length === 0 && overlay.edges.length === 0) {
-      return elements;
+  // Guards against a slow neighborhood response clobbering a newer focus.
+  const requestSeq = useRef(0);
+
+  // Edge types actually present in the payload — drives the legend/filter.
+  const presentEdgeTypes = useMemo<GraphEdgeType[]>(() => {
+    const counts = new Map<GraphEdgeType, number>();
+    for (const e of elements.edges) {
+      counts.set(e.type, (counts.get(e.type) ?? 0) + 1);
     }
-    const byId = new Map<string, GraphNode>();
-    for (const n of elements.nodes) byId.set(n.id, n);
-    for (const n of overlay.nodes) if (!byId.has(n.id)) byId.set(n.id, n);
-    return {
-      nodes: Array.from(byId.values()),
-      edges: [...elements.edges, ...overlay.edges],
-    };
-  }, [elements, overlay]);
+    return Array.from(counts.keys());
+  }, [elements]);
 
   const handleSearch = async (event?: Event) => {
     event?.preventDefault();
@@ -310,120 +335,109 @@ export function GraphExplorerPage(_props: Props) {
     }
   };
 
-  const focusEntity = async (
-    kind: EntityKind,
-    value: string,
-    display: string,
-  ) => {
-    setExpanding(true);
-    setError("");
-    setOverlay({ nodes: [], edges: [] });
-    const focus: FocusNode = { type: "entity", kind, value, display };
-    setFocusNode(focus);
-    try {
+  /**
+   * Fetch the DetailCard's view model for a focus. The graph endpoint returns
+   * a graph; the panel needs fact quotes / pages / DOIs, so it keeps its own
+   * fetch. Runs in parallel with the neighborhood call.
+   */
+  const loadDetail = async (
+    focus: FocusNode,
+    payload: Promise<NeighborhoodResult>,
+  ): Promise<void> => {
+    if (focus.type === "entity") {
       const data = await apiGet<{ expansion: EntityExpansion }>(
-        `/api/research-brain/graph/entities/${kind}/${encodeURIComponent(
-          value,
-        )}/expand?limit=20`,
+        `/api/research-brain/graph/entities/${focus.kind}/${encodeURIComponent(
+          focus.value,
+        )}/expand?limit=${NEIGHBORHOOD_LIMIT}`,
       );
-      const exp = data.expansion || { compounds: [], facts: [], sources: [] };
-      setExpansion(exp);
-      setCompoundDetail(null);
-      setElements(stitchEntityExpansion(focus, exp));
-    } catch (err: any) {
-      setError(err?.message || "Could not expand entity");
-      setExpansion({ compounds: [], facts: [], sources: [] });
-      setElements({
-        nodes: [{ id: `entity:${kind}:${value}`, label: display, type: "entity" }],
-        edges: [],
-      });
-    } finally {
-      setExpanding(false);
+      setExpansion(
+        data.expansion || { compounds: [], facts: [], sources: [] },
+      );
+      return;
     }
-  };
 
-  const focusCompound = async (compoundId: string, name: string) => {
-    setExpanding(true);
-    setError("");
-    setOverlay({ nodes: [], edges: [] });
-    const focus: FocusNode = { type: "compound", compoundId, name };
-    setFocusNode(focus);
-    try {
+    if (focus.type === "compound") {
+      // NOTE: compound detail is still fetched BY NAME (the search endpoint is
+      // the only one that returns the expanded aggregate). Ugly, pre-existing,
+      // explicitly out of scope for this change.
       const data = await apiGet<{ compounds: CompoundSearchHit[] }>(
         `/api/research-brain/graph/compounds/search?q=${encodeURIComponent(
-          name,
+          focus.name,
         )}&limit=5&expand=true`,
       );
       const hit =
         (data.compounds || []).find(
-          (c) => c.compound.compound_id === compoundId,
-        ) || (data.compounds || [])[0];
-      if (hit) {
-        setCompoundDetail(hit);
-        setExpansion(null);
-        setElements(stitchCompound(focus, hit));
-      } else {
-        setCompoundDetail(null);
-        setElements({
-          nodes: [{ id: `compound:${compoundId}`, label: name, type: "compound" }],
-          edges: [],
-        });
-      }
-    } catch (err: any) {
-      setError(err?.message || "Could not expand compound");
-      setElements({
-        nodes: [{ id: `compound:${compoundId}`, label: name, type: "compound" }],
-        edges: [],
-      });
-    } finally {
-      setExpanding(false);
+          (c) => c.compound.compound_id === focus.compoundId,
+        ) || null;
+      setCompoundDetail(hit);
+      return;
     }
+
+    // Source: the neighborhood focus node already carries title / doi / url /
+    // factCount in `meta` — no second round trip needed. A failed graph fetch
+    // is reported once, by the caller's graph-error state.
+    const result = await payload.catch(() => null);
+    if (!result) return;
+    const meta = result.focus?.meta ?? {};
+    setSourceDetail({
+      id: focus.sourceId,
+      title: result.focus?.label || focus.title,
+      doi: meta.doi ?? null,
+      url: meta.url ?? null,
+      factCount: meta.factCount ?? 0,
+    });
   };
 
-  const overlayCitations = async (sourceId: string, title: string) => {
+  /** The single entry point: every focus change goes through here. */
+  const focusOn = async (focus: FocusNode) => {
+    const seq = ++requestSeq.current;
+    setExpanding(true);
     setError("");
-    try {
-      const data = await apiGet<{
-        edges: Array<{
-          otherSourceId: string;
-          otherTitle: string;
-          otherDoi: string | null;
-          weight: number;
-        }>;
-      }>(`/api/research-brain/citations/${encodeURIComponent(sourceId)}?limit=20`);
-      const centerId = `source:${sourceId}`;
-      const nodes: GraphNode[] = [
-        { id: centerId, label: title || "Source", type: "source" },
-      ];
-      const edges: GraphEdge[] = [];
-      const seen = new Set<string>([centerId]);
-      for (const e of data.edges || []) {
-        const id = `source:${e.otherSourceId}`;
-        if (!seen.has(id)) {
-          nodes.push({ id, label: e.otherTitle || "Source", type: "source" });
-          seen.add(id);
-        }
-        edges.push({ source: centerId, target: id, label: "cites" });
+    setGraphError("");
+    setFocusNode(focus);
+    setExpansion(null);
+    setCompoundDetail(null);
+    setSourceDetail(null);
+    setHiddenEdgeTypes([]);
+
+    // Both calls are fired in PARALLEL: the graph endpoint returns a graph,
+    // the DetailCard needs a view model. Neither waits on the other (except a
+    // `source` focus, whose detail is read off the neighborhood payload).
+    const graphPromise = apiGet<NeighborhoodResult>(neighborhoodUrl(focus));
+    const detailPromise = loadDetail(focus, graphPromise).catch((err: any) => {
+      if (seq === requestSeq.current) {
+        setError(err?.message || "Could not load node details");
       }
-      setOverlay({ nodes, edges });
+    });
+
+    try {
+      const payload = await graphPromise;
+      if (seq !== requestSeq.current) return;
+      setElements(toElements(payload));
     } catch (err: any) {
-      setError(err?.message || "Could not load citations");
+      if (seq !== requestSeq.current) return;
+      // 401 / 500 / network — explicit error state, NOT a blank canvas.
+      setGraphError(err?.message || "Could not load this neighborhood");
+      setElements(EMPTY_ELEMENTS);
+    } finally {
+      await detailPromise;
+      if (seq === requestSeq.current) setExpanding(false);
     }
   };
 
   const handleNodeClick = (node: GraphNode) => {
-    if (node.type === "entity") {
-      const rest = node.id.split(":");
-      const kind = rest[1] as EntityKind;
-      const value = rest.slice(2).join(":");
-      if (kind && value) void focusEntity(kind, value, node.label);
-    } else if (node.type === "compound") {
-      const compoundId = node.id.slice("compound:".length);
-      void focusCompound(compoundId, node.label);
-    } else if (node.type === "source") {
-      const sourceId = node.id.slice("source:".length);
-      void overlayCitations(sourceId, node.label);
-    }
+    const focus = focusFromNode(node);
+    if (focus) void focusOn(focus);
+  };
+
+  const toggleEdgeType = (type: GraphEdgeType) => {
+    setHiddenEdgeTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  };
+
+  const retryFocus = () => {
+    if (focusNode) void focusOn(focusNode);
   };
 
   return (
@@ -485,7 +499,14 @@ export function GraphExplorerPage(_props: Props) {
                     <button
                       key={`${n.kind}:${n.value}`}
                       class={`graph-result-item ${active ? "active" : ""}`}
-                      onClick={() => focusEntity(n.kind, n.value, n.display)}
+                      onClick={() =>
+                        focusOn({
+                          type: "entity",
+                          kind: n.kind,
+                          value: n.value,
+                          display: n.display,
+                        })
+                      }
                     >
                       <span class="graph-result-title">{n.display}</span>
                       <span class="graph-result-meta">
@@ -507,10 +528,11 @@ export function GraphExplorerPage(_props: Props) {
                       key={hit.compound.compound_id}
                       class={`graph-result-item ${active ? "active" : ""}`}
                       onClick={() =>
-                        focusCompound(
-                          hit.compound.compound_id,
-                          hit.compound.canonical_name,
-                        )
+                        focusOn({
+                          type: "compound",
+                          compoundId: hit.compound.compound_id,
+                          name: hit.compound.canonical_name,
+                        })
                       }
                     >
                       <span class="graph-result-title">
@@ -546,19 +568,61 @@ export function GraphExplorerPage(_props: Props) {
                 <div class="graph-canvas-empty">
                   <p>Select a result to explore its neighborhood</p>
                   <span>
-                    The ego graph shows the focus node with its 1-hop
-                    compounds, facts, and sources.
+                    The canvas shows the focus node, its compounds and sources,
+                    and the edges BETWEEN those neighbors.
                   </span>
                 </div>
               )}
-              {focusNode && !expanding && (
+              {focusNode && !expanding && graphError && (
+                <div class="graph-canvas-error">
+                  <p>Could not load this neighborhood</p>
+                  <span>{graphError}</span>
+                  <button
+                    type="button"
+                    class="graph-retry-btn"
+                    onClick={retryFocus}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {focusNode && !expanding && !graphError && (
                 <GraphCanvas
-                  nodes={canvasElements.nodes}
-                  edges={canvasElements.edges}
+                  nodes={elements.nodes}
+                  edges={elements.edges}
+                  hiddenEdgeTypes={hiddenEdgeTypes}
                   onNodeClick={handleNodeClick}
                 />
               )}
             </div>
+
+            {focusNode && !graphError && presentEdgeTypes.length > 0 && (
+              <div class="graph-legend">
+                {presentEdgeTypes.map((type) => {
+                  const hidden = hiddenEdgeTypes.includes(type);
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      class={`graph-legend-item ${hidden ? "muted" : ""}`}
+                      onClick={() => toggleEdgeType(type)}
+                      title={
+                        hidden
+                          ? `Show ${EDGE_LABEL[type]} edges`
+                          : `Hide ${EDGE_LABEL[type]} edges`
+                      }
+                      aria-pressed={!hidden}
+                    >
+                      <span
+                        class="graph-legend-swatch"
+                        style={{ background: EDGE_STROKE[type] }}
+                      />
+                      {EDGE_LABEL[type]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {focusNode && (
               <div class="graph-detail-card">
@@ -566,6 +630,7 @@ export function GraphExplorerPage(_props: Props) {
                   focus={focusNode}
                   expansion={expansion}
                   compound={compoundDetail}
+                  source={sourceDetail}
                 />
               </div>
             )}
@@ -584,10 +649,12 @@ function DetailCard({
   focus,
   expansion,
   compound,
+  source,
 }: {
   focus: FocusNode;
   expansion: EntityExpansion | null;
   compound: CompoundSearchHit | null;
+  source: SourceDetail | null;
 }) {
   if (focus.type === "entity" && expansion) {
     return (
@@ -711,6 +778,36 @@ function DetailCard({
             </div>
           </div>
         )}
+      </>
+    );
+  }
+
+  if (focus.type === "source" && source) {
+    return (
+      <>
+        <div class="graph-detail-header">
+          <span class="graph-detail-kicker">source</span>
+          <h2>{source.title || "Source"}</h2>
+          <div class="graph-detail-stats">
+            <span>{source.factCount} facts</span>
+            {source.doi && (
+              <a href={doiHref(source.doi)} target="_blank" rel="noreferrer">
+                DOI
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div class="graph-detail-section">
+          <button
+            type="button"
+            class="graph-evidence-btn"
+            onClick={() => openSourceViewer(source.id)}
+            title="Open source in the evidence viewer"
+          >
+            Open in evidence viewer
+          </button>
+        </div>
       </>
     );
   }
