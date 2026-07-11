@@ -110,6 +110,47 @@ SUPABASE_SERVICE_KEY=<service-role-key>
 | `Neither SUPABASE_SERVICE_KEY nor SUPABASE_ANON_KEY ... configured` | Env not loaded | Set `SUPABASE_SERVICE_KEY` (and `SUPABASE_URL`) |
 | Update "succeeds" but access still pending | Used the anon key (RLS blocked the write) | Set `SUPABASE_SERVICE_KEY` to the service-role key |
 
+## Admin role (`grant-admin` CLI)
+
+A separate `users.role` column controls the **admin** privilege tier
+(`'user'` by default, `'admin'` for admins). At login, an admin user is minted
+a `role: "admin"` JWT claim — the exact claim that `authResolver({ role:
+"admin" })` checks to gate admin-only routes. Normal users get **no** `role`
+claim at all.
+
+Admin implies access: an admin is treated as whitelisted at login even if their
+`access_type` is still pending, so you do not need to whitelist someone
+separately after granting them admin.
+
+`scripts/grant-admin.ts` mirrors the `whitelist` CLI — same service-role client,
+same email / id / Privy-DID resolution, same fail-closed behavior.
+
+```bash
+# List current admins
+bun run grant-admin --list
+
+# Grant admin (sets role = "admin")
+bun run grant-admin juan@example.com
+
+# Revoke admin (sets role = "user")
+bun run grant-admin --revoke juan@example.com
+```
+
+You can also run it directly: `bun scripts/grant-admin.ts <args>`.
+
+> **Re-login required:** role is baked into the JWT at login. A user granted (or
+> revoked) admin must log out and log back in for the change to take effect in
+> their token.
+
+Security notes:
+
+- The role value is allowlisted at two layers — a `users_role_check` database
+  constraint (`'user' | 'admin'`) and the login only ever emitting the literal
+  `"admin"`. User input is never interpolated into the role claim.
+- The CLI uses the Supabase **service-role** client (server-side only), same as
+  `whitelist`. It needs `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (see
+  [Requirements](#requirements) above).
+
 ## Related
 
 - [CORALGPT.md](CORALGPT.md) — CoralGPT product layer overview

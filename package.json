@@ -23,6 +23,7 @@
     "start": "bun src/index.ts",
     "test": "bun test",
     "whitelist": "bun scripts/whitelist.ts",
+    "grant-admin": "bun scripts/grant-admin.ts",
     "worker": "bun src/worker.ts",
     "worker:dev": "bun --watch src/worker.ts"
   },

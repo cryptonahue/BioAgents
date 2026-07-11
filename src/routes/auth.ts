@@ -106,7 +106,12 @@ export const authRoute = new Elysia({ prefix: "/api/auth" })
           walletAddress,
         });
 
-        const isWhitelisted = user.access_type === "whitelisted";
+        // An explicitly-granted admin is always allowed, even if their
+        // access_type is still pending. The role claim is only ever the
+        // literal "admin" (see grant-admin CLI + users_role_check constraint),
+        // so it can never carry attacker-controlled input.
+        const isAdmin = user.role === "admin";
+        const isWhitelisted = user.access_type === "whitelisted" || isAdmin;
 
         if (!isWhitelisted) {
           set.status = 403;
@@ -118,7 +123,12 @@ export const authRoute = new Elysia({ prefix: "/api/auth" })
           };
         }
 
-        const token = await generateAuthToken(user.id, email ? { email } : undefined);
+        // Include the role claim ONLY for admins. Normal users get no role
+        // field at all, so a stray/forged role can never leak in for them.
+        const token = await generateAuthToken(user.id, {
+          ...(email ? { email } : {}),
+          ...(isAdmin ? { role: "admin" } : {}),
+        });
         if (!token) {
           set.status = 500;
           return { success: false, message: "Failed to generate authentication token" };
@@ -130,6 +140,7 @@ export const authRoute = new Elysia({ prefix: "/api/auth" })
           token,
           userId: user.id,
           email: email || null,
+          role: user.role,
           expiresIn: JWT_EXPIRATION,
         };
       } catch (error: any) {

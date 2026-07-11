@@ -13,6 +13,7 @@ export interface User {
   user_id?: string; // Privy DID
   wallet_address?: string; // For x402 payment users identified by wallet
   access_type?: string | null;
+  role?: string; // Privilege tier: "user" (default) or "admin"
   used_invite_code?: string;
   points?: number;
   has_completed_invite_flow?: boolean;
