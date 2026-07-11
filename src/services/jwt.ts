@@ -82,11 +82,22 @@ export async function verifyJWT(token: string): Promise<JWTVerificationResult> {
       };
     }
 
-    // Check expiration is not too far in the future (optional security measure)
-    const maxExpiration = parseInt(
-      process.env.MAX_JWT_EXPIRATION || "86400",
+    // Check expiration is not too far in the future (optional security measure).
+    //
+    // This guard only exists to reject absurdly long-lived (likely forged or
+    // misconfigured) tokens. It must NEVER reject a token this app itself
+    // issues: the login mints SESSION_LIFETIME tokens (auth.ts JWT_EXPIRATION),
+    // so floor the max above our own lifetime plus a clock-skew grace. Without
+    // this floor, an equal/low MAX_JWT_EXPIRATION or a small clock skew between
+    // the minting and verifying hosts silently rejects valid sessions — they
+    // fall back to anonymous, so any admin route then 403s "Admin role required".
+    const SESSION_LIFETIME = 24 * 60 * 60; // keep in sync with auth.ts JWT_EXPIRATION
+    const SKEW_GRACE = 60 * 60; // 1h tolerance for clock skew / env drift
+    const configuredMax = parseInt(
+      process.env.MAX_JWT_EXPIRATION || String(SESSION_LIFETIME * 2),
       10
-    ); // 24h default
+    );
+    const maxExpiration = Math.max(configuredMax, SESSION_LIFETIME + SKEW_GRACE);
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp - now > maxExpiration) {
       logger?.warn(
