@@ -1189,7 +1189,10 @@
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  color: var(--text-color, #1f2937);
+  /* `--text-color` was never defined, so this fell back to a near-black grey
+     and rendered as unreadable dark-on-dark text. The header sits on the
+     research panel surface, so it takes the primary text token. */
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
 }
