@@ -83,13 +83,15 @@ function convertDBMessagesToUIMessages(dbMessages: DBMessage[]): Message[] {
       });
     }
 
-    // Add assistant message (content/answer) if not empty
+    // Add assistant message (content/answer) if not empty.
+    // The answer shares the row with the question, and `messages` only stores
+    // created_at, so both carry the same timestamp.
     if (dbMsg.content && dbMsg.content.trim() !== "") {
       uiMessages.push({
         id: Date.now() + idCounter++,
         role: "assistant",
         content: dbMsg.content,
-        timestamp: dbMsg.updated_at ? new Date(dbMsg.updated_at) : msgTimestamp,
+        timestamp: msgTimestamp,
       });
     }
   }
