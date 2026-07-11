@@ -202,6 +202,19 @@ export function normalizeForCompoundLookup(value: string | null | undefined): st
  *   buildCompoundNameVariants("curcumin (from Curcuma longa)")
  *     -> ["curcumin (from Curcuma longa)", "curcumin"]
  */
+// Generic material/extract/preparation words that are NEVER a compound on
+// their own. The step-6 token-strip must not emit these as a single-word
+// variant — e.g. "crude venom" -> "crude" (which wrongly matches a PubChem
+// CID) or "extract" / "fraction". Keeps real single-word compounds intact
+// (e.g. "quercetin glycoside" -> "quercetin" still fires — quercetin is not here).
+const GENERIC_NON_COMPOUND_WORDS = new Set<string>([
+  "crude", "extract", "extracts", "fraction", "fractions", "venom", "venoms",
+  "oil", "oils", "compound", "compounds", "mixture", "mixtures", "derivative",
+  "derivatives", "nanoparticle", "nanoparticles", "powder", "powders", "sample",
+  "samples", "material", "materials", "solution", "solutions", "suspension",
+  "preparation", "preparations", "residue", "residues",
+]);
+
 export function buildCompoundNameVariants(name: string | null | undefined): string[] {
   if (!name || typeof name !== "string") return [];
   const out: string[] = [];
@@ -276,6 +289,11 @@ export function buildCompoundNameVariants(name: string | null | undefined): stri
     for (let n = tokens.length - 1; n >= 1; n--) {
       const prefix = tokens.slice(0, n).join(" ");
       if (/^(?:alpha|beta|gamma|delta|omega|iso|n|sec|tert|normal|ortho|meta|para|[dlDL])$/i.test(prefix)) {
+        continue;
+      }
+      // Never strip down to a single generic material/extract word
+      // ("crude venom" -> "crude"): those wrongly match unrelated CIDs.
+      if (n === 1 && GENERIC_NON_COMPOUND_WORDS.has(prefix.toLowerCase())) {
         continue;
       }
       add(prefix);
