@@ -271,9 +271,24 @@ Strict rules:
 - measurementDirection must be one of: increase, decrease, no_change, mixed.
 - measurementUnit should preserve the paper unit, for example %, fold-change, cells/mL.
 - If the number is ambiguous, leave numeric fields out and keep it in resultSummary.
+- bioactivity must be a SHORT CATEGORICAL label (one to three words, lowercase),
+  NOT a sentence or mechanism. Put any mechanism, pathway, or verbose description
+  in resultSummary instead. Example labels (guiding, not exhaustive — coin a new
+  short label when none fits): antifungal, antibacterial, antimicrobial, anticancer,
+  cytotoxic, anti-inflammatory, antioxidant, antiviral, wound healing, photoprotective,
+  thermal tolerance, anti-biofouling.
+- applicationArea must be a SHORT CATEGORICAL label (one to three words, lowercase),
+  NOT a sentence. Put detail in resultSummary. Example labels (guiding, not exhaustive):
+  anticancer, anti-inflammatory, antimicrobial, antioxidant, cosmetic, nutraceutical,
+  biomaterials, agriculture, aquaculture, thermal resistance, coral reef restoration.
+- assayModel must be a SHORT CATEGORICAL label (assay type, cell line, or model
+  organism; one to four words), NOT a sentence describing the protocol. Put protocol
+  detail in resultSummary. Example labels (guiding, not exhaustive): MIC assay,
+  DPPH assay, MTT assay, HeLa cells, zebrafish, coral fragment, in vitro, in vivo.
+- For bioactivity, applicationArea, and assayModel: whenever the source phrasing is
+  long or descriptive, emit the short label in the field and move the full sentence
+  into resultSummary. resultSummary is the home for all verbose overflow.
 - Do not infer species-compound-activity links unless they are in the same local context.
-- Prefer facts useful for: anticancer, anti-inflammatory, antimicrobial, antioxidant,
-  cosmetic, biomaterials, thermal resistance, coral reef/anemone/cnidarian bioprospecting.
 - Skip generic background with no organism, molecule, activity, application, or assay.
 - Prefer 0-8 high-signal facts per batch.
 - Prefer facts grounded in the tables block over facts grounded only in prose when both
