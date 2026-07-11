@@ -828,6 +828,11 @@
   flex-wrap: wrap;
 }
 
+/* Breathing room between the upload/toolbar row and the paper list/grid. */
+.brain-upload-row {
+  margin-bottom: 20px;
+}
+
 .brain-upload-btn {
   position: relative;
   overflow: hidden;
