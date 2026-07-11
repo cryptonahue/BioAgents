@@ -10,11 +10,10 @@
  *   - GET /citations/:sourceId
  *       path param:  sourceId (UUID, required)
  *       query param: limit (1..100, default 20)
- *       auth:        admin-only via authResolver
+ *       auth:        any authenticated caller (read-only)
  *       200 body:    { sourceId, edges: [...], totalNeighbors, elapsed }
  *       400 body:    { error: "missing path parameter sourceId" }
  *       401 body:    { error: "Authentication required" }
- *       403 body:    { error: "Forbidden", message: "Admin role required" }
  *       404 body:    { error: "source not found" }      (only when DB confirms no row)
  *       500 body:    { error: "internal_error" }
  *
@@ -73,5 +72,7 @@ export const researchBrainCitationsRoute = new Elysia({
         return { error: "internal_error" };
       }
     },
-    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+    // READ-ONLY citation graph — open to any authenticated caller
+    // (was admin-only). This route must stay read-only (no mutations).
+    { beforeHandle: authResolver({ required: true }) },
   );

@@ -23,12 +23,11 @@ import logger from "../utils/logger";
  *   - GET /graph/compounds/search
  *       query params: q (1-100, required), limit (1-100, default 20),
  *                     expand ("true" -> 3 expand arrays; default false)
- *       auth:         admin-only via authResolver
+ *       auth:         any authenticated caller (read-only)
  *       200 body:     { query, limit, expand, compounds: [...] }
  *       400 body:     { error: "missing query parameter q" }
  *                     { error: "q must be 1-100 characters" }
  *       401 body:     { error: "Authentication required" }   (authResolver)
- *       403 body:     { error: "Forbidden", message: "Admin role required" }
  *       500 body:     { error: "internal_error" }
  */
 export const researchBrainGraphRoute = new Elysia({
@@ -74,11 +73,14 @@ export const researchBrainGraphRoute = new Elysia({
         return { error: "internal_error" };
       }
     },
-    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+    // READ-ONLY aggregate graph data — open to any authenticated caller
+    // (was admin-only). This file must stay read-only (no mutations).
+    { beforeHandle: authResolver({ required: true }) },
   )
   /**
    * KG v2 — entity mention graph read endpoints (PR #2 of
-   * bioprospecting-knowledge-graph). Read-only, LLM-free, admin-gated.
+   * bioprospecting-knowledge-graph). Read-only, LLM-free, gated to any
+ * authenticated caller.
    *
    *   - GET /graph/entities/:kind/search
    *       path:   :kind (bioactivity | application_area | assay_model)
@@ -125,7 +127,9 @@ export const researchBrainGraphRoute = new Elysia({
         return { error: "internal_error" };
       }
     },
-    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+    // READ-ONLY aggregate graph data — open to any authenticated caller
+    // (was admin-only). This file must stay read-only (no mutations).
+    { beforeHandle: authResolver({ required: true }) },
   )
   .get(
     "/graph/entities/:kind/:value/expand",
@@ -163,5 +167,7 @@ export const researchBrainGraphRoute = new Elysia({
         return { error: "internal_error" };
       }
     },
-    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+    // READ-ONLY aggregate graph data — open to any authenticated caller
+    // (was admin-only). This file must stay read-only (no mutations).
+    { beforeHandle: authResolver({ required: true }) },
   );
