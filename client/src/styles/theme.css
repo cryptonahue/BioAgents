@@ -107,8 +107,22 @@
   --card-foreground: oklch(0.987 0.002 197.1);
   --popover: oklch(0.218 0.008 223.9);
   --popover-foreground: oklch(0.987 0.002 197.1);
-  --primary: oklch(0.45 0.085 224.283);
-  --primary-foreground: oklch(0.984 0.019 200.873);
+  /* THE FILL AND THE INK SWAP BETWEEN THEMES. See the PRIMARY, BEYOND THE FILL
+     note further down for the measurements. Basecoat's dark `--primary`
+     (`#005f78`) was DARKER than its light one (`#007595`), which put the
+     button's own BOUNDARY at 2.72:1 on `--background`, 2.40:1 on `--card`,
+     2.04:1 on `--muted` and 2.57:1 on `--surface-sunken` — below the 3:1 WCAG
+     1.4.11 floor on every surface a primary button lands on. The label inside
+     was fine (6.97:1); the button as an object was invisible.
+
+     The fill is now the BRIGHT step (8.22:1 / 7.24:1 / 6.17:1 / 7.77:1) and the
+     ink is a deep teal-black. That is the same idiom `--destructive-foreground`
+     already uses ("the text follows the fill, not the theme") and the same one
+     Basecoat itself ships one block below as `--sidebar-primary` /
+     `--sidebar-primary-foreground`. The hue is untouched — this is an
+     accessibility fix, not a re-hue. */
+  --primary: oklch(0.715 0.143 221.723);
+  --primary-foreground: oklch(0.302 0.056 229.695);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.275 0.011 216.9);
@@ -369,21 +383,43 @@
  *   that fill) and nothing else. Tailwind covers the rest with utilities we
  *   cannot use from hand-written CSS: `hover:bg-primary/90` is an alpha
  *   composite, and expressing it here would need `color-mix()` inside a custom
- *   property — which this build pipeline corrupts. So two literal steps:
+ *   property — which this build pipeline corrupts. So two literal steps.
  *
- *   --primary-hover  The hover step for a primary FILL. Darker in light,
- *                    lighter in dark. `--primary-foreground` clears AA on it in
- *                    both themes (6.46:1 light, 5.15:1 dark).
+ *   THE FILL/INK SWAP. Basecoat shipped a dark `--primary` that was darker than
+ *   its light one, which is backwards: on a near-black page the fill has to be
+ *   the BRIGHT step or the button has no visible boundary. The three failing
+ *   surfaces were not hypothetical — `--muted` (2.04:1) is where the graph and
+ *   provenance primary buttons sit. Both themes are now measured on every
+ *   surface a primary fill actually lands on (`--background`, `--card`,
+ *   `--muted`, `--surface-sunken`, `--sidebar`):
+ *
+ *                       LIGHT #007595            DARK #00b6e2
+ *     boundary, worst   4.74:1 (on --muted)      6.17:1 (on --muted)
+ *     ink on fill       5.07:1 (#ecfeff)         5.58:1 (#053345)
+ *
+ *   The dark ink reuses the value Basecoat already ships as
+ *   `--sidebar-primary-foreground`, so no new color enters the palette. Same
+ *   idiom as `--destructive-foreground` (white in light, black in dark) and
+ *   `--accent-color-foreground`: the text follows the FILL, not the theme.
+ *
+ *   --primary-hover  The hover step for a primary FILL. It moves AWAY from the
+ *                    page in both themes — darker in light (`#006382`), lighter
+ *                    in dark (`#2ac8f3`) — which is now the same direction the
+ *                    fill itself moved. `--primary-foreground` clears AA on it
+ *                    in both (6.46:1 light, 6.81:1 dark).
  *   --primary-ink    `--primary` used as a LINE or TEXT on the app surface —
- *                    active tab underlines, active chip borders, links. This
- *                    exists because Basecoat's DARK `--primary` (`#005f78`) is
- *                    DARKER than its light one and scores 2.40:1 on `--card`,
- *                    below even the 3:1 non-text bar. It is a fill color, not
- *                    an ink. `--primary-ink` is to `--primary` exactly what
- *                    `--accent-ink` is to `--accent-color`: the same decision,
- *                    scoped rather than reversed. The dark value reuses the
- *                    hue/chroma Basecoat already ships as `--sidebar-primary`,
- *                    so no new hue enters the palette.
+ *                    active tab underlines, active chip borders, links. It
+ *                    existed because the old dark fill scored 2.40:1 on `--card`
+ *                    and could not be used as an ink. With the fill/ink swap
+ *                    that is fixed at the source: the dark fill is 7.24:1 on
+ *                    `--card` and 8.22:1 on `--background`, and the light fill
+ *                    was always an ink (5.28:1 on white). So the two tokens have
+ *                    CONVERGED, and `--primary-ink` is now a plain alias.
+ *
+ *                    It is kept, not deleted, because `admin.css` reads it in
+ *                    four places and the name still carries the intent: if the
+ *                    primary fill is ever retuned into a range that is unsafe as
+ *                    an ink, this is the token that gets to diverge again.
  */
 :root {
   --surface-sunken: oklch(0.975 0.002 214.3);
@@ -438,9 +474,11 @@
 
   /* One step darker than `--primary`. `--primary-foreground` is 6.46:1 on it. */
   --primary-hover: oklch(0.46 0.105 223.128);
-  /* Identical to `--primary` in light — 5.28:1 on white, it is already an ink
-     here. Only the DARK value has to diverge. */
-  --primary-ink: oklch(0.52 0.105 223.128);
+  /* Converged with `--primary` in BOTH themes — see PRIMARY, BEYOND THE FILL.
+     Declared once here with no `.dark` override: `var()` resolves per element,
+     and `--primary` is re-declared on the same element (`html.dark`), so this
+     tracks the active theme's fill automatically. */
+  --primary-ink: var(--primary);
 }
 
 /* See PINNED-DARK MARKETING SURFACES at the top of this file. */
@@ -482,12 +520,10 @@
 
   --accent-ink: #10b981;
 
-  /* One step LIGHTER than `--primary`, because the dark fill is the dark step.
-     `--primary-foreground` is 5.15:1 on it. */
-  --primary-hover: oklch(0.52 0.095 224.283);
-  /* 7.27:1 on `--card`, 8.26:1 on `--background`. Basecoat's dark `--primary`
-     is 2.40:1 on `--card` and cannot be used as a line or as text. */
-  --primary-ink: oklch(0.715 0.143 221.723);
+  /* One step LIGHTER than the (now bright) dark `--primary`, so hover still
+     moves away from the page. `--primary-foreground` is 6.81:1 on it, and its
+     own boundary is 7.52:1 on the worst surface (`--muted`). */
+  --primary-hover: oklch(0.775 0.135 221.723);
 }
 
 /**
@@ -683,11 +719,10 @@
  *
  * The Library and Research Brain surfaces are a deliberate teal sub-brand, not
  * a leftover. Their teal is genuinely a different hue from Basecoat's
- * `--primary`: `--primary` is oklch hue 223 (cyan/azure, `#007595` in light),
- * while the Library teal is hue ~182 (`#14b8a6`). Aliasing one onto the other
- * would change the color, and `--primary`'s dark value (`#005f78`) is darker
- * than its light one — unusable as a bright accent on a dark field. So the
- * sub-brand gets its own scoped override of the `--accent-*` family instead.
+ * `--primary`: `--primary` is oklch hue ~222 (cyan/azure, `#007595` in light,
+ * `#00b6e2` in dark), while the Library teal is hue ~182 (`#14b8a6`). Aliasing
+ * one onto the other would change the color. So the sub-brand gets its own
+ * scoped override of the `--accent-*` family instead.
  *
  * Scoping it here (rather than hardcoding teal literals in `library.css`) means
  * `library.css` speaks only the shared token vocabulary. Everything it renders
