@@ -10,18 +10,18 @@
 
 :root {
   --bg-primary: #020913;
-  --bg-secondary: #0a0a0a;
-  --bg-tertiary: #141414;
-  --bg-hover: #1a1a1a;
+  --bg-secondary: #06101f;
+  --bg-tertiary: #0b1a30;
+  --bg-hover: #12233c;
   --text-primary: #ffffff;
   --text-secondary: #a1a1a1;
   --text-tertiary: #707070;
-  --border-color: #262626;
+  --border-color: #16273d;
   --accent-color: #10b981;
   --accent-hover: #059669;
   --accent-light: rgba(16, 185, 129, 0.1);
   --accent-glow: rgba(16, 185, 129, 0.15);
-  --user-msg-bg: #1a1a1a;
+  --user-msg-bg: #12233c;
   --assistant-msg-bg: transparent;
   --error-color: #ef4444;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
@@ -452,6 +452,26 @@ body {
   padding: 12px;
   border-top: 1px solid var(--border-color);
   margin-top: auto;
+}
+
+/* "powered by" BioAgents lockup above the version tag. */
+.sidebar-powered-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+.sidebar-powered-label {
+  font-size: 10px;
+  color: var(--text-tertiary, #707070);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.sidebar-powered-logo {
+  height: 16px;
+  width: auto;
+  opacity: 0.9;
 }
 
 /* Build/version tag under the logout button — visible in-app while

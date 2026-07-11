@@ -255,6 +255,15 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               {isLoggingOut ? 'Logging out...' : 'Logout'}
             </Button>
+            <div className="sidebar-powered-by">
+              <span className="sidebar-powered-label">powered by</span>
+              <img
+                src="/images/BIOLogo-dark.svg"
+                alt="BioAgents"
+                className="sidebar-powered-logo"
+                decoding="async"
+              />
+            </div>
             <div
               className="sidebar-version"
               title={`Build ${version} (${shortSha(sha)}) at ${formatDate(buildDate)}`}
