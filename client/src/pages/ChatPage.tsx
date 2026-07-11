@@ -98,12 +98,14 @@ export function ChatPage({
     sessions,
     currentSession,
     currentSessionId,
+    currentSessionPersisted,
     userId,
     isLoading: isLoadingSessions,
     addMessage,
     removeMessage,
     updateSessionMessages,
     updateSessionTitle,
+    markSessionPersisted,
     createNewSession,
     deleteSession,
     switchSession,
@@ -154,7 +156,7 @@ export function ChatPage({
     currentState,
     conversationState,
     refetchConversationState,
-  } = useStates(userId, currentSessionId);
+  } = useStates(userId, currentSessionId, currentSessionPersisted);
 
   // Track processed message IDs to prevent duplicates (ref persists across renders)
   const processedMessageIds = useRef<Set<string>>(new Set());
@@ -680,6 +682,11 @@ export function ChatPage({
     };
 
     addMessage(userMessage);
+
+    // The backend creates the conversation row for this send, so the session
+    // stays pollable even if the request fails and the optimistic user message
+    // is rolled back below.
+    markSessionPersisted(currentSessionId);
 
     const isFirstMessage = messages.length === 0;
     if (isFirstMessage) {

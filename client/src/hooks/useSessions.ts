@@ -34,12 +34,20 @@ export interface Session {
   id: string;
   title: string;
   messages: Message[];
+  /**
+   * True when the conversation is known to exist server-side. Sessions created
+   * locally get a client-generated id and have no `conversations` row until
+   * their first message is persisted.
+   */
+  persisted?: boolean;
 }
 
 export interface UseSessionsReturn {
   sessions: Session[];
   currentSession: Session;
   currentSessionId: string;
+  /** Whether the current session exists server-side (safe to poll). */
+  currentSessionPersisted: boolean;
   userId: string;
   isLoading: boolean;
   addMessage: (message: Message) => void;
@@ -49,6 +57,7 @@ export interface UseSessionsReturn {
     updater: (messages: Message[]) => Message[],
   ) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
+  markSessionPersisted: (sessionId: string) => void;
   createNewSession: () => Session;
   deleteSession: (sessionId: string) => void;
   switchSession: (sessionId: string) => void;
@@ -155,6 +164,12 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
       messages: [],
     };
 
+  // Sessions loaded from the API are persisted by definition; a locally created
+  // one becomes persisted as soon as it holds a message, since the backend
+  // creates the conversation row when that message is stored.
+  const currentSessionPersisted =
+    currentSession.persisted === true || currentSession.messages.length > 0;
+
   /**
    * Load conversations and messages from Supabase on mount
    * Only loads when we have a valid userId
@@ -169,6 +184,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
         id: generateConversationId(),
         title: "New conversation",
         messages: [],
+        persisted: false,
       };
       setSessions([tempSession]);
       setCurrentSessionId(tempSession.id);
@@ -224,6 +240,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
                   id: conv.id!,
                   title,
                   messages: uiMessages,
+                  persisted: true,
                 };
               } catch (err) {
                 console.error(
@@ -234,6 +251,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
                   id: conv.id!,
                   title: "New conversation",
                   messages: [],
+                  persisted: true,
                 };
               }
             }),
@@ -288,6 +306,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
                 id: generateConversationId(),
                 title: "New conversation",
                 messages: [],
+                persisted: false,
               };
               setSessions([newSession]);
               setCurrentSessionId(newSession.id);
@@ -310,6 +329,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
               id: generateConversationId(),
               title: "New conversation",
               messages: [],
+              persisted: false,
             };
             setSessions([newSession]);
             setCurrentSessionId(newSession.id);
@@ -336,6 +356,11 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
    */
   useEffect(() => {
     if (!currentSessionId || !userId) return;
+
+    // An empty, locally created conversation has no row on the server yet, so
+    // polling it would only produce empty responses until the user sends the
+    // first message.
+    if (!currentSessionPersisted) return;
 
     console.log("[useSessions] Message polling enabled");
 
@@ -387,7 +412,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
       mounted = false;
       clearInterval(pollInterval);
     };
-  }, [currentSessionId, userId]);
+  }, [currentSessionId, userId, currentSessionPersisted]);
 
   /**
    * Subscribe to real-time message updates for current conversation
@@ -737,6 +762,21 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
   };
 
   /**
+   * Mark a session as existing server-side.
+   *
+   * Called when a message is dispatched to the API: from that point the backend
+   * owns a `conversations` row for this id, so polling it is valid even if the
+   * optimistic user message is rolled back after a failed request.
+   */
+  const markSessionPersisted = (sessionId: string) => {
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.id === sessionId ? { ...session, persisted: true } : session,
+      ),
+    );
+  };
+
+  /**
    * Create a new session and switch to it
    */
   const createNewSession = (): Session => {
@@ -744,6 +784,7 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
       id: generateConversationId(),
       title: "New conversation",
       messages: [],
+      persisted: false,
     };
     setSessions((prev) => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
@@ -826,12 +867,14 @@ export function useSessions(walletUserId?: string, x402Enabled?: boolean, wsConn
     sessions,
     currentSession,
     currentSessionId,
+    currentSessionPersisted,
     userId,
     isLoading,
     addMessage,
     removeMessage,
     updateSessionMessages,
     updateSessionTitle,
+    markSessionPersisted,
     createNewSession,
     deleteSession,
     switchSession,

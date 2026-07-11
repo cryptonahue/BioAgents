@@ -69,10 +69,15 @@ export interface UseStatesReturn {
  * Custom hook for subscribing to real-time state updates from Supabase
  * Listens to the states table for tool execution progress
  * Also fetches and subscribes to conversation_states for persistent research state
+ *
+ * `enabled` must be false while the conversation only exists client-side: it has
+ * no `conversations` row yet, so every request would 404 until the first message
+ * is persisted.
  */
 export function useStates(
   userId: string,
   conversationId: string,
+  enabled: boolean = true,
 ): UseStatesReturn {
   const [currentState, setCurrentState] = useState<State | null>(null);
   const [conversationState, setConversationState] =
@@ -99,7 +104,7 @@ export function useStates(
   }, [conversationId]);
 
   useEffect(() => {
-    if (!userId || !conversationId) {
+    if (!userId || !conversationId || !enabled) {
       setIsLoading(false);
       setCurrentState(null);
       setConversationState(null);
@@ -332,10 +337,12 @@ export function useStates(
       supabase.removeChannel(statesChannel);
       supabase.removeChannel(convStatesChannel);
     };
-  }, [userId, conversationId]);
+  }, [userId, conversationId, enabled]);
 
   // Manual refetch function for WebSocket-triggered updates
   const refetchConversationState = async () => {
+    if (!userId || !conversationId || !enabled) return;
+
     try {
       console.log("[useStates] Manual refetch triggered");
       const convState = await getConversationState(conversationId, userId);
