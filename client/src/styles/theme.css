@@ -79,11 +79,14 @@
   --chart-3: oklch(0.586 0.253 17.585);
   --chart-4: oklch(0.514 0.222 16.935);
   --chart-5: oklch(0.455 0.188 13.697);
-  /* --radius is deliberately NOT declared here: Lyra ships 0.625rem and every
-     Basecoat component derives its corners from it (--radius-sm/-md/-lg/-xl are
-     calc() offsets of this value). Overriding it to 0 flattened the style pack
-     the project chose. Set it here only to intentionally re-shape every
-     component at once. */
+  /* Currently INERT, and kept only for style-pack portability. Nothing in this
+     build reads --radius: Lyra is a square pack (it hard-codes `rounded-none` 71
+     times and never references the token), the hand-written CSS uses literal
+     radii, and no JSX uses Tailwind's rounded-* utilities. Other Basecoat style
+     packs DO derive their corners from it, so this value is what would take
+     effect on a pack switch. Do not "fix" Lyra's square corners here — it will
+     do nothing. */
+  --radius: 0;
   --sidebar: oklch(0.987 0.002 197.1);
   --sidebar-foreground: oklch(0.148 0.004 228.8);
   --sidebar-primary: oklch(0.609 0.126 221.723);
