@@ -74,8 +74,8 @@ function LegacyAppShell() {
         <ChatPage path="/chat/:sessionId?" />
         <LayoutRoute path="/library" component={LibraryPage} />
         <LayoutRoute path="/library/:docId" component={PaperPage} />
-        <LibraryViewerPage path="/library/:docId/viewer" />
-        <ViewerPage path="/viewer/:sourceId" />
+        <LayoutRoute path="/library/:docId/viewer" component={LibraryViewerPage} />
+        <LayoutRoute path="/viewer/:sourceId" component={ViewerPage} />
         <LayoutRoute path="/brain" component={ResearchBrainPage} />
         <LayoutRoute path="/corpus" component={CorpusDashboardPage} />
         <LayoutRoute path="/admin" component={AdminPage} />
@@ -126,8 +126,8 @@ function CoralAppShell() {
         <ChatPage path="/chat/:sessionId?" coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/library" component={LibraryPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/library/:docId" component={PaperPage} coralGptMode privyLogout={privyLogout} />
-        <LibraryViewerPage path="/library/:docId/viewer" coralGptMode />
-        <ViewerPage path="/viewer/:sourceId" coralGptMode />
+        <LayoutRoute path="/library/:docId/viewer" component={LibraryViewerPage} coralGptMode privyLogout={privyLogout} />
+        <LayoutRoute path="/viewer/:sourceId" component={ViewerPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/brain" component={ResearchBrainPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/admin" component={AdminPage} coralGptMode privyLogout={privyLogout} />
         <NotFound default redirectTo="/" />

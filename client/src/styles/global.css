@@ -82,7 +82,8 @@ body {
 .app-content > .library-page,
 .app-content > .paper-page,
 .app-content > .admin-page,
-.app-content > .corpus-page {
+.app-content > .corpus-page,
+.app-content > .viewer-page {
   flex: 1;
   min-height: 0;
   height: auto;
