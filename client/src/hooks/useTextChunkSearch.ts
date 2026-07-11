@@ -19,20 +19,26 @@
  *     alone drives the highlight). The returned bbox carries the
  *     page it was found on, so the viewer can jump to it.
  *
- * Per-page implementation:
- *   1. Call `page.getTextContent()` and concatenate the visible
- *      text runs. Track each run's geometry so we can build a bbox.
- *   2. Sliding window: find the first index where a prefix of the
- *      chunk (up to 80 chars) appears in the concatenated text.
- *   3. The bbox is the union of every run the window touches, in
- *      PDF point space (bottom-left origin), carrying `page`.
+ * Matching strategy — alphanumeric stream:
+ *   The PDF text layer and the stored quote differ in whitespace,
+ *   punctuation, ligatures and, critically, line-break hyphenation
+ *   ("commen-\nsal" → two runs). Matching the raw text is fragile,
+ *   which previously forced a fall-back to very short prefixes that
+ *   matched spuriously on the wrong page (e.g. a 20-char prefix in a
+ *   243-page book). Instead we reduce BOTH sides to a lowercase
+ *   alphanumeric-only stream and require a long match (>= 60 chars).
+ *   A 60-character verbatim alphanumeric run is effectively unique in
+ *   a document, so the first page that contains it IS the right page
+ *   and the highlight lands on real text.
  *
- * Why not use PDF.js's `PDFFindController` directly?
- *   - `PDFFindController` mutates a text-layer DOM and matches by
- *     exact string equality. We need a *bbox* (not a highlight in
- *     a specific element) and a *sliding* search (we tolerate
- *     whitespace differences). A short search over the raw text
- *     content is more direct and easier to test.
+ * Per-page implementation:
+ *   1. Call `page.getTextContent()` and build one run per text item,
+ *      recording its geometry (for the bbox) and its characters (for
+ *      the alphanumeric stream + char→run map).
+ *   2. Find the longest prefix of the needle (down to the 60-char
+ *      floor) that appears in the page's alphanumeric stream.
+ *   3. The bbox is the union of every run the match window touches,
+ *      in PDF point space (bottom-left origin), carrying `page`.
  */
 import { useEffect, useState } from "preact/hooks";
 
@@ -42,7 +48,13 @@ import {
   type PdfPageProxy,
 } from "../lib/pdfjs";
 
-const CHUNK_SEARCH_CHARS = 80;
+// How many alphanumeric characters of the quote we match on, and the
+// minimum contiguous match we accept. The floor is what kills
+// spurious matches: a 60-char verbatim alphanumeric span is unique.
+const NEEDLE_MAX_ALNUM = 140;
+const MATCH_FLOOR_ALNUM = 60;
+// A short raw snippet echoed back for debug visibility.
+const SNIPPET_CHARS = 80;
 
 export interface TextChunkSearchResult {
   // null = graceful miss (chunk text not found). The caller
@@ -64,126 +76,107 @@ interface UseTextChunkSearchArgs {
   enabled?: boolean;
 }
 
-/**
- * Normalize text for fuzzy matching: collapse whitespace, strip
- * punctuation differences that PDF.js introduces from layout
- * (soft hyphens, line-break hyphens, etc.). The match is anchored
- * to a sliding window so the helper can compute a bbox that
- * covers the run or union of runs the window touches.
- */
-function normalizeForSearch(text: string): string {
-  return text
-    .replace(/[ \s]+/g, " ")
-    .replace(/[‐-―]/g, "-")
-    .trim();
+/** One text run from the PDF text layer: its string plus the canvas
+ *  geometry needed to build a bbox. `str` alone is enough for the
+ *  match; the geometry is only read for the bbox union. */
+export interface TextRun {
+  str: string;
+  x: number;          // canvas px, left edge
+  yTopCanvas: number; // canvas px, top edge
+  fontHeight: number; // canvas px
+  width: number;      // canvas px
 }
 
 /**
- * Search a single, already-loaded PDF page for `normalizedSnippet`
- * and return the matching window's bbox in PDF point space, or
- * null on a miss. Pure w.r.t. React state — the hook drives it for
- * one page (known-page mode) or many (all-pages mode).
+ * Reduce text to a lowercase alphanumeric-only stream. Strips
+ * whitespace, punctuation, hyphens and case so the PDF text layer
+ * and the stored quote compare on letters/digits alone.
  */
-async function findSnippetOnPage(
-  pageProxy: PdfPageProxy,
-  normalizedSnippet: string,
-  pageNum: number,
-): Promise<BBox | null> {
-  const text = await pageProxy.getTextContent();
-
-  const items = (text.items || []) as Array<{
-    str?: string;
-    transform?: number[];
-    width?: number;
-    height?: number;
-  }>;
-
-  // Build a flat list of (runText, runGeometry) tuples.
-  // All coordinates are in CANVAS pixel space (top-left
-  // origin) so the bbox union is straightforward.
-  interface Run {
-    str: string;
-    x: number;
-    yTopCanvas: number; // canvas-coords y of the TOP of the run
-    fontHeight: number; // canvas pixels
-    width: number;      // canvas pixels
-  }
-  const runs: Run[] = [];
-  for (const item of items) {
-    if (!item || !item.str || !item.str.trim()) continue;
-    if (!Array.isArray(item.transform) || item.transform.length < 6) continue;
-    // For horizontal text the transform is
-    // [fontSize, 0, 0, fontSize, x, y]. We use `transform[3]`
-    // (the vertical scale) as the font height in PDF points.
-    // Using `hypot(a, d)` would double-count because the
-    // horizontal text is axis-aligned — a==d==fontSize and
-    // the bbox of the unit vector is sqrt(2) * fontSize,
-    // which is wrong.
-    const fontHeightPt = Math.abs(item.transform[3] || item.transform[0] || 0);
-    if (fontHeightPt <= 0) continue;
-    const xCanvas = item.transform[4] * PDFJS_RENDER_SCALE;
-    const widthCanvas = (item.width || 0) * PDFJS_RENDER_SCALE;
-    const fontHeightCanvas = fontHeightPt * PDFJS_RENDER_SCALE;
-    // PDF y is the baseline (bottom of the run). The TOP
-    // of the run in canvas coords is therefore
-    // (pageHeight - y_baseline) * scale - fontHeightCanvas.
-    const yBaselineCanvas =
-      (pageProxy.view[3] - item.transform[5]) * PDFJS_RENDER_SCALE;
-    const yTopCanvas = yBaselineCanvas - fontHeightCanvas;
-    runs.push({
-      str: item.str,
-      x: xCanvas,
-      yTopCanvas,
-      fontHeight: fontHeightCanvas,
-      width: widthCanvas,
-    });
-  }
-
-  // Concat the normalized strings with a single space
-  // between runs (PDF.js emits separate items whenever
-  // there's a layout break). Track which run each
-  // character belongs to so we can resolve a match back
-  // to a run index for the bbox computation.
-  const parts: string[] = [];
-  const charToRun: number[] = [];
-  runs.forEach((run, i) => {
-    const norm = normalizeForSearch(run.str);
-    if (!norm) return;
-    for (let k = 0; k < norm.length; k++) {
-      charToRun.push(i);
+export function normalizeToAlnum(text: string): string {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code >= 65 && code <= 90) {
+      out += String.fromCharCode(code + 32); // A-Z → a-z
+    } else if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) {
+      out += text[i]; // a-z, 0-9
     }
-    parts.push(norm);
-  });
-  const fullText = parts.join(" ");
-  if (!fullText) return null;
+    // everything else (space, punctuation, hyphen, ligature glyphs) dropped
+  }
+  return out;
+}
 
-  // Find the first window. We use the longest needle that
-  // still finds a hit, capped at 80 chars (the spec's
-  // contract).
+/**
+ * Locate `needleAlnum` (already alphanumeric-normalized) inside a
+ * list of runs and return the inclusive run-index range the match
+ * spans, or null on a miss. Pure over `runs[i].str` — unit-tested
+ * with synthetic runs, no PDF required.
+ *
+ * The longest prefix that still matches wins, down to the floor;
+ * this tolerates a quote whose tail diverges from the page text
+ * while still requiring a long, unambiguous anchor.
+ */
+export function findAlnumMatchRuns(
+  runs: Array<{ str: string }>,
+  needleAlnum: string,
+): { startRun: number; endRun: number } | null {
+  if (!needleAlnum) return null;
+
+  // Alphanumeric stream over all runs + a map from each stream
+  // index back to the run it came from.
+  let fullAlnum = "";
+  const alnumToRun: number[] = [];
+  for (let i = 0; i < runs.length; i++) {
+    const s = runs[i].str;
+    for (let k = 0; k < s.length; k++) {
+      const code = s.charCodeAt(k);
+      let ch = "";
+      if (code >= 65 && code <= 90) ch = String.fromCharCode(code + 32);
+      else if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57))
+        ch = s[k];
+      if (ch) {
+        fullAlnum += ch;
+        alnumToRun.push(i);
+      }
+    }
+  }
+  if (!fullAlnum) return null;
+
+  const floor = Math.min(MATCH_FLOOR_ALNUM, needleAlnum.length);
+  const maxLen = Math.min(NEEDLE_MAX_ALNUM, needleAlnum.length);
+  if (maxLen < floor) return null;
+
   let matchIdx = -1;
-  let matchedNeedleLength = 0;
-  for (let len = Math.min(80, normalizedSnippet.length); len >= 20; len -= 4) {
-    const candidate = normalizedSnippet.slice(0, len);
-    const idx = fullText.indexOf(candidate);
+  let matchedLen = 0;
+  for (let len = maxLen; len >= floor; len -= 8) {
+    const idx = fullAlnum.indexOf(needleAlnum.slice(0, len));
     if (idx !== -1) {
       matchIdx = idx;
-      matchedNeedleLength = len;
+      matchedLen = len;
       break;
     }
   }
   if (matchIdx === -1) return null;
 
-  // Resolve the run indices the window touches.
-  const startChar = matchIdx;
-  const endChar = matchIdx + matchedNeedleLength - 1;
-  const startRun = charToRun[Math.min(startChar, charToRun.length - 1)];
-  const endRun = charToRun[Math.min(endChar, charToRun.length - 1)];
-
+  const startRun = alnumToRun[matchIdx];
+  const endRun =
+    alnumToRun[Math.min(matchIdx + matchedLen - 1, alnumToRun.length - 1)];
   if (startRun == null || endRun == null) return null;
+  return { startRun, endRun };
+}
 
-  // Union the bboxes of every run in [startRun, endRun].
-  // All coordinates are in canvas pixel space (top-left
-  // origin) so the union is a simple min/max reduction.
+/**
+ * Union the bboxes of runs [startRun, endRun] and convert to PDF
+ * point space (bottom-left origin). Pure over run geometry —
+ * unit-testable. Returns null on degenerate geometry.
+ */
+export function bboxFromRunRange(
+  runs: TextRun[],
+  pageHeightPt: number,
+  startRun: number,
+  endRun: number,
+  pageNum: number,
+): BBox | null {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -196,36 +189,80 @@ async function findSnippetOnPage(
     maxX = Math.max(maxX, r.x + r.width);
     maxY = Math.max(maxY, r.yTopCanvas + r.fontHeight);
   }
-
   if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+  if (maxX <= minX || maxY <= minY) return null;
 
-  // Convert from canvas pixels back to PDF point space (the
-  // viewer's contract). The page.height in points is taken
-  // from `pageProxy.view[3] - pageProxy.view[1]`.
-  const pageHeightPt = pageProxy.view[3] - pageProxy.view[1];
   const x = minX / PDFJS_RENDER_SCALE;
   const w = (maxX - minX) / PDFJS_RENDER_SCALE;
   const h = (maxY - minY) / PDFJS_RENDER_SCALE;
-  // The bbox contract uses bottom-left origin in PDF points:
-  // the returned `y` is the BOTTOM of the bbox (lowest y in
-  // PDF coords). Canvas is top-left origin so we flip.
-  // In our canvas space, minY is the TOP of the run and
-  // maxY is the BOTTOM of the run. Converting each to PDF
-  // and taking the lower of the two gives us the PDF-bottom
-  // of the bbox.
-  const yTopInCanvas = minY;
-  const yBottomInCanvas = maxY;
-  const yTopInPdf = pageHeightPt - yBottomInCanvas / PDFJS_RENDER_SCALE;
-  const yBottomInPdf = pageHeightPt - yTopInCanvas / PDFJS_RENDER_SCALE;
+  // Canvas is top-left origin; the bbox contract is bottom-left in
+  // PDF points, with `y` the BOTTOM of the rect. Flip both edges and
+  // take the lower.
+  const yTopInPdf = pageHeightPt - maxY / PDFJS_RENDER_SCALE;
+  const yBottomInPdf = pageHeightPt - minY / PDFJS_RENDER_SCALE;
   const y = Math.min(yTopInPdf, yBottomInPdf);
-  return {
-    x,
-    y,
-    w,
-    h,
-    page: pageNum,
-    units: "pt",
-  };
+  return { x, y, w, h, page: pageNum, units: "pt" };
+}
+
+/**
+ * Search a single, already-loaded PDF page for `needleAlnum` and
+ * return the matching window's bbox in PDF point space, or null on a
+ * miss.
+ */
+async function findSnippetOnPage(
+  pageProxy: PdfPageProxy,
+  needleAlnum: string,
+  pageNum: number,
+): Promise<BBox | null> {
+  const text = await pageProxy.getTextContent();
+
+  const items = (text.items || []) as Array<{
+    str?: string;
+    transform?: number[];
+    width?: number;
+    height?: number;
+  }>;
+
+  // Build one run per text item, in CANVAS pixel space (top-left
+  // origin) so the bbox union is a straightforward min/max.
+  const runs: TextRun[] = [];
+  for (const item of items) {
+    if (!item || !item.str || !item.str.trim()) continue;
+    if (!Array.isArray(item.transform) || item.transform.length < 6) continue;
+    // For horizontal text the transform is
+    // [fontSize, 0, 0, fontSize, x, y]. `transform[3]` is the
+    // vertical scale = font height in PDF points (hypot(a,d) would
+    // double-count on axis-aligned text).
+    const fontHeightPt = Math.abs(item.transform[3] || item.transform[0] || 0);
+    if (fontHeightPt <= 0) continue;
+    const xCanvas = item.transform[4] * PDFJS_RENDER_SCALE;
+    const widthCanvas = (item.width || 0) * PDFJS_RENDER_SCALE;
+    const fontHeightCanvas = fontHeightPt * PDFJS_RENDER_SCALE;
+    // PDF y is the baseline (bottom of the run). The TOP in canvas
+    // coords is (pageHeight - y_baseline) * scale - fontHeightCanvas.
+    const yBaselineCanvas =
+      (pageProxy.view[3] - item.transform[5]) * PDFJS_RENDER_SCALE;
+    const yTopCanvas = yBaselineCanvas - fontHeightCanvas;
+    runs.push({
+      str: item.str,
+      x: xCanvas,
+      yTopCanvas,
+      fontHeight: fontHeightCanvas,
+      width: widthCanvas,
+    });
+  }
+
+  const match = findAlnumMatchRuns(runs, needleAlnum);
+  if (!match) return null;
+
+  const pageHeightPt = pageProxy.view[3] - pageProxy.view[1];
+  return bboxFromRunRange(
+    runs,
+    pageHeightPt,
+    match.startRun,
+    match.endRun,
+    pageNum,
+  );
 }
 
 export function useTextChunkSearch({
@@ -248,10 +285,16 @@ export function useTextChunkSearch({
         if (!cancelled) setResult(null);
         return;
       }
-      const snippet = chunkContent.slice(0, CHUNK_SEARCH_CHARS).trim();
-      const normalizedSnippet = normalizeForSearch(snippet);
-      if (!normalizedSnippet) {
-        if (!cancelled) setResult(null);
+      const snippet = chunkContent.slice(0, SNIPPET_CHARS).trim();
+      // Match on up to NEEDLE_MAX_ALNUM alphanumeric chars of the
+      // quote (draw from a generous raw prefix so punctuation/spaces
+      // don't starve the needle).
+      const needleAlnum = normalizeToAlnum(
+        chunkContent.slice(0, NEEDLE_MAX_ALNUM * 3),
+      ).slice(0, NEEDLE_MAX_ALNUM);
+      if (needleAlnum.length < MATCH_FLOOR_ALNUM) {
+        // Too little text to anchor a confident match.
+        if (!cancelled) setResult({ bbox: null, snippet });
         return;
       }
 
@@ -264,16 +307,16 @@ export function useTextChunkSearch({
           const target = Math.min(Math.max(1, page), doc.numPages);
           const pageProxy: PdfPageProxy = await doc.getPage(target);
           if (cancelled) return;
-          bbox = await findSnippetOnPage(pageProxy, normalizedSnippet, target);
+          bbox = await findSnippetOnPage(pageProxy, needleAlnum, target);
         } else {
-          // All-pages mode: scan in order, stop at the first hit.
-          // The quote is verbatim so most hits land early; the
-          // `cancelled` check lets a newer click abort the scan.
+          // All-pages mode: scan in order, stop at the first hit. The
+          // 60-char floor makes that first hit unambiguous, so early
+          // exit is safe; `cancelled` lets a newer click abort.
           for (let p = 1; p <= doc.numPages; p++) {
             if (cancelled) return;
             const pageProxy: PdfPageProxy = await doc.getPage(p);
             if (cancelled) return;
-            const hit = await findSnippetOnPage(pageProxy, normalizedSnippet, p);
+            const hit = await findSnippetOnPage(pageProxy, needleAlnum, p);
             if (hit) {
               bbox = hit;
               break;
@@ -287,7 +330,7 @@ export function useTextChunkSearch({
         }
       } catch (err) {
         // Silent miss: PDF.js may fail on encrypted or malformed
-        // pages. The lightbox falls back to the text-only badge.
+        // pages. The caller falls back to the text-only badge.
         console.warn("[useTextChunkSearch] search failed", err);
         if (!cancelled) {
           setResult({ bbox: null, snippet });
