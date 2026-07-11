@@ -190,6 +190,11 @@ const app = new Elysia()
     return new Response(htmlContent, {
       headers: {
         "Content-Type": "text/html",
+        // Stable-URL entry point whose content changes on every deploy.
+        // no-cache = must revalidate before use, so Cloudflare/browser
+        // can't serve a stale bundle after a deploy (this was causing
+        // old UI to persist for hours behind Cloudflare's edge cache).
+        "Cache-Control": "no-cache",
       },
     });
   })
@@ -199,6 +204,10 @@ const app = new Elysia()
     return new Response(Bun.file("client/dist/index.js"), {
       headers: {
         "Content-Type": "application/javascript",
+        // Stable filename, content changes per deploy — force
+        // revalidation (Bun sets Last-Modified, so unchanged = cheap
+        // 304). Prevents Cloudflare from pinning an old bundle.
+        "Cache-Control": "no-cache",
       },
     });
   })
@@ -232,6 +241,9 @@ const app = new Elysia()
     return new Response(Bun.file("client/dist/index.css"), {
       headers: {
         "Content-Type": "text/css",
+        // Same reasoning as /index.js — revalidate so deploys aren't
+        // masked by Cloudflare's edge cache.
+        "Cache-Control": "no-cache",
       },
     });
   })
@@ -523,6 +535,9 @@ app
     return new Response(htmlContent, {
       headers: {
         "Content-Type": "text/html",
+        // SPA fallback also serves the entry HTML — keep it revalidated
+        // so client-route deep links never serve a stale shell.
+        "Cache-Control": "no-cache",
       },
     });
   });
