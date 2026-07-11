@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
 import { Icon } from './icons';
+import { ThemeToggle } from './ThemeToggle';
 import { useAuth, useAdmin } from '../hooks';
 import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
 
@@ -147,6 +148,8 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 )}
               </div>
               <div className="sidebar-header-actions">
+                {/* Appearance control, grouped with the other view controls */}
+                <ThemeToggle />
                 {/* Close button for mobile */}
                 <IconButton
                   icon="close"

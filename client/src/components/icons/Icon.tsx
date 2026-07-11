@@ -58,6 +58,7 @@ import {
   MapPin,
   Microphone,
   Microscope,
+  Moon,
   PaperPlaneTilt,
   Paperclip,
   Pill,
@@ -69,6 +70,7 @@ import {
   SignOut,
   Sparkle,
   SquaresFour,
+  Sun,
   Syringe,
   Target,
   Terminal,
@@ -166,6 +168,10 @@ const iconMap: Record<string, any> = {
   mapPin: MapPin,
   list: List,
   grid: SquaresFour,
+  // Theme toggle. No Lucide ancestor — these two are new with the light/dark
+  // switch, so the Phosphor names carry straight through.
+  sun: Sun,
+  moon: Moon,
 };
 
 /**
