@@ -180,6 +180,22 @@ export async function upsertResearchSource(params: {
   return data as ResearchSource;
 }
 
+/**
+ * Deletes a research source by id. The delete CASCADES (ON DELETE CASCADE,
+ * defined in the migrations) to `research_evidence_chunks`, `research_claims`,
+ * and `research_bioprospecting_facts`, so a single delete removes all
+ * research-brain data derived from the paper. No-op safety: a missing id
+ * simply deletes zero rows.
+ */
+export async function deleteSource(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("research_sources")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
 export async function setSourceExtractionStatus(
   sourceId: string,
   status: "pending_extraction" | "extracted" | "failed_extraction",

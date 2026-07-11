@@ -463,6 +463,42 @@
   box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.4);
 }
 
+/* ---- Subtle destructive action (delete paper) ----
+   Muted by default so it never competes with Chat/Evidence; turns red on
+   hover/focus. Icon-only, does not flex-grow (unlike .paper-action). */
+.paper-action-delete {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 9px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.22));
+  color: var(--text-secondary, #c4c4c8);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.paper-action-delete:hover:not(:disabled) {
+  color: var(--error-color, #ef4444);
+  border-color: var(--error-color, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.paper-action-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.paper-action-delete:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+}
+
 /* ---- Paper page split ---- */
 
 .paper-split {

@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import path from "path";
-import { readdir } from "fs/promises";
+import { readdir, unlink } from "fs/promises";
 import { authResolver } from "../middleware/authResolver";
 import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
@@ -10,6 +10,7 @@ import {
   getClaimCountsByTitle,
   listSourceEnrichment,
   getBioprospectingTaxaBySource,
+  deleteSource,
 } from "../services/researchBrain/db";
 
 /**
@@ -763,6 +764,157 @@ PREGUNTA: ${question.trim()}`;
       }
     },
     { beforeHandle: authResolver({ required: false }) },
+  )
+
+  // -------------------------------------------------------------------------
+  // Delete a paper (DESTRUCTIVE)
+  //
+  // Removes a paper from the library and every derived record:
+  //   1. `documents` rows (the knowledge/vector chunks) — matched by title.
+  //      This store is SEPARATE from research-brain and is NOT cascaded.
+  //   2. The `research_sources` row (matched by resolved file path, else the
+  //      document's stored filePath, else title, else DOI). Deleting it
+  //      CASCADES to research_evidence_chunks, research_claims, and
+  //      research_bioprospecting_facts.
+  //   3. The original file on disk, path-traversal-guarded to the docs root
+  //      (otherwise a future re-index would re-create the paper).
+  //
+  // Each sub-step runs in its own try/catch and is best-effort: a partial
+  // failure still removes the paper from the library list. Auth is REQUIRED
+  // (deletion must not be anonymous).
+  // -------------------------------------------------------------------------
+  .delete(
+    "/api/library/:docId",
+    async ({ params, set }) => {
+      const title = decodeDocId(params.docId);
+      if (!title) {
+        set.status = 400;
+        return { error: "Invalid docId" };
+      }
+
+      try {
+        const sb = getServiceClient();
+        const docsRoot = path.resolve(getDocsPath());
+
+        // Resolve the original file on disk (used both to match the research
+        // source by file_path and to unlink the file below). Best-effort.
+        let resolvedPath: string | null = null;
+        try {
+          resolvedPath = await resolveDocFilePath(title);
+        } catch (err) {
+          logger.warn({ err, title }, "library_delete_resolve_path_failed");
+        }
+
+        // Gather the source-matching hints (the document's stored filePath and
+        // any embedded DOI) BEFORE deleting the documents rows. Mirrors the
+        // resolution used by the detail endpoint.
+        let metaFilePath: string | null = null;
+        let doi: string | null = null;
+        try {
+          const chunks = await (await getVectorSearch()).getDocumentChunks(title);
+          if (chunks.length > 0) {
+            metaFilePath =
+              (chunks[0].metadata?.filePath as string | undefined) || null;
+            const fullText = chunks
+              .map((c: any) => c.content)
+              .join("\n\n")
+              .slice(0, 20000);
+            const doiMatch = fullText.match(DOI_REGEX);
+            doi = doiMatch ? doiMatch[0] : null;
+          }
+        } catch (err) {
+          logger.warn({ err, title }, "library_delete_read_chunks_failed");
+        }
+
+        // Resolve the research_sources row id to delete (by file_path, else
+        // title, else doi) — the same precedence the detail endpoint uses.
+        let deletedSourceId: string | null = null;
+        try {
+          const candidatePaths = [resolvedPath, metaFilePath].filter(
+            (p): p is string => !!p,
+          );
+          let sourceId: string | null = null;
+          if (candidatePaths.length > 0) {
+            const { data } = await sb
+              .from("research_sources")
+              .select("id")
+              .in("file_path", candidatePaths)
+              .limit(1);
+            sourceId = data?.[0]?.id || null;
+          }
+          if (!sourceId) {
+            const { data } = await sb
+              .from("research_sources")
+              .select("id")
+              .eq("title", title)
+              .limit(1);
+            sourceId = data?.[0]?.id || null;
+          }
+          if (!sourceId && doi) {
+            const { data } = await sb
+              .from("research_sources")
+              .select("id")
+              .ilike("doi", doi)
+              .limit(1);
+            sourceId = data?.[0]?.id || null;
+          }
+          if (sourceId) {
+            await deleteSource(sourceId);
+            deletedSourceId = sourceId;
+          }
+        } catch (err) {
+          logger.warn({ err, title }, "library_delete_source_failed");
+        }
+
+        // Delete the vector/knowledge chunks (separate store, not cascaded).
+        let deletedDocuments = 0;
+        try {
+          deletedDocuments = await (
+            await getVectorSearch()
+          ).deleteDocumentsByTitle(title);
+        } catch (err) {
+          logger.warn({ err, title }, "library_delete_documents_failed");
+        }
+
+        // Delete the original file on disk. Guarded: only unlink a path that
+        // resolves INSIDE the docs root (never follow it outside).
+        let deletedFile = false;
+        try {
+          if (resolvedPath) {
+            const abs = path.resolve(resolvedPath);
+            if (isUnderDocsRoot(abs, docsRoot) && (await Bun.file(abs).exists())) {
+              await unlink(abs);
+              deletedFile = true;
+            } else if (!isUnderDocsRoot(abs, docsRoot)) {
+              logger.warn(
+                { title, resolvedPath: abs },
+                "library_delete_file_outside_docs_root_skipped",
+              );
+            }
+          }
+        } catch (err) {
+          logger.warn({ err, title }, "library_delete_file_failed");
+        }
+
+        logger.info(
+          {
+            title,
+            docId: params.docId,
+            deletedDocuments,
+            deletedSourceId,
+            deletedFile,
+          },
+          "library_paper_deleted",
+        );
+
+        return { ok: true, title };
+      } catch (error: any) {
+        logger.error({ err: error, title }, "library_delete_failed");
+        set.status = 500;
+        return { error: "Failed to delete paper", message: error?.message };
+      }
+    },
+    { beforeHandle: authResolver({ required: true }) },
   );
 
 export default libraryRoute;

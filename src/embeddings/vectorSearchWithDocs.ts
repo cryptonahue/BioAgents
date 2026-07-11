@@ -483,6 +483,23 @@ export class VectorSearchWithDocuments extends VectorSearchWithReranker {
   }
 
   /**
+   * Deletes every `documents` (vector chunk) row for a paper, matched by
+   * title. The library/knowledge vector store is SEPARATE from the
+   * research-brain tables and is NOT cascaded, so deleting a paper must
+   * remove these rows explicitly. Returns the number of rows deleted.
+   */
+  async deleteDocumentsByTitle(title: string): Promise<number> {
+    const { data, error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("title", title)
+      .select("id");
+
+    if (error) throw error;
+    return (data || []).length;
+  }
+
+  /**
    * Fetches all chunks for a single document (by title), ordered by chunkIndex.
    */
   async getDocumentChunks(

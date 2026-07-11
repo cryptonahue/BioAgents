@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { route } from "preact-router";
 import { useLibraryList } from "../hooks";
 import type { LibraryPaper } from "../hooks/useLibrary";
-import { fetchPaperAbstract } from "../hooks/useLibrary";
+import { fetchPaperAbstract, deleteLibraryPaper } from "../hooks/useLibrary";
 import { Icon } from "../components/icons";
 import { uploadResearchBrainSource } from "../hooks/useResearchBrain";
 
@@ -60,12 +60,72 @@ function trustLabel(tier?: string): string {
 }
 
 /**
+ * Small, subtle destructive action shared by the card and the row. Confirms
+ * before deleting (window.confirm), then removes the paper and its evidence
+ * server-side and asks the parent to refresh the list on success. Errors are
+ * surfaced through the page-level `onError` affordance. The click is stopped
+ * from bubbling so it never triggers the card/row navigation.
+ */
+function DeletePaperButton({
+  paper,
+  onDeleted,
+  onError,
+}: {
+  paper: LibraryPaper;
+  onDeleted: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const title = displayTitle(paper);
+
+  const handleDelete = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (busy) return;
+    const confirmed = window.confirm(
+      `Delete "${title}"? This removes the paper and its evidence.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    onError("");
+    try {
+      await deleteLibraryPaper(paper.docId);
+      onDeleted();
+    } catch (err: any) {
+      onError(err?.message || "Could not delete the paper");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="paper-action-delete"
+      onClick={handleDelete}
+      disabled={busy}
+      title={`Delete "${title}"`}
+      aria-label={`Delete ${title}`}
+    >
+      <Icon name="trash" size={15} />
+    </button>
+  );
+}
+
+/**
  * Single Library card. Manages its own hover state so the FULL abstract is
  * fetched lazily (once, cached) from the detail endpoint on first hover/focus
  * and revealed via a CSS expand — keeping the list payload light. The title is
  * clamped to two lines and reveals in full on hover (native tooltip + expand).
  */
-function PaperCard({ paper }: { paper: LibraryPaper }) {
+function PaperCard({
+  paper,
+  onDeleted,
+  onError,
+}: {
+  paper: LibraryPaper;
+  onDeleted: () => void;
+  onError: (msg: string) => void;
+}) {
   const [abstract, setAbstract] = useState<string>("");
   const [loadedAbstract, setLoadedAbstract] = useState(false);
   const title = displayTitle(paper);
@@ -195,6 +255,11 @@ function PaperCard({ paper }: { paper: LibraryPaper }) {
             <Icon name="microscope" size={15} />
             <span>View evidence</span>
           </button>
+          <DeletePaperButton
+            paper={paper}
+            onDeleted={onDeleted}
+            onError={onError}
+          />
         </div>
       </div>
     </div>
@@ -202,7 +267,15 @@ function PaperCard({ paper }: { paper: LibraryPaper }) {
 }
 
 /** Compact list-view row — same data as the card, laid out horizontally. */
-function PaperRow({ paper }: { paper: LibraryPaper }) {
+function PaperRow({
+  paper,
+  onDeleted,
+  onError,
+}: {
+  paper: LibraryPaper;
+  onDeleted: () => void;
+  onError: (msg: string) => void;
+}) {
   const title = displayTitle(paper);
   const sub = subline(paper);
   return (
@@ -276,6 +349,11 @@ function PaperRow({ paper }: { paper: LibraryPaper }) {
           <Icon name="microscope" size={15} />
           <span>Evidence</span>
         </button>
+        <DeletePaperButton
+          paper={paper}
+          onDeleted={onDeleted}
+          onError={onError}
+        />
       </div>
     </div>
   );
@@ -296,6 +374,7 @@ function getInitialView(): LibraryView {
 export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
   const { papers, isLoading, error, refetch } = useLibraryList();
   const [uploadError, setUploadError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [viewMode, setViewMode] = useState<LibraryView>(getInitialView());
 
@@ -369,6 +448,12 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
           </div>
         </div>
 
+        {deleteError && (
+          <div className="library-state library-state-error">
+            <p>{deleteError}</p>
+          </div>
+        )}
+
         {isLoading && <div className="library-state">Loading papers…</div>}
 
         {error && !isLoading && (
@@ -392,13 +477,23 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
           viewMode === "grid" ? (
             <div className="library-grid">
               {papers.map((paper) => (
-                <PaperCard key={paper.docId} paper={paper} />
+                <PaperCard
+                  key={paper.docId}
+                  paper={paper}
+                  onDeleted={refetch}
+                  onError={setDeleteError}
+                />
               ))}
             </div>
           ) : (
             <div className="library-list">
               {papers.map((paper) => (
-                <PaperRow key={paper.docId} paper={paper} />
+                <PaperRow
+                  key={paper.docId}
+                  paper={paper}
+                  onDeleted={refetch}
+                  onError={setDeleteError}
+                />
               ))}
             </div>
           )

@@ -204,6 +204,27 @@ export async function getPaperHistory(
   return Array.isArray(data.turns) ? data.turns : [];
 }
 
+/**
+ * Delete a paper from the library. DESTRUCTIVE: removes the knowledge/vector
+ * chunks, the research source (cascades to evidence/claims/facts), and the
+ * original file on disk. Auth is required server-side; we send the same auth
+ * headers/credentials as the other library calls. Throws on non-ok so the
+ * caller can surface an error and avoid a misleading list refresh.
+ */
+export async function deleteLibraryPaper(docId: string): Promise<void> {
+  const res = await fetch(`/api/library/${docId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      data?.message || data?.error || `Delete failed (${res.status})`,
+    );
+  }
+}
+
 export async function askPaper(
   docId: string,
   question: string,
