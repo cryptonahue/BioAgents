@@ -14,6 +14,11 @@
  * mapping lives in exactly one place. The returned rect is in PDF
  * point space; the overlay re-scales it via `bboxToPixels(bbox,
  * scale)`, so callers MUST NOT pre-multiply by any scale.
+ *
+ * `page` is optional: when known (lightbox facts) the search is
+ * scoped to that page; when null (ViewerPage claims that carry a
+ * verbatim quote but no resolvable page) the search scans every
+ * page and the returned bbox carries the page it was found on.
  */
 import { ProvenanceType } from "./useProvenance";
 import { useTextChunkSearch } from "./useTextChunkSearch";
@@ -39,7 +44,10 @@ export function useTextChunkHighlight({
   type: ProvenanceType | null;
   isSearching: boolean;
 } {
-  const active = Boolean(enabled && doc && page && content);
+  // `page` is intentionally NOT required: a null page means "search
+  // every page for the content" (see useTextChunkSearch's all-pages
+  // mode). We only need something to search for.
+  const active = Boolean(enabled && doc && content);
   // The hook is always called (React rules); `enabled: active` makes
   // it a no-op when there is nothing to search.
   const { result, isSearching } = useTextChunkSearch({
@@ -52,7 +60,7 @@ export function useTextChunkHighlight({
   if (!active) return { bbox: null, type: null, isSearching: false };
   if (isSearching || !result) return { bbox: null, type: null, isSearching };
   if (result.bbox) return { bbox: result.bbox, type: "chunk", isSearching };
-  // Graceful miss: text not found on the page. The viewer renders the
-  // text-only badge for this type.
+  // Graceful miss: text not found (on the given page, or on any page
+  // in all-pages mode). The viewer renders the text-only badge.
   return { bbox: null, type: "text-only", isSearching };
 }

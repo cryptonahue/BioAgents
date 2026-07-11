@@ -81,6 +81,14 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     ? chunkHighlight.type ?? activeType
     : activeType;
 
+  // Which page the viewer shows. When an all-pages claim search is
+  // active, the found bbox carries the page it matched on, so the
+  // viewer jumps there once the scan resolves; until then it holds
+  // whatever `activePage` was (null for a claim → no forced jump).
+  const effectivePage: number | undefined = searchActive
+    ? chunkHighlight.bbox?.page ?? activePage ?? undefined
+    : activePage ?? undefined;
+
   function highlightStored(page: number, type: ProvenanceType, bbox: BBox | null) {
     setSearchContent(null);
     setSearchPage(null);
@@ -89,7 +97,12 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     setActiveBbox(bbox);
   }
 
-  function highlightChunk(page: number, content: string) {
+  // `page` may be null: claims often carry a verbatim quote but no
+  // resolvable page (the in-process ingestion path does not persist
+  // evidence-chunk rows, so the claim→chunk→page link is empty). A
+  // null page puts the search into all-pages mode; the viewer then
+  // follows the page the search lands on (see `effectivePage`).
+  function highlightChunk(page: number | null, content: string) {
     setActiveBbox(null);
     // Provisional type until the search resolves; the hook flips it
     // to "text-only" on a miss.
@@ -141,7 +154,7 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
           numPages={numPages}
           bbox={effectiveBbox}
           type={effectiveType}
-          page={activePage ?? undefined}
+          page={effectivePage}
           showZoomControls
         />
         <aside className="viewer-page__sidebar" aria-label="Evidence list">
@@ -156,8 +169,11 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                   // was extracted from) over the whole chunk for a tighter
                   // highlight; fall back to the chunk content.
                   const searchText = c.quote || chunk?.content || "";
-                  const page = chunk?.page;
-                  const canHighlight = !!searchText && page != null;
+                  // The page is optional: when absent the search scans
+                  // every page for the quote (all-pages mode). We only
+                  // need something to search for to enable the click.
+                  const page = chunk?.page ?? null;
+                  const canHighlight = !!searchText;
                   return (
                     <li key={c.id} className="viewer-page__claim">
                       <button
@@ -165,7 +181,7 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                         className="viewer-page__claim-btn"
                         disabled={!canHighlight}
                         onClick={() => {
-                          if (searchText && page != null) {
+                          if (searchText) {
                             highlightChunk(page, searchText);
                           }
                         }}
