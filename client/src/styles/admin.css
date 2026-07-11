@@ -2,14 +2,29 @@
  *
  * Mirrors the visual language of `corpus.css` (topbar, table
  * styling, error/empty states) but introduces the admin-specific
- * tab bar, dialog, and stats grid. CSS variables are reused from
- * `corpus.css` so the two pages share a color palette.
+ * tab bar, dialog, and stats grid.
+ *
+ * This file, `corpus.css` and `graph.css` were three hand-rolled dark themes
+ * built from the SAME Tailwind slate ramp. They now speak one token vocabulary
+ * (see `theme.css`), so all three follow the theme:
+ *
+ *   #0a0e17 -> --background        #f9fafb / #e2e8f0 / #e5e7eb -> --foreground
+ *   #111827 -> --card             #cbd5e1 / #9ca3af           -> --muted-foreground
+ *   #0f172a -> --surface-sunken   #6b7280                     -> --text-tertiary
+ *   #1f2937 -> --muted (bg)  |  --border (border)
+ *   #374151 -> --bg-hover (hover bg)  |  --border-strong (border)
+ *
+ * ADMIN'S INDIGO IS GONE. It used a third accent (#6366f1 / #4338ca / #4f46e5)
+ * on top of the brand green and the theme teal. It now adopts `--primary`.
+ * The button fills visibly re-skin to teal; that is the intended outcome.
+ * Line/border uses take `--primary-ink`, not `--primary`: Basecoat's dark
+ * `--primary` is 2.40:1 on `--card` and is a fill color, not an ink.
  */
 
 .admin-page {
   min-height: 100vh;
-  background: #0a0e17;
-  color: #e2e8f0;
+  background: var(--background);
+  color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   display: flex;
   flex-direction: column;
@@ -20,8 +35,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
-  background: #111827;
-  border-bottom: 1px solid #1f2937;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -29,7 +44,7 @@
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .admin-topbar-links {
@@ -40,7 +55,7 @@
 .admin-link-btn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 6px;
@@ -48,8 +63,8 @@
 }
 
 .admin-link-btn:hover {
-  color: #f9fafb;
-  background: #1f2937;
+  color: var(--foreground);
+  background: var(--muted);
 }
 
 .admin-main {
@@ -64,11 +79,11 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 8px;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .admin-header p {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin: 0;
   font-size: 14px;
 }
@@ -78,14 +93,14 @@
 .admin-tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   margin: 24px 0 16px;
 }
 
 .admin-tab {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   cursor: pointer;
   padding: 10px 16px;
   font-size: 14px;
@@ -95,17 +110,17 @@
 }
 
 .admin-tab:hover {
-  color: #e2e8f0;
+  color: var(--foreground);
 }
 
 .admin-tab.active {
-  color: #f9fafb;
-  border-bottom-color: #6366f1;
+  color: var(--foreground);
+  border-bottom-color: var(--primary-ink);
 }
 
 .admin-error {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -113,8 +128,8 @@
 }
 
 .admin-info {
-  background: #1e3a8a;
-  color: #bfdbfe;
+  background: var(--info-subtle);
+  color: var(--info-subtle-foreground);
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -122,20 +137,20 @@
 }
 
 .admin-loading {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   padding: 24px;
   text-align: center;
   font-size: 14px;
 }
 
 .admin-empty {
-  color: #6b7280;
+  color: var(--text-tertiary);
   padding: 32px 24px;
   text-align: center;
   font-size: 14px;
-  background: #111827;
+  background: var(--card);
   border-radius: 8px;
-  border: 1px dashed #1f2937;
+  border: 1px dashed var(--border);
 }
 
 /* ----------------- Toolbar / filter chips ----------------- */
@@ -149,9 +164,9 @@
 }
 
 .admin-chip {
-  background: #1f2937;
-  color: #9ca3af;
-  border: 1px solid #374151;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 13px;
@@ -160,20 +175,20 @@
 }
 
 .admin-chip:hover {
-  color: #e2e8f0;
-  border-color: #4b5563;
+  color: var(--foreground);
+  border-color: var(--primary-ink);
 }
 
 .admin-chip.active {
-  background: #4338ca;
-  color: #f9fafb;
-  border-color: #6366f1;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary-ink);
 }
 
 .admin-window-select {
-  background: #1f2937;
-  color: #e2e8f0;
-  border: 1px solid #374151;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
@@ -184,7 +199,7 @@
 .admin-table {
   width: 100%;
   border-collapse: collapse;
-  background: #111827;
+  background: var(--card);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -192,20 +207,20 @@
 .admin-table thead th {
   text-align: left;
   padding: 10px 12px;
-  background: #0f172a;
-  color: #9ca3af;
+  background: var(--surface-sunken);
+  color: var(--muted-foreground);
   font-weight: 500;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
 }
 
 .admin-table tbody td {
   padding: 10px 12px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
-  color: #e2e8f0;
+  color: var(--foreground);
   vertical-align: middle;
 }
 
@@ -214,7 +229,7 @@
 }
 
 .admin-table tbody tr:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--bg-hover);
 }
 
 .admin-status-badge {
@@ -228,36 +243,36 @@
 }
 
 .admin-status-badge.status-unresolved {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
 }
 
 .admin-status-badge.status-resolved {
-  background: #065f46;
-  color: #a7f3d0;
+  background: var(--success-subtle);
+  color: var(--success-subtle-foreground);
 }
 
 .admin-status-badge.status-dismissed {
-  background: #374151;
-  color: #9ca3af;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .admin-status-badge.status-active {
-  background: #065f46;
-  color: #a7f3d0;
+  background: var(--success-subtle);
+  color: var(--success-subtle-foreground);
 }
 
 .admin-status-badge.status-inactive {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
 }
 
 /* ----------------- Action buttons ----------------- */
 
 .admin-btn {
-  background: #1f2937;
-  color: #e2e8f0;
-  border: 1px solid #374151;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 6px 12px;
   font-size: 13px;
@@ -266,8 +281,8 @@
 }
 
 .admin-btn:hover:not(:disabled) {
-  background: #374151;
-  border-color: #4b5563;
+  background: var(--bg-hover);
+  border-color: var(--primary-ink);
 }
 
 .admin-btn:disabled {
@@ -276,33 +291,34 @@
 }
 
 .admin-btn-primary {
-  background: #4338ca;
-  border-color: #6366f1;
-  color: #f9fafb;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .admin-btn-primary:hover:not(:disabled) {
-  background: #4f46e5;
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .admin-btn-danger {
-  background: #7f1d1d;
-  border-color: #b91c1c;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  border-color: var(--destructive-border);
+  color: var(--destructive-subtle-foreground);
 }
 
 .admin-btn-danger:hover:not(:disabled) {
-  background: #991b1b;
+  background: var(--destructive-border);
 }
 
 .admin-btn-success {
-  background: #065f46;
-  border-color: #047857;
-  color: #a7f3d0;
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+  color: var(--success-subtle-foreground);
 }
 
 .admin-btn-success:hover:not(:disabled) {
-  background: #047857;
+  background: var(--success-border);
 }
 
 /* ----------------- Footer action bar (bulk) ----------------- */
@@ -313,15 +329,15 @@
   gap: 12px;
   padding: 12px 16px;
   margin-top: 16px;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   position: sticky;
   bottom: 16px;
 }
 
 .admin-actionbar-count {
-  color: #f9fafb;
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
   margin-right: auto;
@@ -335,7 +351,7 @@
   gap: 8px;
   margin-top: 16px;
   justify-content: flex-end;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
@@ -344,7 +360,7 @@
 .admin-dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,31 +368,31 @@
 }
 
 .admin-dialog {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
   max-width: 480px;
   width: 90%;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .admin-dialog h2 {
   margin: 0 0 12px;
   font-size: 18px;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .admin-dialog p {
   margin: 0 0 16px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 13px;
   line-height: 1.5;
 }
 
 .admin-dialog label {
   display: block;
-  color: #cbd5e1;
+  color: var(--muted-foreground);
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 6px;
@@ -385,9 +401,9 @@
 .admin-dialog select,
 .admin-dialog textarea {
   width: 100%;
-  background: #0f172a;
-  color: #e2e8f0;
-  border: 1px solid #374151;
+  background: var(--surface-sunken);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 13px;
@@ -398,7 +414,7 @@
 .admin-dialog select:focus,
 .admin-dialog textarea:focus {
   outline: none;
-  border-color: #6366f1;
+  border-color: var(--ring);
 }
 
 .admin-dialog textarea {
@@ -407,7 +423,7 @@
 }
 
 .admin-dialog-helper {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 12px;
   margin: -8px 0 16px;
 }
@@ -420,8 +436,8 @@
 }
 
 .admin-dialog-error {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -431,8 +447,8 @@
 /* ----------------- Stats card ----------------- */
 
 .admin-stats-card {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
   margin-top: 16px;
@@ -447,7 +463,7 @@
 }
 
 .admin-stats-section-title {
-  color: #cbd5e1;
+  color: var(--muted-foreground);
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 12px;
@@ -462,55 +478,55 @@
 }
 
 .admin-stats-tile {
-  background: #0f172a;
-  border: 1px solid #1f2937;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
   text-align: center;
 }
 
 .admin-stats-tile.pending-alert {
-  background: #422006;
-  border-color: #b45309;
-  color: #fde68a;
+  background: var(--warning-subtle);
+  border-color: var(--warning-border);
+  color: var(--warning-subtle-foreground);
 }
 
 .admin-stats-tile-value {
   display: block;
   font-size: 24px;
   font-weight: 700;
-  color: #f9fafb;
+  color: var(--foreground);
   line-height: 1.2;
 }
 
 .admin-stats-tile.pending-alert .admin-stats-tile-value {
-  color: #fde68a;
+  color: var(--warning-subtle-foreground);
 }
 
 .admin-stats-tile-label {
   display: block;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin-top: 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .admin-stats-tile.pending-alert .admin-stats-tile-label {
-  color: #fde68a;
+  color: var(--warning-subtle-foreground);
 }
 
 .admin-stats-link {
   display: inline-block;
   margin-top: 16px;
-  color: #93c5fd;
+  color: var(--info);
   font-size: 13px;
   text-decoration: none;
   cursor: pointer;
 }
 
 .admin-stats-link:hover {
-  color: #bfdbfe;
+  color: var(--info-subtle-foreground);
   text-decoration: underline;
 }
 

@@ -1,9 +1,17 @@
-/* Knowledge Graph Explorer Styles — mirrors corpus.css / research.css. */
+/* Knowledge Graph Explorer Styles — mirrors corpus.css / research.css.
+ *
+ * Same slate ramp -> token mapping as `admin.css` and `corpus.css`; see the
+ * header of `admin.css` for the table.
+ *
+ * Everything in THIS file is UI chrome. The node, edge and label colors of the
+ * graph itself are not here — they are `--graph-*` tokens in `theme.css`, read
+ * from `GraphCanvas.tsx` through D3 `.style()`.
+ */
 
 .graph-page {
   min-height: 100vh;
-  background: #0a0e17;
-  color: #e2e8f0;
+  background: var(--background);
+  color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -17,18 +25,18 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 8px;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .graph-header p {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin: 0;
   font-size: 14px;
 }
 
 .graph-error {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
   padding: 12px 16px;
   border-radius: 8px;
   margin: 16px 0 0;
@@ -44,9 +52,9 @@
 
 /* ---- Left search panel ---------------------------------------------------*/
 .graph-search-panel {
-  background: #111827;
+  background: var(--card);
   border-radius: 12px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -57,14 +65,14 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 16px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
 }
 
 .graph-kind-btn {
   flex: 1 1 auto;
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: #9ca3af;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
+  color: var(--muted-foreground);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
@@ -73,13 +81,13 @@
 }
 
 .graph-kind-btn:hover {
-  color: #e5e7eb;
+  color: var(--foreground);
 }
 
 .graph-kind-btn.active {
-  background: #1e3a5f;
-  border-color: #3b82f6;
-  color: #93c5fd;
+  background: var(--info-subtle);
+  border-color: var(--info);
+  color: var(--info-subtle-foreground);
 }
 
 .graph-search-form {
@@ -87,30 +95,30 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid #1f2937;
-  color: #6b7280;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-tertiary);
 }
 
 .graph-search-form input {
   flex: 1;
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: #e5e7eb;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
 }
 
 .graph-search-form input::placeholder {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .graph-search-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #1d4ed8;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   border-radius: 6px;
   padding: 6px 8px;
@@ -118,7 +126,7 @@
 }
 
 .graph-search-submit:hover {
-  background: #2563eb;
+  background: var(--primary-hover);
 }
 
 .graph-results {
@@ -134,20 +142,20 @@
   text-align: left;
   background: none;
   border: none;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   padding: 12px 16px;
   cursor: pointer;
-  color: #e5e7eb;
+  color: var(--foreground);
   transition: background 0.15s;
 }
 
 .graph-result-item:hover {
-  background: #1f2937;
+  background: var(--muted);
 }
 
 .graph-result-item.active {
-  background: #1f2937;
-  border-left: 3px solid #3b82f6;
+  background: var(--muted);
+  border-left: 3px solid var(--info);
 }
 
 .graph-result-title {
@@ -157,18 +165,18 @@
 
 .graph-result-meta {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
 }
 
 .graph-loading {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 13px;
   padding: 16px;
   text-align: center;
 }
 
 .graph-empty {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 13px;
   text-align: center;
   padding: 24px 16px;
@@ -184,9 +192,9 @@
 
 .graph-canvas-wrap {
   position: relative;
-  background: #111827;
+  background: var(--card);
   border-radius: 12px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   height: 520px;
   overflow: hidden;
 }
@@ -208,7 +216,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 
@@ -225,13 +233,13 @@
 
 .graph-canvas-empty p {
   margin: 0;
-  color: #e5e7eb;
+  color: var(--foreground);
   font-size: 15px;
   font-weight: 600;
 }
 
 .graph-canvas-empty span {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 13px;
   max-width: 320px;
 }
@@ -251,22 +259,22 @@
 
 .graph-canvas-error p {
   margin: 0;
-  color: #fecaca;
+  color: var(--destructive);
   font-size: 15px;
   font-weight: 600;
 }
 
 .graph-canvas-error span {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-size: 13px;
   max-width: 360px;
 }
 
 .graph-retry-btn {
   margin-top: 8px;
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: #e5e7eb;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 13px;
@@ -274,7 +282,7 @@
 }
 
 .graph-retry-btn:hover {
-  background: #374151;
+  background: var(--bg-hover);
 }
 
 /* ---- Edge-type legend / filter ------------------------------------------*/
@@ -288,12 +296,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 12px;
-  color: #cbd5e1;
+  color: var(--muted-foreground);
   cursor: pointer;
   transition:
     opacity 0.15s,
@@ -301,7 +309,7 @@
 }
 
 .graph-legend-item:hover {
-  border-color: #374151;
+  border-color: var(--border-strong);
 }
 
 .graph-legend-item.muted {
@@ -309,23 +317,25 @@
   text-decoration: line-through;
 }
 
+/* GraphExplorerPage overrides `background` inline from `EDGE_STROKE`, which is
+   now a `var(--graph-edge-*)` reference. This is only the pre-paint default. */
 .graph-legend-swatch {
   width: 14px;
   height: 3px;
   border-radius: 2px;
-  background: #334155;
+  background: var(--border-strong);
 }
 
 /* ---- Detail card ---------------------------------------------------------*/
 .graph-detail-card {
-  background: #111827;
+  background: var(--card);
   border-radius: 12px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   padding: 20px 24px;
 }
 
 .graph-detail-header {
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
   margin-bottom: 12px;
 }
@@ -334,21 +344,21 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #60a5fa;
+  color: var(--info);
 }
 
 .graph-detail-header h2 {
   font-size: 18px;
   font-weight: 600;
   margin: 4px 0 8px;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .graph-detail-stats {
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
 }
 
 .graph-detail-section {
@@ -358,15 +368,15 @@
 .graph-detail-section h3 {
   font-size: 13px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 8px;
 }
 
 .graph-fact {
-  background: #0f1729;
-  border: 1px solid #1f2937;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -375,14 +385,14 @@
 .graph-fact p {
   margin: 0 0 8px;
   font-size: 13px;
-  color: #e5e7eb;
+  color: var(--foreground);
 }
 
 .graph-fact blockquote {
   margin: 0 0 8px;
   padding-left: 10px;
-  border-left: 2px solid #374151;
-  color: #9ca3af;
+  border-left: 2px solid var(--border-strong);
+  color: var(--muted-foreground);
   font-size: 12px;
   font-style: italic;
 }
@@ -391,12 +401,12 @@
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .graph-fact-meta a,
 .graph-source-meta a {
-  color: #60a5fa;
+  color: var(--info);
   text-decoration: none;
 }
 
@@ -411,12 +421,12 @@
   align-items: center;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
 }
 
 .graph-source-title {
   font-size: 13px;
-  color: #e5e7eb;
+  color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -424,18 +434,21 @@
 
 .graph-source-meta {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   white-space: nowrap;
 }
 
-/* Clickable source title — opens the dedicated evidence viewer. */
+/* Clickable source title — opens the dedicated evidence viewer. Violet because
+   sources are the violet nodes in the canvas. The hover step is `--foreground`:
+   it moves the right way in BOTH themes (brighter on dark, darker on light),
+   which no violet token does. */
 .graph-source-open {
   background: none;
   border: none;
   padding: 0;
   font: inherit;
   text-align: left;
-  color: #c4b5fd;
+  color: var(--violet-subtle-foreground);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -443,22 +456,22 @@
 }
 .graph-source-open:hover {
   text-decoration: underline;
-  color: #ddd6fe;
+  color: var(--foreground);
 }
 
 /* "Evidence" button on a linked fact — opens the inline EvidenceLightbox. */
 .graph-evidence-btn {
   background: transparent;
-  border: 1px solid #334155;
-  color: #93c5fd;
+  border: 1px solid var(--border-strong);
+  color: var(--info);
   border-radius: 6px;
   padding: 2px 8px;
   font-size: 12px;
   cursor: pointer;
 }
 .graph-evidence-btn:hover {
-  background: #1e293b;
-  border-color: #3b82f6;
+  background: var(--info-subtle);
+  border-color: var(--info);
 }
 
 .graph-tag-row {
@@ -468,12 +481,12 @@
 }
 
 .graph-tag {
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 4px 10px;
   font-size: 12px;
-  color: #cbd5e1;
+  color: var(--muted-foreground);
 }
 
 @media (max-width: 900px) {

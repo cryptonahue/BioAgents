@@ -283,6 +283,27 @@
  *                             blockquote rules, focus rings. Translucent, so
  *                             it works over any surface and needs no `.dark`
  *                             override — same reasoning as `--accent-light`.
+ *
+ * PRIMARY, BEYOND THE FILL
+ *   Basecoat gives `--primary` (a fill) and `--primary-foreground` (text on
+ *   that fill) and nothing else. Tailwind covers the rest with utilities we
+ *   cannot use from hand-written CSS: `hover:bg-primary/90` is an alpha
+ *   composite, and expressing it here would need `color-mix()` inside a custom
+ *   property — which this build pipeline corrupts. So two literal steps:
+ *
+ *   --primary-hover  The hover step for a primary FILL. Darker in light,
+ *                    lighter in dark. `--primary-foreground` clears AA on it in
+ *                    both themes (6.46:1 light, 5.15:1 dark).
+ *   --primary-ink    `--primary` used as a LINE or TEXT on the app surface —
+ *                    active tab underlines, active chip borders, links. This
+ *                    exists because Basecoat's DARK `--primary` (`#005f78`) is
+ *                    DARKER than its light one and scores 2.40:1 on `--card`,
+ *                    below even the 3:1 non-text bar. It is a fill color, not
+ *                    an ink. `--primary-ink` is to `--primary` exactly what
+ *                    `--accent-ink` is to `--accent-color`: the same decision,
+ *                    scoped rather than reversed. The dark value reuses the
+ *                    hue/chroma Basecoat already ships as `--sidebar-primary`,
+ *                    so no new hue enters the palette.
  */
 :root {
   --surface-sunken: oklch(0.975 0.002 214.3);
@@ -326,6 +347,12 @@
   --accent-ink: #047857;
   --accent-color-foreground: #000000;
   --accent-border: rgba(16, 185, 129, 0.4);
+
+  /* One step darker than `--primary`. `--primary-foreground` is 6.46:1 on it. */
+  --primary-hover: oklch(0.46 0.105 223.128);
+  /* Identical to `--primary` in light — 5.28:1 on white, it is already an ink
+     here. Only the DARK value has to diverge. */
+  --primary-ink: oklch(0.52 0.105 223.128);
 }
 
 /* See PINNED-DARK MARKETING SURFACES at the top of this file. */
@@ -365,6 +392,13 @@
   --violet-border: rgba(167, 139, 250, 0.4);
 
   --accent-ink: #10b981;
+
+  /* One step LIGHTER than `--primary`, because the dark fill is the dark step.
+     `--primary-foreground` is 5.15:1 on it. */
+  --primary-hover: oklch(0.52 0.095 224.283);
+  /* 7.27:1 on `--card`, 8.26:1 on `--background`. Basecoat's dark `--primary`
+     is 2.40:1 on `--card` and cannot be used as a line or as text. */
+  --primary-ink: oklch(0.715 0.143 221.723);
 }
 
 /**

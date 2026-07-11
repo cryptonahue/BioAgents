@@ -1,9 +1,13 @@
-/* Corpus Dashboard Styles */
+/* Corpus Dashboard Styles
+ *
+ * Same slate ramp -> token mapping as `admin.css` and `graph.css`; see the
+ * header of `admin.css` for the table.
+ */
 
 .corpus-page {
   min-height: 100vh;
-  background: #0a0e17;
-  color: #e2e8f0;
+  background: var(--background);
+  color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -12,15 +16,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
-  background: #111827;
-  border-bottom: 1px solid #1f2937;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
 }
 
 .corpus-brand {
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .corpus-topbar-links {
@@ -31,7 +35,7 @@
 .corpus-link-btn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 6px;
@@ -39,8 +43,8 @@
 }
 
 .corpus-link-btn:hover {
-  color: #f9fafb;
-  background: #1f2937;
+  color: var(--foreground);
+  background: var(--muted);
 }
 
 .corpus-main {
@@ -53,18 +57,18 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0 0 8px;
- color: #f9fafb;
+  color: var(--foreground);
 }
 
 .corpus-header p {
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin: 0;
- font-size: 14px;
+  font-size: 14px;
 }
 
 .corpus-error {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 16px;
@@ -80,15 +84,15 @@
 
 /* Sidebar */
 .corpus-sidebar {
-  background: #111827;
+  background: var(--card);
   border-radius: 12px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
 .corpus-sidebar-header {
   padding: 16px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -97,16 +101,16 @@
 .corpus-sidebar-header h2 {
   font-size: 14px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0;
 }
 
 .corpus-sidebar-header select {
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: #e5e7eb;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
@@ -124,20 +128,20 @@
   text-align: left;
   background: none;
   border: none;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   padding: 12px 16px;
   cursor: pointer;
-  color: #e5e7eb;
+  color: var(--foreground);
   transition: background 0.15s;
 }
 
 .corpus-run-item:hover {
-  background: #1f2937;
+  background: var(--muted);
 }
 
 .corpus-run-item.active {
-  background: #1f2937;
-  border-left: 3px solid #3b82f6;
+  background: var(--muted);
+  border-left: 3px solid var(--info);
 }
 
 .corpus-run-item-title {
@@ -153,7 +157,7 @@
   display: flex;
   gap: 8px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
 }
 
 .corpus-run-status {
@@ -163,17 +167,32 @@
   font-weight: 500;
 }
 
-.corpus-run-status.status-running { background: #1e3a5f; color: #60a5fa; }
-.corpus-run-status.status-completed { background: #14532d; color: #4ade80; }
-.corpus-run-status.status-completed_with_errors { background: #78350f; color: #fbbf24; }
-.corpus-run-status.status-failed { background: #7f1d1d; color: #f87171; }
-.corpus-run-status.status-cancelled { background: #374151; color: #9ca3af; }
+.corpus-run-status.status-running {
+  background: var(--info-subtle);
+  color: var(--info-subtle-foreground);
+}
+.corpus-run-status.status-completed {
+  background: var(--success-subtle);
+  color: var(--success-subtle-foreground);
+}
+.corpus-run-status.status-completed_with_errors {
+  background: var(--warning-subtle);
+  color: var(--warning-subtle-foreground);
+}
+.corpus-run-status.status-failed {
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
+}
+.corpus-run-status.status-cancelled {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
 
 /* Detail panel */
 .corpus-detail {
-  background: #111827;
+  background: var(--card);
   border-radius: 12px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   padding: 24px;
 }
 
@@ -188,12 +207,12 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 4px;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .corpus-detail-header p {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   margin: 0;
 }
 
@@ -218,29 +237,40 @@
 }
 
 .corpus-btn-danger {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
 }
 
 .corpus-btn-danger:hover:not(:disabled) {
-  background: #991b1b;
+  background: var(--destructive-border);
 }
 
 .corpus-btn-secondary {
-  background: #1f2937;
-  color: #e5e7eb;
-  border: 1px solid #374151;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
 }
 
 .corpus-btn-secondary:hover:not(:disabled) {
-  background: #374151;
+  background: var(--bg-hover);
 }
 
-/* Progress bar */
+/* Progress bar
+ *
+ * The label is centered and spans BOTH the track and the fill, so it cannot be
+ * paired with either one. `--foreground` is the only color that reads on the
+ * track in both themes; over the fill it lands at 3.74:1 (light) / 6.99:1
+ * (dark). The 3.74 is a carry-over — the original was 3.55:1 in dark — and is
+ * flagged rather than silently redesigned here.
+ *
+ * The two-stop blue gradient is gone: it has no token expression that inverts
+ * correctly (the light end would have to become the dark end), and on a 32px
+ * bar the delta is not worth a bespoke token pair.
+ */
 .corpus-progress-bar {
   position: relative;
   height: 32px;
-  background: #1f2937;
+  background: var(--muted);
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -251,7 +281,7 @@
   left: 0;
   top: 0;
   height: 100%;
-  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  background: var(--primary);
   border-radius: 8px;
   transition: width 0.3s ease;
 }
@@ -264,7 +294,7 @@
   justify-content: center;
   font-size: 13px;
   font-weight: 600;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 /* Metrics bar */
@@ -273,7 +303,7 @@
   gap: 24px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #1f2937;
+  background: var(--muted);
   border-radius: 8px;
 }
 
@@ -286,12 +316,12 @@
 .corpus-metric-value {
   font-size: 20px;
   font-weight: 700;
-  color: #f9fafb;
+  color: var(--foreground);
 }
 
 .corpus-metric-label {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
 }
 
 /* File list */
@@ -307,16 +337,16 @@
 
 .corpus-file-search {
   flex: 1;
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: #e5e7eb;
+  background: var(--muted);
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
 }
 
 .corpus-file-search::placeholder {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .corpus-file-table {
@@ -328,15 +358,15 @@
 .corpus-file-table th {
   text-align: left;
   padding: 8px 12px;
-  color: #9ca3af;
+  color: var(--muted-foreground);
   font-weight: 500;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
 }
 
 .corpus-file-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid #1f2937;
-  color: #e5e7eb;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
 }
 
 .corpus-file-path {
@@ -347,7 +377,7 @@
 }
 
 .corpus-file-error {
-  color: #f87171;
+  color: var(--destructive);
   font-size: 12px;
   max-width: 200px;
   overflow: hidden;
@@ -365,20 +395,29 @@
   font-size: 14px;
 }
 
-.corpus-status-badge.status-processed { background: #14532d; color: #4ade80; }
-.corpus-status-badge.status-skipped { background: #374151; color: #9ca3af; }
-.corpus-status-badge.status-failed { background: #7f1d1d; color: #f87171; }
+.corpus-status-badge.status-processed {
+  background: var(--success-subtle);
+  color: var(--success-subtle-foreground);
+}
+.corpus-status-badge.status-skipped {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.corpus-status-badge.status-failed {
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
+}
 
 .corpus-empty-state,
 .corpus-empty {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 14px;
   text-align: center;
   padding: 32px;
 }
 
 .corpus-loading {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-size: 13px;
   padding: 16px;
   text-align: center;
