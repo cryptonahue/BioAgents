@@ -19,6 +19,27 @@
 @import "./ui.css";
 @import "./wallet.css";
 
+/*
+ * DO NOT DELETE, and DO NOT move this into an @layer.
+ *
+ * This is the app's reset (Tailwind Preflight is deliberately not loaded — see
+ * basecoat.css). It is also, unintentionally, the only thing neutralising a live
+ * Basecoat rule:
+ *
+ *   @media (min-width: 48rem) {
+ *     .sidebar:not([data-side]) + * { margin-left: var(--sidebar-width) }
+ *   }
+ *
+ * Basecoat's sidebar component claims the bare `.sidebar` class, which
+ * Sidebar.jsx also uses, and `.app-content` is its adjacent sibling — so that
+ * selector DOES match. Basecoat ships inside @layer components; this rule is
+ * unlayered, and unlayered CSS beats every layer regardless of specificity, so
+ * `margin: 0` wins.
+ *
+ * Verified in Chromium against the built bundle: with this rule present
+ * `.app-content` computes margin-left: 0px; with it removed, 260px. Deleting it
+ * shifts the whole app right on every desktop viewport.
+ */
 * {
   margin: 0;
   padding: 0;
