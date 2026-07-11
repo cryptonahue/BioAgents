@@ -150,10 +150,28 @@
 .paper-card-title {
   font-size: 14px;
   font-weight: 600;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   line-height: 1.35;
   word-break: break-word;
   color: var(--text-primary, #f5f5f5);
+  /* Clamp long titles to two lines; the full title reveals on card hover
+     (and is always available via the native `title` tooltip). */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.paper-card:hover .paper-card-title {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* Year · publisher sub-line: muted, sits under the title. */
+.paper-card-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary, #9aa0a6);
+  margin: 0 0 6px;
 }
 
 .paper-card-meta {
@@ -195,6 +213,100 @@
   color: var(--text-secondary, #c4c4c8);
   font-size: 10px;
   letter-spacing: 0.04em;
+}
+
+/* Bioprospecting fact count: subtle violet pill (distinct from the teal
+   evidence pill so the two counts don't read as the same metric). */
+.paper-biofacts {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  color: #c4b5fd;
+}
+
+/* Trust-tier badge: neutral by default, greened for the highest tier. */
+.paper-trust {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.14));
+  color: var(--text-secondary, #c4c4c8);
+  font-size: 10px;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+}
+
+.paper-trust--foundational,
+.paper-trust--curated {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #86efac;
+}
+
+/* DOI link: reads as a link, never triggers card navigation. */
+.paper-doi-link {
+  color: var(--accent-color, #2dd4bf);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.paper-doi-link:hover {
+  text-decoration: underline;
+}
+
+/* ---- Taxa / geography chips ---- */
+.paper-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.paper-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
+  color: var(--text-secondary, #c4c4c8);
+}
+
+.paper-chip--taxon {
+  font-style: italic;
+  color: #5eead4;
+  border-color: rgba(45, 212, 191, 0.32);
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.paper-chip--geo {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* ---- Abstract preview (lazy-loaded on hover) ---- */
+.paper-card-abstract {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #b6bcc4);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.paper-card:hover .paper-card-abstract {
+  -webkit-line-clamp: 8;
 }
 
 /* ---- Card footer actions (two explicit, labelled buttons) ---- */

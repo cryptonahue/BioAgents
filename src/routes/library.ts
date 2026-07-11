@@ -6,7 +6,11 @@ import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
 import logger from "../utils/logger";
 import { resolveLLM } from "../chat-agent/llm-config";
-import { getClaimCountsByTitle } from "../services/researchBrain/db";
+import {
+  getClaimCountsByTitle,
+  listSourceEnrichment,
+  getBioprospectingTaxaBySource,
+} from "../services/researchBrain/db";
 
 /**
  * Library Route - Paper library + per-paper grounded Q&A.
@@ -35,6 +39,56 @@ const MIME_TYPES: Record<string, string> = {
   txt: "text/plain; charset=utf-8",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
+
+/**
+ * Parse a publication year and publisher hint from a document filename.
+ *
+ * Startup-ingested papers often carry a trailing metadata segment such as
+ * `..._2018_Springer-New-York-LLC-....pdf`. This extracts a plausible
+ * 4-digit year (1900–2099) and the first token of the publisher segment
+ * that follows it. Everything is best-effort: unknown parts return null so
+ * the card simply omits them.
+ */
+function parseFilenameMeta(filename: string): {
+  year: number | null;
+  publisher: string | null;
+} {
+  const base = filename.replace(/\.[a-z0-9]+$/i, "");
+  let year: number | null = null;
+  let publisher: string | null = null;
+
+  const yearMatch = base.match(/(?:^|[_\-\s])((?:19|20)\d{2})(?=[_\-\s]|$)/);
+  if (yearMatch) {
+    const y = parseInt(yearMatch[1], 10);
+    if (y >= 1900 && y <= 2099) year = y;
+
+    // Publisher: the segment immediately after the year, first word only.
+    const after = base.slice((yearMatch.index ?? 0) + yearMatch[0].length);
+    const seg = after.split(/[_]/)[0] || "";
+    const firstWord = seg.split(/[\-\s]/).find((w) => /[A-Za-z]{2,}/.test(w));
+    if (firstWord) publisher = firstWord;
+  }
+
+  return { year, publisher };
+}
+
+/** Read a non-empty string field from a JSONB metadata blob, if present. */
+function metaString(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const v = metadata?.[key];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+/** Read a plausible publication year from a JSONB metadata blob, if present. */
+function metaYear(
+  metadata: Record<string, unknown> | null | undefined,
+): number | null {
+  const v = metadata?.year;
+  const n = typeof v === "number" ? v : typeof v === "string" ? parseInt(v, 10) : NaN;
+  return Number.isFinite(n) && n >= 1900 && n <= 2099 ? n : null;
+}
 
 function encodeDocId(title: string): string {
   return Buffer.from(title, "utf-8").toString("base64url");
@@ -252,18 +306,81 @@ export const libraryRoute = new Elysia()
           logger.warn({ err: e }, "library_evidence_counts_failed");
         }
 
+        // ONE query: fetch enrichment columns for every research source, then
+        // index by title and file_path so each paper can be matched cheaply.
+        // Non-fatal: on failure the per-source enrichment is simply omitted.
+        const sourceByTitle = new Map<string, any>();
+        const sourceByPath = new Map<string, any>();
+        let taxaBySource: Record<
+          string,
+          { taxa: string[]; geography: string[] }
+        > = {};
+        try {
+          const sources = await listSourceEnrichment();
+          for (const s of sources) {
+            if (s.title) sourceByTitle.set(s.title, s);
+            if (s.file_path) sourceByPath.set(s.file_path, s);
+          }
+          // ONE query: aggregate taxa + geography for all matched sources.
+          const ids = sources.map((s) => s.id).filter(Boolean);
+          try {
+            taxaBySource = await getBioprospectingTaxaBySource(ids);
+          } catch (e: any) {
+            logger.warn({ err: e }, "library_taxa_aggregation_failed");
+          }
+        } catch (e: any) {
+          logger.warn({ err: e }, "library_source_enrichment_failed");
+        }
+
         return {
-          papers: docs.map((d: any) => ({
-            docId: encodeDocId(d.title),
-            title: d.title,
-            type: d.type,
-            size: d.size,
-            chunkCount: d.chunkCount,
-            ...(evidenceCounts
-              ? { evidenceCount: evidenceCounts[d.title] ?? 0 }
-              : {}),
-            lastModified: d.lastModified,
-          })),
+          papers: docs.map((d: any) => {
+            const src =
+              sourceByTitle.get(d.title) ||
+              (d.filePath ? sourceByPath.get(d.filePath) : undefined);
+
+            const { year: fnYear, publisher: fnPublisher } = parseFilenameMeta(
+              d.title || "",
+            );
+            const metadata = (src?.metadata as Record<string, unknown>) || null;
+
+            // Prefer structured metadata, fall back to filename parsing.
+            const year = metaYear(metadata) ?? fnYear;
+            const publisher =
+              metaString(metadata, "journal") ??
+              metaString(metadata, "publisher") ??
+              fnPublisher;
+            const metaTitle = metaString(metadata, "title");
+
+            const doi = src?.doi || null;
+            const agg = src?.id ? taxaBySource[src.id] : undefined;
+
+            return {
+              docId: encodeDocId(d.title),
+              title: d.title,
+              type: d.type,
+              size: d.size,
+              chunkCount: d.chunkCount,
+              lastModified: d.lastModified,
+              ...(evidenceCounts
+                ? { evidenceCount: evidenceCounts[d.title] ?? 0 }
+                : {}),
+              ...(src?.id ? { researchSourceId: src.id } : {}),
+              ...(doi ? { doi, doiUrl: `https://doi.org/${doi}` } : {}),
+              ...(year != null ? { year } : {}),
+              ...(publisher ? { publisher } : {}),
+              ...(metaTitle ? { metaTitle } : {}),
+              ...(typeof src?.trust_tier === "string"
+                ? { trustTier: src.trust_tier }
+                : {}),
+              ...(typeof src?.bioprospecting_fact_count === "number"
+                ? { bioprospectingFactCount: src.bioprospecting_fact_count }
+                : {}),
+              ...(agg && agg.taxa.length ? { taxa: agg.taxa } : {}),
+              ...(agg && agg.geography.length
+                ? { geography: agg.geography }
+                : {}),
+            };
+          }),
         };
       } catch (error: any) {
         logger.error({ err: error }, "library_list_failed");

@@ -50,6 +50,7 @@ import {
   Trash2,
   Upload,
   User,
+  MapPin,
   X,
   Zap,
 } from "lucide-preact";
@@ -110,6 +111,7 @@ const iconMap: Record<string, any> = {
   sparkles: Sparkles,
   folder: Folder,
   upload: Upload,
+  mapPin: MapPin,
 };
 
 /**

@@ -16,6 +16,26 @@ export interface LibraryPaper {
    * showing a misleading 0). */
   evidenceCount?: number;
   lastModified?: string;
+  /** Resolved research_sources.id (now returned by the list endpoint so the
+   * card can link/expand without a second resolve). */
+  researchSourceId?: string;
+  /** DOI + resolvable URL, from research_sources. Omitted when unknown. */
+  doi?: string;
+  doiUrl?: string;
+  /** Publication year (structured metadata or parsed from the filename). */
+  year?: number;
+  /** Publisher/journal hint (metadata.journal/publisher or filename). */
+  publisher?: string;
+  /** A real title from research_sources.metadata.title, when present. */
+  metaTitle?: string;
+  /** research_sources.trust_tier, when present. */
+  trustTier?: string;
+  /** research_sources.bioprospecting_fact_count, when present. */
+  bioprospectingFactCount?: number;
+  /** Up to 4 distinct organism names studied (species preferred, else genus). */
+  taxa?: string[];
+  /** Distinct geography strings from the bioprospecting facts. */
+  geography?: string[];
 }
 
 export interface PaperMeta {
@@ -111,6 +131,32 @@ export function useLibraryList() {
   }, [refetch]);
 
   return { papers, isLoading, error, refetch };
+}
+
+/**
+ * On-demand, cached fetch of a paper's abstract from the detail endpoint.
+ * Used by the Library card to reveal the full abstract on hover without
+ * bloating the (O(1)-query) list payload with text per paper. Cached per
+ * docId for the page lifetime so repeated hovers do not re-fetch.
+ */
+const abstractCache = new Map<string, string>();
+
+export async function fetchPaperAbstract(docId: string): Promise<string> {
+  const cached = abstractCache.get(docId);
+  if (cached !== undefined) return cached;
+  try {
+    const res = await fetch(`/api/library/${docId}`, {
+      headers: authHeaders(),
+      credentials: "include",
+    });
+    if (!res.ok) return "";
+    const data = await res.json().catch(() => ({}));
+    const abstract = typeof data?.abstract === "string" ? data.abstract : "";
+    abstractCache.set(docId, abstract);
+    return abstract;
+  } catch {
+    return "";
+  }
 }
 
 export function usePaperMeta(docId: string | undefined) {
