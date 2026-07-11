@@ -47,13 +47,26 @@
  * color-token bridge. The Tailwind theme wiring belongs with the rest of the
  * Tailwind layer setup.
  *
- * The @font-face rules for IBM Plex Sans are pulled in by global.css via
- * @fontsource.
+ * `--font-mono` is overridden for the same reason: Basecoat's default token
+ * prefers "Geist Mono", which this project does not ship. Left alone, Basecoat's
+ * mono components would advertise a different stack than the app's own rules
+ * (research.css and provenance.css already ask for "JetBrains Mono"). Both
+ * currently fall back to the system mono face, so the mismatch is invisible —
+ * until someone installs one of the two fonts and the app renders two.
+ *
+ * The @font-face rules do NOT live here, and must not be moved here. See the
+ * header of global.css: Bun's CSS bundler base64-inlines every font behind a
+ * url() with no opt-out, which took index.css from 533KB to 1.6MB of
+ * render-blocking CSS. They are served verbatim from client/public/fonts/.
  */
 @theme {
   --font-sans:
     "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     sans-serif;
+
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco,
+    Consolas, "Liberation Mono", monospace;
 }
 
 /* Tailwind's automatic source detection roots at this file's directory, which
