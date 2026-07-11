@@ -8,6 +8,7 @@
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, watch } from 'fs';
 import { join, resolve } from 'path';
+import tailwind from 'bun-plugin-tailwind';
 
 const clientDir = import.meta.dir;
 const distDir = join(clientDir, 'dist');
@@ -79,6 +80,9 @@ async function build() {
       'import.meta.env.CORALGPT_HERO_VIDEO_URL': JSON.stringify(process.env.CORALGPT_HERO_VIDEO_URL || ''),
     },
     plugins: [
+      // Compiles the Tailwind v4 layers and resolves the `@apply` directives
+      // that Basecoat's component CSS is written against.
+      tailwind,
       {
         name: 'react-to-preact-alias',
         setup(build) {
