@@ -37,6 +37,12 @@ export interface SourceClaim {
   status: SourceClaimStatus;
   confidence?: string;
   chunk_id?: string | null;
+  /**
+   * Verbatim source sentence the claim was extracted from (added by the
+   * research-brain extractor). Preferred over the whole chunk `content`
+   * for a tighter text-layer highlight when present.
+   */
+  quote?: string | null;
   chunk?: SourceClaimChunk | null;
 }
 

@@ -152,7 +152,12 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
               <ul className="viewer-page__claims">
                 {claims.map((c) => {
                   const chunk = c.chunk;
-                  const canHighlight = !!chunk?.content && chunk?.page != null;
+                  // Prefer the verbatim quote (the exact sentence the claim
+                  // was extracted from) over the whole chunk for a tighter
+                  // highlight; fall back to the chunk content.
+                  const searchText = c.quote || chunk?.content || "";
+                  const page = chunk?.page;
+                  const canHighlight = !!searchText && page != null;
                   return (
                     <li key={c.id} className="viewer-page__claim">
                       <button
@@ -160,8 +165,8 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                         className="viewer-page__claim-btn"
                         disabled={!canHighlight}
                         onClick={() => {
-                          if (chunk?.content && chunk?.page != null) {
-                            highlightChunk(chunk.page, chunk.content);
+                          if (searchText && page != null) {
+                            highlightChunk(page, searchText);
                           }
                         }}
                       >
