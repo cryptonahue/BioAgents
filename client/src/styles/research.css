@@ -66,7 +66,10 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #3b82f6;
+  /* Not `--info`: the dark emphasis blue is only 3.50:1 on `--card`, which is
+     the surface this text sits on. The on-tint ink clears AA on every surface
+     a section label renders against (6.2:1 - 10.4:1). */
+  color: var(--info-subtle-foreground);
   font-weight: 500;
 }
 
@@ -74,7 +77,7 @@
   width: 10px;
   height: 10px;
   border: 2px solid var(--border-color);
-  border-top-color: #3b82f6;
+  border-top-color: var(--info);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -89,6 +92,9 @@
 
 .research-progress-bar {
   height: 100%;
+  /* DELIBERATE LITERAL: emerald-400 is the lighter terminus of the brand-green
+     gradient. Like `--accent-color` itself it is a brand FILL, frozen and
+     identical in both themes. */
   background: linear-gradient(90deg, var(--accent-color), #34d399);
   border-radius: 3px;
   transition: width 0.5s ease;
@@ -99,7 +105,8 @@
   top: 0;
   width: 40px;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, var(--info), transparent);
+  opacity: 0.5;
   animation: progressPulse 1.5s ease-in-out infinite;
 }
 
@@ -134,13 +141,13 @@
 }
 
 .research-progress-step.complete {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
+  background: var(--accent-light);
+  border-color: var(--accent-border);
 }
 
 .research-progress-step.active {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: var(--info-subtle);
+  border-color: var(--info-border);
   animation: pulseStep 2s ease-in-out infinite;
 }
 
@@ -160,7 +167,7 @@
 }
 
 .research-state-panel:hover {
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: var(--violet-border);
 }
 
 .research-state-header {
@@ -205,11 +212,11 @@
 .research-level-badge {
   font-size: 11px;
   font-weight: 600;
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
+  color: var(--violet-subtle-foreground);
+  background: var(--violet-subtle);
   padding: 3px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid var(--violet-border);
 }
 
 .research-steps-badge {
@@ -247,8 +254,8 @@
 }
 
 .research-current-objective {
-  background: rgba(59, 130, 246, 0.05);
-  border-color: rgba(59, 130, 246, 0.15);
+  background: var(--info-subtle);
+  border-color: var(--info-border);
   padding: 14px;
 }
 
@@ -258,7 +265,9 @@
   gap: 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #3b82f6;
+  /* Same reason as `.research-progress-current`: this label renders on
+     `--muted` or on `--info-subtle`, where the dark `--info` is 3.06:1. */
+  color: var(--info-subtle-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 8px;
@@ -289,7 +298,7 @@
 }
 
 .research-section-toggle:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-hover);
 }
 
 .research-section-toggle-left {
@@ -365,7 +374,7 @@
   padding: 10px 12px;
   background: var(--bg-secondary);
   border-radius: 6px;
-  border-left: 3px solid #10b981;
+  border-left: 3px solid var(--accent-color);
 }
 
 /* Insights Section */
@@ -560,13 +569,13 @@
 
 /* Current Running Step */
 .research-current-step {
-  background: rgba(59, 130, 246, 0.05);
-  border-color: rgba(59, 130, 246, 0.15);
+  background: var(--info-subtle);
+  border-color: var(--info-border);
   padding: 14px;
 }
 
 .research-current-step .research-section-label {
-  color: #3b82f6;
+  color: var(--info-subtle-foreground);
 }
 
 .research-step-spinner {
@@ -574,7 +583,7 @@
   width: 12px;
   height: 12px;
   border: 2px solid var(--border-color);
-  border-top-color: #3b82f6;
+  border-top-color: var(--info);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   margin-right: 8px;
@@ -590,8 +599,8 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, var(--info-subtle), var(--violet-subtle));
+  border: 1px solid var(--info-border);
   border-radius: 8px;
 }
 
@@ -665,7 +674,7 @@
   border-color: var(--step-color, var(--accent-color));
   background: var(--step-bg, var(--accent-light));
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow);
 }
 
 .suggested-step-card:disabled {
@@ -812,15 +821,15 @@
 }
 
 .artifact-badge-files {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: var(--accent-light);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent-border);
 }
 
 .artifact-badge-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
+  border: 1px solid var(--destructive-border);
 }
 
 .artifact-badge-time {
@@ -879,7 +888,7 @@
 
 .artifact-status-success {
   margin-left: auto;
-  color: #10b981;
+  color: var(--accent-ink);
   font-size: 11px;
 }
 
@@ -898,8 +907,8 @@
 
 /* Error Output */
 .artifact-error {
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--destructive-subtle);
+  border: 1px solid var(--destructive-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -909,11 +918,11 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(239, 68, 68, 0.1);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--destructive-subtle);
+  border-bottom: 1px solid var(--destructive-border);
   font-size: 12px;
   font-weight: 500;
-  color: #ef4444;
+  color: var(--destructive-subtle-foreground);
 }
 
 .artifact-error-content {
@@ -922,7 +931,7 @@
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
   line-height: 1.6;
-  color: #fca5a5;
+  color: var(--destructive-subtle-foreground);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 200px;
@@ -963,7 +972,7 @@
 .artifact-file-card:hover {
   border-color: var(--accent-color);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow);
 }
 
 .artifact-file-card.artifact-file-image {
@@ -1040,10 +1049,18 @@
 .artifact-file-download:hover {
   background: var(--accent-color);
   border-color: var(--accent-color);
-  color: white;
+  color: var(--accent-color-foreground);
 }
 
-/* Lightbox for image preview */
+/* Lightbox for image preview.
+
+   DELIBERATE LITERALS BELOW. This is a full-screen media viewer: the artifact
+   image is the content and the scrim exists to isolate it. A scrim over an
+   image does not invert, and its chrome (close button, filename, caption) sits
+   ON the scrim rather than on any app surface, so it stays light in both
+   themes. `--overlay` is not a substitute — it is tuned for dialogs (0.5/0.6)
+   and is too weak to isolate a photograph. Same reasoning as the welcome
+   screen in global.css and the CoralGPT hero. */
 .artifact-lightbox {
   position: fixed;
   inset: 0;
@@ -1198,7 +1215,7 @@
 }
 
 .research-activity-log-header:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--bg-hover);
 }
 
 .research-activity-log-icon {
@@ -1219,27 +1236,27 @@
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 11px;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--muted);
   border-left: 2px solid transparent;
   transition: background 120ms;
 }
 
 .research-activity-log-item.done {
   opacity: 0.85;
-  border-left-color: #10b981;
+  border-left-color: var(--accent-color);
 }
 
 .research-activity-log-item.current {
-  background: rgba(59, 130, 246, 0.08);
-  border-left-color: #3b82f6;
+  background: var(--info-subtle);
+  border-left-color: var(--info);
 }
 
 .research-activity-log-item.current .research-step-spinner {
   display: inline-block;
   width: 10px;
   height: 10px;
-  border: 2px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #3b82f6;
+  border: 2px solid var(--info-border);
+  border-top-color: var(--info);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -1247,11 +1264,11 @@
 .research-activity-log-type {
   font-weight: 500;
   min-width: 110px;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .research-activity-log-duration {
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 10px;
   min-width: 38px;
@@ -1260,7 +1277,7 @@
 
 .research-activity-log-objective {
   flex: 1;
-  color: #6b7280;
+  color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1268,7 +1285,7 @@
 
 .research-step-elapsed {
   margin-left: 6px;
-  color: #6b7280;
+  color: var(--text-tertiary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 10px;
 }

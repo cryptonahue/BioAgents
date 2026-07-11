@@ -66,7 +66,9 @@
 /* Button variants */
 .btn-primary {
     background: var(--accent-color);
-    color: white;
+    /* Black, not white: the brand fill is identical in both themes and white on
+       it is 2.4:1, while black is 8.9:1. See `--accent-color-foreground`. */
+    color: var(--accent-color-foreground);
     border: 1px solid var(--accent-color);
 }
 
@@ -109,13 +111,16 @@
 
 .btn-danger {
     background: transparent;
-    color: #ef4444;
+    color: var(--destructive);
     border: 1px solid transparent;
 }
 
 .btn-danger:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
+    background: var(--destructive-subtle);
+    /* The emphasis red is only 3.90:1 on its own light tint, so the label
+       switches to the on-tint ink for the hover state (8.2:1 / 8.5:1). */
+    color: var(--destructive-subtle-foreground);
+    border-color: var(--destructive-border);
 }
 
 /* Icon button (minimal, icon-only) */
@@ -153,10 +158,11 @@
 }
 
 .icon-btn-danger {
-    color: #ef4444;
+    color: var(--destructive);
 }
 
 .icon-btn-danger:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
+    background: var(--destructive-subtle);
+    color: var(--destructive-subtle-foreground);
+    border-color: var(--destructive-border);
 }

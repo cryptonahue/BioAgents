@@ -332,7 +332,15 @@
   --info-subtle-foreground: #1e3a8a;
   --info-border: #93c5fd;
 
-  /* `--destructive` itself already exists in the Basecoat block above. */
+  /* `--destructive` itself already exists in the Basecoat block above.
+     `--destructive-foreground` does NOT: Basecoat ships the fill and no text
+     color to sit on it, and nothing in the emitted bundle declares the name.
+     Danger buttons were hardcoding `color: #fff`, which is 2.89:1 on the DARK
+     `--destructive` — a live AA failure in the default theme. Black on the
+     bright dark fill is 7.27:1; white on the deep light fill is 4.77:1. Same
+     idiom as `--accent-color-foreground`: the text follows the fill, not the
+     theme. */
+  --destructive-foreground: #ffffff;
   --destructive-subtle: #fee2e2;
   --destructive-subtle-foreground: #7f1d1d;
   --destructive-border: #fca5a5;
@@ -382,6 +390,7 @@
   --info-subtle-foreground: #93c5fd;
   --info-border: rgba(59, 130, 246, 0.3);
 
+  --destructive-foreground: #000000;
   --destructive-subtle: rgba(239, 68, 68, 0.14);
   --destructive-subtle-foreground: #fca5a5;
   --destructive-border: rgba(239, 68, 68, 0.3);
@@ -427,6 +436,17 @@
   --bbox-figure: #a855f7;
   --bbox-figure-image: #10b981;
   --bbox-chunk: #eab308;
+
+  /* The translucent wash inside each bbox, so the highlighted region stays
+     readable through it. Spelled out rather than derived from the four above
+     with `color-mix()`: this block IS the product color code, and a reviewer
+     checking that blue/purple/green/yellow are still distinct should be able
+     to read every value it resolves to without evaluating a function. Yellow
+     runs a little heavier (0.2) because it is the weakest hue on white. */
+  --bbox-table-fill: rgba(59, 130, 246, 0.15);
+  --bbox-figure-fill: rgba(168, 85, 247, 0.15);
+  --bbox-figure-image-fill: rgba(16, 185, 129, 0.15);
+  --bbox-chunk-fill: rgba(234, 179, 8, 0.2);
 
   --bbox-table-ink: #1d4ed8;
   --bbox-figure-ink: #6d28d9;
