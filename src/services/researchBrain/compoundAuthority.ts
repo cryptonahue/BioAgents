@@ -2101,42 +2101,47 @@ async function handleMiss(
 ): Promise<void> {
   const nextAttempts = (fact.compound_authority_attempts ?? 0) + 1;
   const max = maxRetries;
+  // Accept-as-canonical: a genuine 404 here means PubChem + every deterministic
+  // variant missed. That will never resolve on retry — the retry budget exists
+  // for transient 429/503, which are handled BEFORE this point and never reach
+  // handleMiss. So promote on the FIRST genuine miss (per the spec) instead of
+  // burning `maxRetries` pointless passes. Fires only when the per-pass param
+  // AND the env master-arm are both set (resolved in the driver).
+  if (promoteLocalOnMiss) {
+    // Promote to a `status='local'`, null-CID, unverified canonical row (zero
+    // PubChem calls) and link the fact as `verified`.
+    const canonical = await upsertCanonicalLocal({
+      canonicalName: fact.compound,
+    });
+    try {
+      await upsertAlias({
+        compoundId: canonical.id,
+        alias: fact.compound,
+        source: "local_extraction",
+        confidence: "low",
+      });
+    } catch (err) {
+      // Alias insert failure is non-fatal — the canonical row is
+      // committed and a later pass will re-upsert the alias.
+      logger.warn(
+        { err, factId: fact.id, canonicalId: canonical.id },
+        "compound_authority_local_promotion_alias_upsert_failed",
+      );
+    }
+    await attachCanonicalToFact({
+      factId: fact.id,
+      canonicalId: canonical.id,
+      status: "verified",
+      reason: COMPOUND_AUTHORITY_REASONS.localPromoted,
+      attempts: 0,
+    });
+    summary.localPromotions++;
+    return;
+  }
+
   if (nextAttempts >= max) {
     // Terminal genuine-miss branch: PubChem + every deterministic
     // variant 404'd and the retry budget is exhausted.
-    if (promoteLocalOnMiss) {
-      // Accept-as-canonical: promote the compound to a `status='local'`,
-      // null-CID, unverified canonical row (zero PubChem calls) and link
-      // the fact as `verified`. Fires only when the per-pass param AND
-      // the env master-arm are both set (resolved in the driver).
-      const canonical = await upsertCanonicalLocal({
-        canonicalName: fact.compound,
-      });
-      try {
-        await upsertAlias({
-          compoundId: canonical.id,
-          alias: fact.compound,
-          source: "local_extraction",
-          confidence: "low",
-        });
-      } catch (err) {
-        // Alias insert failure is non-fatal — the canonical row is
-        // committed and a later pass will re-upsert the alias.
-        logger.warn(
-          { err, factId: fact.id, canonicalId: canonical.id },
-          "compound_authority_local_promotion_alias_upsert_failed",
-        );
-      }
-      await attachCanonicalToFact({
-        factId: fact.id,
-        canonicalId: canonical.id,
-        status: "verified",
-        reason: COMPOUND_AUTHORITY_REASONS.localPromoted,
-        attempts: 0,
-      });
-      summary.localPromotions++;
-      return;
-    }
     await attachCanonicalToFact({
       factId: fact.id,
       canonicalId: null,
