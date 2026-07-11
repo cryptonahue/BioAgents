@@ -33,6 +33,7 @@ import {
   useProvenance,
 } from "../hooks/useProvenance";
 import { useSourceEvidence } from "../hooks/useSourceEvidence";
+import { useTextChunkHighlight } from "../hooks/useTextChunkHighlight";
 import { BBox } from "../lib/bbox";
 import { ChainPager } from "./ChainPager";
 import { EvidenceViewer } from "./EvidenceViewer";
@@ -96,6 +97,22 @@ export function EvidenceLightbox({
     navigatedPageRef.current = targetPage;
     setChainTick((t) => t + 1);
   }, []);
+
+  // Text-chunk fallback: when the fact resolves to a text chunk with
+  // NO stored bbox (chunks always have `bbox: null`), search the
+  // page's text layer for the chunk's content and use the resulting
+  // rect as the highlight. On a miss the hook reports `text-only` so
+  // the viewer's badge renders. Tables/figures and any fact that
+  // already has a stored bbox skip the search entirely (enabled
+  // false), preserving the pre-change behavior.
+  const provChunk = data?.provenance?.chunk ?? null;
+  const needsTextSearch = !data?.provenance?.bbox && !!provChunk?.content;
+  const chunkHighlight = useTextChunkHighlight({
+    doc,
+    page: provChunk?.page,
+    content: needsTextSearch ? provChunk?.content : null,
+    enabled: isOpen && !!doc && needsTextSearch,
+  });
 
   // Remember the previously-focused element so we can restore on
   // close. The spec calls for "focus returns to the fact citation
@@ -221,14 +238,25 @@ export function EvidenceLightbox({
   if (!isOpen) return null;
 
   const { provenance, sourceTitle } = data ?? {};
-  const bbox: BBox | null = provenance?.bbox ?? null;
+  const storedBbox: BBox | null = provenance?.bbox ?? null;
+  // Prefer the stored bbox (table/figure/with-bbox facts). For a
+  // text chunk with no bbox, fall back to the text-search rect; it is
+  // in PDF point space and carries the chunk's page, so the overlay
+  // aligns at any zoom.
+  const bbox: BBox | null = storedBbox ?? chunkHighlight.bbox;
   // PR #2: allow the ChainPager (when `Follow` is ON) to override
   // the page. Default to the provenance's natural page on
   // provenance / bbox changes; the pager only sets a new value on
   // prev/next clicks.
   const basePage: number = bbox?.page ?? provenance?.chunk?.page ?? 1;
   const page: number = navigatedPageRef.current ?? basePage;
-  const type: ProvenanceType = provenance?.type ?? "chunk";
+  // With a stored bbox, keep the provenance type. For the text-chunk
+  // fallback, the search hook drives the type: `chunk` on a hit,
+  // `text-only` on a miss (badge). While searching it stays at the
+  // provenance type so nothing flickers.
+  const type: ProvenanceType = storedBbox
+    ? provenance?.type ?? "chunk"
+    : chunkHighlight.type ?? provenance?.type ?? "chunk";
 
   // The current fact's table id (used by the ChainPager to find
   // the chain). Null when the fact doesn't point at a table.
