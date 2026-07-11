@@ -201,10 +201,112 @@ function PaperCard({ paper }: { paper: LibraryPaper }) {
   );
 }
 
+/** Compact list-view row — same data as the card, laid out horizontally. */
+function PaperRow({ paper }: { paper: LibraryPaper }) {
+  const title = displayTitle(paper);
+  const sub = subline(paper);
+  return (
+    <div className="paper-row">
+      <div className="paper-row-icon">
+        <Icon name="bookOpen" size={18} />
+      </div>
+      <div className="paper-row-main">
+        <div className="paper-row-titleline">
+          <span className="paper-row-title" title={title}>
+            {title}
+          </span>
+          {sub && <span className="paper-row-sub">{sub}</span>}
+        </div>
+        <div className="paper-row-meta">
+          {typeof paper.evidenceCount === "number" && (
+            <span
+              className={`paper-evidence${
+                paper.evidenceCount === 0 ? " paper-evidence--empty" : ""
+              }`}
+            >
+              <Icon name="microscope" size={11} />
+              {paper.evidenceCount === 0
+                ? "Sin evidencias"
+                : `${paper.evidenceCount} ev.`}
+            </span>
+          )}
+          {paper.chunkCount != null && <span>{paper.chunkCount} frag.</span>}
+          {typeof paper.bioprospectingFactCount === "number" &&
+            paper.bioprospectingFactCount > 0 && (
+              <span className="paper-biofacts">
+                {paper.bioprospectingFactCount} datos
+              </span>
+            )}
+          {paper.trustTier && (
+            <span
+              className={`paper-trust paper-trust--${paper.trustTier}`}
+              title={`Trust tier: ${trustLabel(paper.trustTier)}`}
+            >
+              {trustLabel(paper.trustTier)}
+            </span>
+          )}
+          {paper.doiUrl && (
+            <a
+              className="paper-doi-link"
+              href={paper.doiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              DOI
+            </a>
+          )}
+        </div>
+      </div>
+      <div className="paper-row-actions">
+        <button
+          className="paper-action paper-action--primary"
+          onClick={() => route(`/library/${paper.docId}`)}
+          title="Chat with paper"
+        >
+          <Icon name="messageSquare" size={15} />
+          <span>Chat</span>
+        </button>
+        <button
+          className="paper-action paper-action--secondary"
+          aria-label={`View evidence for ${paper.title || "paper"}`}
+          onClick={() => route(`/library/${paper.docId}/viewer`)}
+          title="View evidence"
+        >
+          <Icon name="microscope" size={15} />
+          <span>Evidence</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type LibraryView = "list" | "grid";
+const LIBRARY_VIEW_KEY = "library_view_mode";
+function getInitialView(): LibraryView {
+  try {
+    const v = localStorage.getItem(LIBRARY_VIEW_KEY);
+    if (v === "grid" || v === "list") return v;
+  } catch {
+    // localStorage unavailable — fall through to default
+  }
+  return "list";
+}
+
 export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
   const { papers, isLoading, error, refetch } = useLibraryList();
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [viewMode, setViewMode] = useState<LibraryView>(getInitialView());
+
+  const setView = (v: LibraryView) => {
+    setViewMode(v);
+    try {
+      localStorage.setItem(LIBRARY_VIEW_KEY, v);
+    } catch {
+      // ignore — non-persistent is fine
+    }
+  };
 
   const handleUpload = async (file?: File) => {
     if (!file) return;
@@ -245,6 +347,26 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
             />
           </label>
           {uploadError && <span className="brain-error">{uploadError}</span>}
+          <div className="library-view-toggle">
+            <button
+              className={`library-view-btn${viewMode === "list" ? " active" : ""}`}
+              onClick={() => setView("list")}
+              title="List view"
+              aria-label="List view"
+              aria-pressed={viewMode === "list"}
+            >
+              <Icon name="list" size={16} />
+            </button>
+            <button
+              className={`library-view-btn${viewMode === "grid" ? " active" : ""}`}
+              onClick={() => setView("grid")}
+              title="Card view"
+              aria-label="Card view"
+              aria-pressed={viewMode === "grid"}
+            >
+              <Icon name="grid" size={16} />
+            </button>
+          </div>
         </div>
 
         {isLoading && <div className="library-state">Loading papers…</div>}
@@ -267,11 +389,19 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
         )}
 
         {!isLoading && !error && papers.length > 0 && (
-          <div className="library-grid">
-            {papers.map((paper) => (
-              <PaperCard key={paper.docId} paper={paper} />
-            ))}
-          </div>
+          viewMode === "grid" ? (
+            <div className="library-grid">
+              {papers.map((paper) => (
+                <PaperCard key={paper.docId} paper={paper} />
+              ))}
+            </div>
+          ) : (
+            <div className="library-list">
+              {papers.map((paper) => (
+                <PaperRow key={paper.docId} paper={paper} />
+              ))}
+            </div>
+          )
         )}
       </main>
     </div>

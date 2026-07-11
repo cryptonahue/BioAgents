@@ -7,6 +7,8 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  LayoutGrid,
+  List,
   BookOpen,
   Bot,
   BrainCircuit,
@@ -112,6 +114,8 @@ const iconMap: Record<string, any> = {
   folder: Folder,
   upload: Upload,
   mapPin: MapPin,
+  list: List,
+  grid: LayoutGrid,
 };
 
 /**

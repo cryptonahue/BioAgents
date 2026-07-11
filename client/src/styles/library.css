@@ -102,6 +102,108 @@
   gap: 16px;
 }
 
+/* ---- View toggle (list / card) ---- */
+.library-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+.library-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.library-view-btn:hover {
+  color: var(--text-primary);
+}
+.library-view-btn.active {
+  background: var(--bg-hover);
+  color: var(--accent-color);
+}
+
+/* ---- List view (rows) ---- */
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.paper-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.paper-row:hover {
+  border-color: var(--accent-color);
+  background: var(--card-hover);
+}
+.paper-row-icon {
+  flex-shrink: 0;
+  display: flex;
+  color: var(--accent-color);
+}
+.paper-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.paper-row-titleline {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.paper-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.paper-row-sub {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.paper-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.paper-row-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .paper-row {
+    flex-wrap: wrap;
+  }
+  .paper-row-actions {
+    width: 100%;
+  }
+}
+
 .paper-card {
   display: flex;
   flex-direction: column;
