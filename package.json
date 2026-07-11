@@ -44,6 +44,7 @@
     "@elysiajs/cors": "^1.4.0",
     "@elysiajs/html": "^1.4.0",
     "@elysiajs/static": "^1.4.4",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@google/genai": "^1.25.0",
     "@privy-io/react-auth": "^3.26.1",
     "@privy-io/server-auth": "^1.32.5",

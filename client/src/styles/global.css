@@ -1,4 +1,19 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+/*
+ * The Inter webfont used to be pulled in here with
+ * `@import url("https://fonts.googleapis.com/…")`. It is gone: the app now uses
+ * self-hosted IBM Plex Sans.
+ *
+ * The @font-face rules deliberately do NOT live in the bundled CSS — Bun
+ * base64-inlines every font referenced by `url()` and offers no way to opt out,
+ * which tripled this stylesheet. They live in `client/public/fonts/fonts.css`,
+ * which the build copies to `dist/assets/fonts/` and index.html links directly.
+ * See the header of that file for the full reasoning.
+ *
+ * The family is applied in two places, and BOTH are required:
+ *   - `body { font-family: … }` below, for the hand-written legacy CSS.
+ *   - `--font-sans` in ./basecoat.css, for Basecoat/Tailwind components, which
+ *     resolve `font-sans` from the Tailwind theme token rather than inheriting.
+ */
 @import "./buttons.css";
 @import "./research.css";
 
@@ -19,7 +34,7 @@
 
 body {
   font-family:
-    "Inter",
+    "IBM Plex Sans",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",

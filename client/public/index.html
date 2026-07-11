@@ -40,6 +40,11 @@
         }
       })();
     </script>
+    <!-- Self-hosted IBM Plex Sans @font-face rules. Kept out of the bundled
+         CSS because Bun base64-inlines every font it sees in a url(); see
+         client/public/fonts/fonts.css. Preconnect is unnecessary — same origin. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/ibm-plex-sans-latin-400-normal.woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/fonts/fonts.css">
     <link rel="stylesheet" href="/index.css">
     <script>
       (function () {
