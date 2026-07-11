@@ -445,6 +445,63 @@
 }
 
 /**
+ * Knowledge-graph data colors.
+ *
+ * These are NOT read by any CSS rule. They are read by `GraphCanvas.tsx`, which
+ * hands them to D3 as `var(--graph-…)` strings.
+ *
+ * THE CANVAS MUST USE `.style()`, NEVER `.attr()`. SVG *presentation
+ * attributes* do not resolve `var()` — `.attr("fill", "var(--x)")` renders
+ * black. The CSS *properties* of the same name do. Going through `.style()`
+ * also means the graph re-themes on a `dark` class toggle with no redraw, which
+ * a `getComputedStyle()`-based resolution would not.
+ *
+ * They get their own names rather than aliasing `--info` / `--success` /
+ * `--violet` because a data palette and a status palette are different jobs:
+ * renaming a status must never repaint the graph. The hues are aligned with
+ * those families on purpose, so the app still reads as one system.
+ *
+ * Contrast is measured against `--card`, NOT `--background` — the SVG sits
+ * inside `.graph-canvas-wrap`, whose background is `--card`.
+ *
+ * `--graph-node-stroke` is the node HALO. It is `--card` by definition: its
+ * whole job is to punch the node out of the edges passing behind it. The old
+ * hardcoded `#0a0e17` was a dark-page literal and would have drawn a black ring
+ * around every node on white.
+ *
+ * The two spoke greys are DELIBERATELY faint (and drawn at 0.45 opacity):
+ * `has_compound` / `has_source` are structural scaffolding, and the cross-edges
+ * are the information. They sit below the 3:1 non-text bar in BOTH themes —
+ * 2.29:1 dark, 2.56:1 light — which is the existing design intent, carried over
+ * symmetrically rather than silently changed.
+ */
+:root {
+  --graph-node-entity: #1d4ed8; /* blue-700   — 6.70:1 on white */
+  --graph-node-compound: #15803d; /* green-700  — 5.02:1 on white */
+  --graph-node-source: #6d28d9; /* violet-700 — 7.10:1 on white */
+  --graph-node-label: #334155; /* slate-700  — 10.35:1 on white */
+  --graph-edge-reports: #2563eb; /* blue-600   — 5.17:1 on white */
+  --graph-edge-spoke: #94a3b8; /* slate-400 */
+  --graph-edge-spoke-alt: #cbd5e1; /* slate-300 */
+
+  /* No `.dark` override: it tracks `--card`, which already themes. */
+  --graph-node-stroke: var(--card);
+}
+
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
+  --graph-node-entity: #3b82f6; /* blue-500   — 4.72:1 on `--card` */
+  --graph-node-compound: #4ade80; /* green-400  — 9.97:1 on `--card` */
+  --graph-node-source: #a78bfa; /* violet-400 — 6.38:1 on `--card` */
+  --graph-node-label: #cbd5e1; /* slate-300  — 11.70:1 on `--card` */
+  --graph-edge-reports: #60a5fa; /* blue-400   — 6.83:1 on `--card` */
+  --graph-edge-spoke: #475569; /* slate-600 */
+  --graph-edge-spoke-alt: #334155; /* slate-700 */
+}
+
+/**
  * Library sub-brand — TEAL.
  *
  * The Library and Research Brain surfaces are a deliberate teal sub-brand, not

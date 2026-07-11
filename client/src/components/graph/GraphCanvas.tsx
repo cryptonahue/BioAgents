@@ -68,12 +68,37 @@ interface GraphCanvasProps {
   hiddenEdgeTypes?: GraphEdgeType[];
 }
 
-// Node fill by type — three distinct colors mirroring the design.
+/**
+ * Node fill by type — three distinct colors mirroring the design.
+ *
+ * These are `var()` references, NOT literals, and they are applied with D3's
+ * `.style()`, NOT `.attr()`. That distinction is load-bearing:
+ *
+ *   - SVG *presentation attributes* (`<circle fill="…">`) do NOT resolve
+ *     `var()`. `.attr("fill", "var(--graph-node-entity)")` is an invalid
+ *     attribute value and paints the node black.
+ *   - The CSS *properties* of the same name DO. `.style()` writes an inline
+ *     style, where `var()` substitutes normally.
+ *
+ * The payoff is that the graph re-themes when the `dark` class toggles on
+ * `<html>`, with no redraw and no React/Preact involvement — the browser just
+ * recomputes the custom property. Resolving the tokens in JS with
+ * `getComputedStyle()` would have frozen the colors at paint time and left the
+ * graph stuck in the previous theme until something forced a re-render.
+ *
+ * The values live in `theme.css` under "Knowledge-graph data colors".
+ */
 const NODE_FILL: Record<GraphNodeType, string> = {
-  entity: "#3b82f6", // accent / blue
-  compound: "#4ade80", // green
-  source: "#a78bfa", // purple (DOI-badged sources)
+  entity: "var(--graph-node-entity)", // blue
+  compound: "var(--graph-node-compound)", // green
+  source: "var(--graph-node-source)", // violet (DOI-badged sources)
 };
+
+/** The node halo. Tracks `--card`, the background of `.graph-canvas-wrap`. */
+const NODE_STROKE = "var(--graph-node-stroke)";
+
+/** Node label text. */
+const NODE_LABEL_FILL = "var(--graph-node-label)";
 
 const NODE_RADIUS: Record<GraphNodeType, number> = {
   entity: 22,
@@ -85,13 +110,18 @@ const NODE_RADIUS: Record<GraphNodeType, number> = {
  * Stroke per edge type. Spokes stay structural grey; the CROSS-EDGES are the
  * story of this graph (they are what makes it a subgraph and not a star), so
  * they get the node-matching hues and a much higher opacity.
+ *
+ * Same `var()` + `.style()` contract as `NODE_FILL` above. `GraphExplorerPage`
+ * also reads this map for the legend swatches, but it applies it through a
+ * Preact `style={{ background: … }}` prop — an inline style, so `var()`
+ * resolves there too.
  */
 export const EDGE_STROKE: Record<GraphEdgeType, string> = {
-  has_compound: "#475569", // grey (spoke)
-  has_source: "#334155", // darker grey (spoke)
-  reports: "#60a5fa", // slate-blue (compound <-> source)
-  co_occurs_with: "#4ade80", // green, matches the compound fill
-  related_source: "#a78bfa", // purple, matches the source fill
+  has_compound: "var(--graph-edge-spoke)", // grey (spoke)
+  has_source: "var(--graph-edge-spoke-alt)", // darker grey (spoke)
+  reports: "var(--graph-edge-reports)", // blue (compound <-> source)
+  co_occurs_with: "var(--graph-node-compound)", // green, matches the compound fill
+  related_source: "var(--graph-node-source)", // violet, matches the source fill
 };
 
 const EDGE_OPACITY: Record<GraphEdgeType, number> = {
@@ -203,7 +233,8 @@ export function GraphCanvas({
       .selectAll<SVGLineElement, GraphEdge>("line")
       .data(simLinks)
       .join("line")
-      .attr("stroke", (d) => EDGE_STROKE[d.type] ?? "#334155")
+      // `.style`, not `.attr` — a presentation attribute cannot resolve var().
+      .style("stroke", (d) => EDGE_STROKE[d.type] ?? "var(--graph-edge-spoke-alt)")
       .attr("stroke-width", (d) => strokeWidth(d, peakByType))
       .attr("stroke-opacity", (d) => EDGE_OPACITY[d.type] ?? 0.7);
 
@@ -231,8 +262,9 @@ export function GraphCanvas({
     node
       .select<SVGCircleElement>("circle")
       .attr("r", (d) => NODE_RADIUS[d.type])
-      .attr("fill", (d) => NODE_FILL[d.type])
-      .attr("stroke", "#0a0e17")
+      // `.style`, not `.attr` — a presentation attribute cannot resolve var().
+      .style("fill", (d) => NODE_FILL[d.type])
+      .style("stroke", NODE_STROKE)
       .attr("stroke-width", 2);
 
     node
@@ -241,7 +273,8 @@ export function GraphCanvas({
       .attr("x", 0)
       .attr("y", (d) => NODE_RADIUS[d.type] + 12)
       .attr("text-anchor", "middle")
-      .attr("fill", "#cbd5e1")
+      // `.style`, not `.attr` — a presentation attribute cannot resolve var().
+      .style("fill", NODE_LABEL_FILL)
       .attr("font-size", "11px")
       .style("pointer-events", "none");
 
