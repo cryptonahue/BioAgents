@@ -4,11 +4,16 @@ import { Button, IconButton } from './ui';
 import { useAuth, useAdmin } from '../hooks';
 import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
 
-export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout }) {
+export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout, currentPath = '' }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { logout, isLoggingOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { version, sha, buildDate } = useVersion();
+
+  // Active section highlight. Falls back to the live pathname so the
+  // sidebar still marks the right item if the parent doesn't pass it.
+  const path = currentPath || (typeof window !== 'undefined' ? window.location.pathname : '');
+  const navActive = (prefix) => (path === prefix || path.startsWith(prefix + '/') ? ' active' : '');
 
   const handleLogout = async () => {
     if (coralGptMode && privyLogout) {
@@ -118,9 +123,17 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </Button>
             <Button
               variant="ghost"
+              icon="messageSquare"
+              onClick={() => route('/chat')}
+              className={`sidebar-library-btn${navActive('/chat')}`}
+            >
+              Chat
+            </Button>
+            <Button
+              variant="ghost"
               icon="bookOpen"
               onClick={() => route('/library')}
-              className="sidebar-library-btn"
+              className={`sidebar-library-btn${navActive('/library')}`}
             >
               Library
             </Button>
@@ -128,7 +141,7 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               variant="ghost"
               icon="brainCircuit"
               onClick={() => route('/brain')}
-              className="sidebar-library-btn"
+              className={`sidebar-library-btn${navActive('/brain')}`}
             >
               Research Brain
             </Button>
@@ -137,7 +150,7 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 variant="ghost"
                 icon="settings"
                 onClick={() => route('/admin')}
-                className="sidebar-admin-btn"
+                className={`sidebar-admin-btn${navActive('/admin')}`}
               >
                 Admin
               </Button>
@@ -147,7 +160,7 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 variant="ghost"
                 icon="folder"
                 onClick={() => route('/corpus')}
-                className="sidebar-admin-btn"
+                className={`sidebar-admin-btn${navActive('/corpus')}`}
               >
                 Corpus
               </Button>

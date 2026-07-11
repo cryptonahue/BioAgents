@@ -288,6 +288,25 @@ body {
   height: 18px;
 }
 
+/* Sidebar section-nav buttons (Chat / Library / Research Brain /
+   Admin / Corpus): full-width, left-aligned, with an active-section
+   highlight. `.sidebar` prefix keeps specificity above the base
+   Button variant so these win. */
+.sidebar .sidebar-library-btn,
+.sidebar .sidebar-admin-btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+.sidebar .sidebar-library-btn.active,
+.sidebar .sidebar-admin-btn.active {
+  background: var(--accent-light);
+  color: var(--accent-color);
+}
+.sidebar .sidebar-library-btn.active svg,
+.sidebar .sidebar-admin-btn.active svg {
+  color: var(--accent-color);
+}
+
 .sidebar-search-btn {
   width: 100%;
   padding: 10px 16px;
