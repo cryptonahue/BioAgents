@@ -303,8 +303,10 @@ ${context}`;
 
   const response = await llm.createChatCompletion({
     model,
-    messages: [{ role: "user", content: prompt }],
-    maxTokens: 2500,
+    // 2500 truncated fact-dense batches mid-JSON (finishReason: "length"),
+    // silently dropping facts — worse now that categorical values push verbose
+    // text into resultSummary. Give ample headroom; env-tunable for big batches.
+    maxTokens: parseInt(process.env.BIOPROSPECTING_MAX_TOKENS || "8000", 10),
     temperature: 0,
   });
 
