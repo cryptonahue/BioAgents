@@ -21,6 +21,26 @@
  *
  * The `dark` class on `<html>` is required by Basecoat, whose dark variant is
  * defined as `@custom-variant dark (&:is(html.dark *))`.
+ *
+ * ---------------------------------------------------------------------------
+ * PINNED-DARK MARKETING SURFACES
+ *
+ * `.landing-page` and `.access-pending-page` (styled by `coralgpt.css`) appear
+ * in the selector list of every `.dark` block below. That is deliberate and it
+ * is the ONLY mechanism scoping those surfaces out of the theme.
+ *
+ * The CoralGPT landing is designed against a full-bleed hero photograph with
+ * dark scrims and light text over the image. There is no light-mode design for
+ * it, and inventing one is a design job, not a refactor. Re-declaring the dark
+ * token values on those two roots pins every token the marketing CSS reads to
+ * its dark value, whatever the `dark` class on `<html>` says. Descendants —
+ * including the waitlist modal, which renders inline rather than through a
+ * portal — inherit from the pinned root.
+ *
+ * The raw literals inside `coralgpt.css` are intentionally left untokenized for
+ * the same reason. Do not remove these selectors, and do not tokenize
+ * `coralgpt.css`, until a light landing has actually been designed.
+ * ---------------------------------------------------------------------------
  */
 
 :root {
@@ -58,7 +78,10 @@
   --sidebar-ring: oklch(0.723 0.014 214.4);
 }
 
-.dark {
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
   --background: oklch(0.148 0.004 228.8);
   --foreground: oklch(0.987 0.002 197.1);
   --card: oklch(0.218 0.008 223.9);
@@ -133,7 +156,12 @@
 
   --text-primary: var(--foreground);
   --text-secondary: var(--muted-foreground);
-  --text-tertiary: oklch(0.68 0.016 213.5);
+  /* 4.82:1 on white. The value PR 1 shipped, oklch(0.68 …), was 2.86:1 and
+     failed WCAG AA for the helper text it is actually used on. */
+  --text-tertiary: oklch(0.55 0.015 213.5);
+  /* Referenced by `global.css` but never defined until now; it only ever
+     worked through its `var()` fallback. It is the same step as tertiary. */
+  --text-muted: var(--text-tertiary);
 
   --border-color: var(--border);
 
@@ -142,6 +170,9 @@
   --accent-hover: #059669;
   --accent-light: rgba(16, 185, 129, 0.1);
   --accent-glow: rgba(16, 185, 129, 0.15);
+  /* A tint one step stronger than `--accent-light`, for filled chips and
+     bubbles. Referenced by `library.css` but never defined until now. */
+  --accent-soft: rgba(16, 185, 129, 0.18);
 
   --user-msg-bg: var(--bg-hover);
   --assistant-msg-bg: transparent;
@@ -159,9 +190,248 @@
   --card-hover: var(--bg-hover);
 }
 
-.dark {
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
   --bg-hover: oklch(0.32 0.012 216.9);
   --text-tertiary: oklch(0.55 0.015 213.5);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   --card-bg: oklch(0.218 0.008 223.9 / 80%);
+}
+
+/**
+ * Semantic vocabulary.
+ *
+ * Everything below is additive: new names that the hand-written CSS converts
+ * its raw literals onto. Same rules as the bridge above — literal per-theme
+ * values only, never `color-mix()` inside a custom property.
+ *
+ * SURFACES / BORDERS
+ *   --surface-sunken  A surface BELOW `--card` (table headers, textareas, code
+ *                     blocks, inset panels). Basecoat's neutral ramp has no
+ *                     inset step. Light sits a hair under `--background` so it
+ *                     reads as recessed; dark sits between `--background` and
+ *                     `--card`.
+ *   --border-strong   The second border weight. Basecoat ships one; the
+ *                     hand-written CSS uses two (hairline vs. divider).
+ *   --overlay         Modal/drawer scrim. A scrim does NOT invert — it darkens
+ *                     whatever is behind it in both themes. Light is slightly
+ *                     lighter only because light content needs less
+ *                     suppression.
+ *   --scroll-thumb    Custom scrollbars are currently painted with
+ *                     `rgba(255,255,255,…)`, which is invisible on white.
+ *                     NOT named `--scrollbar-thumb`: that name belongs to
+ *                     Basecoat, whose `.scrollbar` / `.scrollbar-sm`
+ *                     components read it. Declaring it here would silently
+ *                     re-skin them.
+ *
+ * ELEVATION
+ *   `--shadow-sm` / `--shadow-lg` sit next to the existing `--shadow` and DO
+ *   shadow Tailwind's theme keys of the same name. That is safe and verified
+ *   against the emitted bundle: Tailwind v4 inlines its shadow scale into the
+ *   utilities it generates (`.shadow-lg` compiles to a literal `--tw-shadow`,
+ *   not `var(--shadow-lg)`), so nothing upstream reads these names. Contrast
+ *   with `--scroll-thumb` above, where an upstream component DOES read the
+ *   name and squatting on it would be a real bug.
+ *
+ * STATUS
+ *   Basecoat ships `--destructive` and nothing else. Each status needs four
+ *   slots because the app uses two distinct patterns: an EMPHASIS color
+ *   (standalone icon / text / left-border on the page surface) and a TINTED
+ *   CHIP (subtle background + its own on-tint text + border). They cannot be
+ *   the same value — amber `#f59e0b` is 2.1:1 on white and fails AA as text,
+ *   but it is correct as a chip background tint.
+ *
+ *   The light values are NOT inversions of the dark ones. In dark, emphasis is
+ *   a bright 400/500-weight hue on a near-black field and on-tint text is a
+ *   lighter 300-weight. In light, emphasis must be a dark 700-weight to clear
+ *   4.5:1 on white, and on-tint text must be darker still (800/900) because
+ *   the tint itself is light. Inverting the dark ramp would produce unreadable
+ *   text in every case.
+ *
+ *   `--violet-*` has the same four-slot shape but is NOT a status. It is the
+ *   bioprospecting-data hue: fact counts, measurements, and — in the
+ *   provenance chrome — the figure code. It is broken out because violet on
+ *   white is ~2:1 and cannot stay a literal the way the brand green can.
+ *
+ * BRAND AS TEXT
+ *   --accent-ink              The brand color used as TEXT on the app surface.
+ *                             `#10b981` on white is 2.54:1 and fails AA.
+ *                             `--accent-color` stays frozen and literal for
+ *                             fills, borders and glows, exactly as PR 1 left
+ *                             it; `--accent-ink` scopes that decision rather
+ *                             than reversing it.
+ *   --accent-color-foreground Text sitting ON the brand fill. Black is correct
+ *                             in both themes (8.9:1 on `#10b981`; white would
+ *                             be 2.4:1). It has no `.dark` override because
+ *                             the fill it sits on has none either.
+ *   --accent-border           A brand-tinted hairline: card hover borders,
+ *                             blockquote rules, focus rings. Translucent, so
+ *                             it works over any surface and needs no `.dark`
+ *                             override — same reasoning as `--accent-light`.
+ */
+:root {
+  --surface-sunken: oklch(0.975 0.002 214.3);
+  --border-strong: oklch(0.86 0.006 214.3);
+  --overlay: rgba(0, 0, 0, 0.5);
+  --scroll-thumb: oklch(0.78 0.008 214.3);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.14);
+
+  /* green-700 / green-100 / green-900 / green-300 — 5.02:1 on white */
+  --success: #15803d;
+  --success-subtle: #dcfce7;
+  --success-subtle-foreground: #14532d;
+  --success-border: #86efac;
+
+  /* amber-700 / amber-100 / amber-900 / amber-300 — 5.02:1 on white */
+  --warning: #b45309;
+  --warning-subtle: #fef3c7;
+  --warning-subtle-foreground: #78350f;
+  --warning-border: #fcd34d;
+
+  /* blue-700 / blue-100 / blue-900 / blue-300 — 6.70:1 on white */
+  --info: #1d4ed8;
+  --info-subtle: #dbeafe;
+  --info-subtle-foreground: #1e3a8a;
+  --info-border: #93c5fd;
+
+  /* `--destructive` itself already exists in the Basecoat block above. */
+  --destructive-subtle: #fee2e2;
+  --destructive-subtle-foreground: #7f1d1d;
+  --destructive-border: #fca5a5;
+
+  /* violet-700 / violet-100 / violet-900 / violet-300 — 7.10:1 on white */
+  --violet: #6d28d9;
+  --violet-subtle: #ede9fe;
+  --violet-subtle-foreground: #4c1d95;
+  --violet-border: #c4b5fd;
+
+  /* emerald-700 — 5.48:1 on white */
+  --accent-ink: #047857;
+  --accent-color-foreground: #000000;
+  --accent-border: rgba(16, 185, 129, 0.4);
+}
+
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
+  --surface-sunken: oklch(0.185 0.008 228.8);
+  --border-strong: oklch(1 0 0 / 20%);
+  --overlay: rgba(0, 0, 0, 0.6);
+  --scroll-thumb: oklch(1 0 0 / 28%);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  --success: #22c55e;
+  --success-subtle: rgba(34, 197, 94, 0.14);
+  --success-subtle-foreground: #86efac;
+  --success-border: rgba(74, 222, 128, 0.4);
+
+  --warning: #fbbf24;
+  --warning-subtle: rgba(251, 191, 36, 0.12);
+  --warning-subtle-foreground: #fde68a;
+  --warning-border: rgba(251, 191, 36, 0.3);
+
+  --info: #3b82f6;
+  --info-subtle: rgba(59, 130, 246, 0.12);
+  --info-subtle-foreground: #93c5fd;
+  --info-border: rgba(59, 130, 246, 0.3);
+
+  --destructive-subtle: rgba(239, 68, 68, 0.14);
+  --destructive-subtle-foreground: #fca5a5;
+  --destructive-border: rgba(239, 68, 68, 0.3);
+
+  --violet: #a78bfa;
+  --violet-subtle: rgba(139, 92, 246, 0.16);
+  --violet-subtle-foreground: #c4b5fd;
+  --violet-border: rgba(167, 139, 250, 0.4);
+
+  --accent-ink: #10b981;
+}
+
+/**
+ * PDF provenance bbox codes.
+ *
+ * THE ABSENCE OF A `.dark` BLOCK HERE IS DELIBERATE. Do not "fix" it.
+ *
+ * `provenance.css` paints the PDF page white in BOTH themes
+ * (`.provenance-viewer__canvas`, `.evidence-lightbox__figure-imagewrap`).
+ * The bboxes are ink on a white raster, so the substrate is a constant and the
+ * ink must be a constant too. A dark-mode-tuned bbox stroke would be the thing
+ * that breaks, not the thing that gets fixed.
+ *
+ * These four also carry a product semantic documented in CLAUDE.md — blue =
+ * table, purple = figure (bbox only), green = figure with an extracted image,
+ * yellow = text chunk — which must not drift between themes.
+ *
+ * The `-ink` tokens are different: they are the APP CHROME that echoes each
+ * bbox code (badges, tags, legends). They sit on the themed app surface, not on
+ * the white page, so they DO have a `.dark` override. They exist so the chrome
+ * stays recognizably the same hue family as its constant bbox while remaining
+ * legible on either surface.
+ */
+:root {
+  --bbox-table: #3b82f6;
+  --bbox-figure: #a855f7;
+  --bbox-figure-image: #10b981;
+  --bbox-chunk: #eab308;
+
+  --bbox-table-ink: #1d4ed8;
+  --bbox-figure-ink: #6d28d9;
+  --bbox-figure-image-ink: #047857;
+  --bbox-chunk-ink: #a16207;
+}
+
+/* See PINNED-DARK MARKETING SURFACES at the top of this file. */
+.dark,
+.landing-page,
+.access-pending-page {
+  --bbox-table-ink: #93c5fd;
+  --bbox-figure-ink: #c4b5fd;
+  --bbox-figure-image-ink: #6ee7b7;
+  --bbox-chunk-ink: #fde68a;
+}
+
+/**
+ * Library sub-brand — TEAL.
+ *
+ * The Library and Research Brain surfaces are a deliberate teal sub-brand, not
+ * a leftover. Their teal is genuinely a different hue from Basecoat's
+ * `--primary`: `--primary` is oklch hue 223 (cyan/azure, `#007595` in light),
+ * while the Library teal is hue ~182 (`#14b8a6`). Aliasing one onto the other
+ * would change the color, and `--primary`'s dark value (`#005f78`) is darker
+ * than its light one — unusable as a bright accent on a dark field. So the
+ * sub-brand gets its own scoped override of the `--accent-*` family instead.
+ *
+ * Scoping it here (rather than hardcoding teal literals in `library.css`) means
+ * `library.css` speaks only the shared token vocabulary. Everything it renders
+ * — icons, chips, focus rings, buttons — follows this block automatically, and
+ * the green/teal split that used to make the Library incoherent cannot recur.
+ *
+ * Like the brand green, the teal FILL is theme-invariant; only the teal used as
+ * TEXT (`--accent-ink`) changes, because `#5eead4` is 1.48:1 on white.
+ */
+.library-page,
+.paper-page {
+  --accent-color: #14b8a6;
+  --accent-hover: #2dd4bf;
+  --accent-light: rgba(20, 184, 166, 0.12);
+  --accent-soft: rgba(20, 184, 166, 0.18);
+  --accent-glow: rgba(20, 184, 166, 0.15);
+  --accent-border: rgba(45, 212, 191, 0.45);
+  --shadow-green: 0 4px 16px rgba(20, 184, 166, 0.15);
+
+  /* teal-700 — 5.47:1 on white */
+  --accent-ink: #0f766e;
+}
+
+.dark .library-page,
+.dark .paper-page {
+  /* teal-300 — 13.3:1 on the dark background */
+  --accent-ink: #5eead4;
 }
