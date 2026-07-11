@@ -156,9 +156,13 @@
 
   --text-primary: var(--foreground);
   --text-secondary: var(--muted-foreground);
-  /* 4.82:1 on white. The value PR 1 shipped, oklch(0.68 …), was 2.86:1 and
-     failed WCAG AA for the helper text it is actually used on. */
-  --text-tertiary: oklch(0.55 0.015 213.5);
+  /* 5.03:1 on `--background`, 4.52:1 on `--muted`, 4.68:1 on `--surface-sunken`.
+     The value PR 1 shipped, oklch(0.68 …), was 2.86:1 on white and failed WCAG
+     AA outright. The follow-up, oklch(0.55 …), fixed `--background` (4.82:1) but
+     still missed on `--muted` (4.33:1) — which is where every input placeholder
+     in `corpus.css` / `graph.css` actually renders. This clears every surface
+     the token is used on. */
+  --text-tertiary: oklch(0.54 0.015 213.5);
   /* Referenced by `global.css` but never defined until now; it only ever
      worked through its `var()` fallback. It is the same step as tertiary. */
   --text-muted: var(--text-tertiary);
@@ -195,7 +199,16 @@
 .landing-page,
 .access-pending-page {
   --bg-hover: oklch(0.32 0.012 216.9);
-  --text-tertiary: oklch(0.55 0.015 213.5);
+  /* DARK IS THE DEFAULT THEME, so this is the failure users actually see.
+     The light value cannot be reused here: on the dark ramp oklch(0.54 …) is
+     4.09:1 on `--background`, 3.60:1 on `--card` and 3.07:1 on `--muted` — it
+     fails WCAG AA on every single surface it renders against.
+
+     oklch(0.65 …) measures 6.13:1 on `--background`, 5.40:1 on `--card`,
+     4.60:1 on `--muted` and 5.79:1 on `--surface-sunken`. It stays clearly
+     dimmer than `--muted-foreground` (oklch(0.723 …)), so the three-step text
+     ramp survives. */
+  --text-tertiary: oklch(0.65 0.015 213.5);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   --card-bg: oklch(0.218 0.008 223.9 / 80%);
 }
