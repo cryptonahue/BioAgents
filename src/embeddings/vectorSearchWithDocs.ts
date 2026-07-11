@@ -428,12 +428,24 @@ export class VectorSearchWithDocuments extends VectorSearchWithReranker {
       lastModified?: string;
     }>
   > {
-    const { data, error } = await supabase
-      .from("documents")
-      .select("title, metadata")
-      .limit(50000);
-
-    if (error) throw error;
+    // Paginate: PostgREST caps every response at the project's
+    // `db-max-rows` (1000 by default), so a plain `.limit(50000)` only
+    // returns the first 1000 chunk rows — silently dropping every paper
+    // whose chunks fall past that boundary (this hid ~6 papers once the
+    // corpus grew beyond 1000 total chunks). Fetch in ranges until a
+    // short page signals the end.
+    const PAGE = 1000;
+    const data: Array<{ title: string; metadata: any }> = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await supabase
+        .from("documents")
+        .select("title, metadata")
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!page || page.length === 0) break;
+      data.push(...(page as Array<{ title: string; metadata: any }>));
+      if (page.length < PAGE) break;
+    }
 
     const byTitle = new Map<
       string,
