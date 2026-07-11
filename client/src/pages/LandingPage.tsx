@@ -123,7 +123,11 @@ export function LandingPage() {
     <div className="landing-page">
       <header className="landing-header">
         <a href="/" className="landing-brand">
-          <img src="/images/token.png" alt="CoralGPT" width={32} height={32} />
+          <img
+            src="/images/coralgpt.png"
+            alt="CoralGPT"
+            className="landing-brand-img"
+          />
           <span className="landing-brand-text">
             <span className="coral">CORAL</span>
             <span className="gpt">GPT</span>

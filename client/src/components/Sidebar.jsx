@@ -123,8 +123,8 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               <div className="sidebar-logo">
                 {coralGptMode ? (
                   <img
-                    src="/images/coralagent.png"
-                    alt="MesoReefDAO"
+                    src="/images/coralgpt.png"
+                    alt="CoralGPT"
                     className="sidebar-logo-img"
                     decoding="async"
                   />

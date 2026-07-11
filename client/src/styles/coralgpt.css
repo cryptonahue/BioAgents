@@ -60,6 +60,17 @@ body.coralgpt-scroll {
   border-radius: 8px;
 }
 
+/* coralgpt.png is a wide canvas (909x241) with the coral mark on the left and
+   transparent space to the right. Crop-display just the mark so it sits neatly
+   next to the CORAL GPT wordmark instead of leaving a big gap. */
+.landing-brand-img {
+  height: 34px;
+  width: 40px;
+  object-fit: cover;
+  object-position: left center;
+  border-radius: 0;
+}
+
 .landing-brand-text {
   font-size: 18px;
   font-weight: 700;
