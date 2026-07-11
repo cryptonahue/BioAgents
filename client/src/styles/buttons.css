@@ -1,168 +1,122 @@
 /**
- * Button Component Styles
- * Consistent, reusable button system
+ * Basecoat button overrides.
+ *
+ * `components/ui/Button.tsx` and `components/ui/IconButton.tsx` now render
+ * Basecoat's `.btn` contract (`data-variant` / `data-size`), so the app's own
+ * `.btn` / `.btn-{primary,secondary,ghost,danger}` / `.btn-{sm,md,lg}` /
+ * `.btn-icon-only` / `.btn-loading` / `.icon-btn*` skins are gone. Nothing else
+ * in the client referenced them: they were emitted by those two components and
+ * by nothing else.
+ *
+ * What is left here is deliberately ADDITIVE: the button normalization Basecoat
+ * assumes Preflight provides, and the two places where Lyra's button, as shipped,
+ * does not clear WCAG AA against this app's tokens. Everything below the base
+ * layer is unlayered, and `global.css` @imports it after `basecoat.css` has been
+ * imported in `index.jsx`, so those rules beat Basecoat's layered ones by
+ * construction rather than by specificity accident.
+ *
+ * `--radius` is intentionally NOT applied to `.btn`: Lyra is a square style pack
+ * (`rounded-none` x71, `var(--radius)` read zero times) and the square look is
+ * the chosen one.
  */
 
-/* Base button styles */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: none;
-    border-radius: 6px;
-    font-family: inherit;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    user-select: none;
+/*
+ * BUTTON NORMALIZATION — the part of Preflight this app deliberately does not load.
+ *
+ * Basecoat is written against Tailwind Preflight, which resets every <button> to
+ * `background-color: transparent; color: inherit; font-family: inherit`. This app
+ * opts out of Preflight on purpose (see basecoat.css), so a bare <button> keeps
+ * the UA's `buttonface` fill and `buttontext` ink.
+ *
+ * Every Lyra variant paints its own fill except `ghost` and `link`, which declare
+ * none — they assume the button is already transparent. Observed in Chromium
+ * without this reset: the sidebar's ghost nav buttons rendered as solid #efefef
+ * pills with UA-black labels.
+ *
+ * This sits in the `base` LAYER, not unlayered, and that is the whole point.
+ * Lyra's component rules (`hover:bg-muted`, `aria-expanded:bg-muted`,
+ * `hover:text-foreground`) live in the `components` layer and must still beat it,
+ * and the app's unlayered call-site skins must beat it too. Unlayered would win
+ * over both and flatten every variant. Scoped to `.btn`, so no unmigrated button
+ * is touched.
+ */
+@layer base {
+    .btn {
+        background-color: transparent;
+        color: inherit;
+        font-family: inherit;
+    }
 }
 
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+/*
+ * FOCUS RING.
+ *
+ * Lyra sets `outline-none` on `.btn` and paints focus as a 1px Tailwind ring
+ * (a box-shadow driven by the `--tw-ring-*` custom-property chain).
+ *
+ * Observed in Chromium, tab-walking the real sidebar with a real keyboard
+ * (`document.hasFocus()` true, `:focus-visible` matching): every migrated button
+ * computed `outline-style: none` and a ZERO-spread ring — no visible focus
+ * indicator at all — while the unmigrated `.theme-toggle-btn` immediately above
+ * them painted its outline correctly.
+ *
+ * So the button gets the ring this app already standardized on, and which every
+ * other focusable control here already uses. `--ring` was measured in PR 2 on
+ * every surface a ring can land on: 4.81:1 on `--background` and 4.32:1 on
+ * `--muted` in light, 6.90:1 / 5.17:1 in dark. All clear the 3:1 WCAG 1.4.11
+ * floor for a non-text indicator.
+ *
+ * Side benefit: migrated and unmigrated controls now focus IDENTICALLY, so the
+ * app does not read as half-migrated while the remaining slices land.
+ */
+.btn:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
 }
 
-.btn-loading {
-    opacity: 0.7;
-    cursor: wait;
+/*
+ * PRIMARY HOVER.
+ *
+ * Lyra's hover is `hover:bg-primary/80` — `--primary` at 80% alpha, which
+ * composites over whatever is behind the button. In the LIGHT theme that
+ * lightens the teal to #3391ab, and `--primary-foreground` (#ecfeff) on it
+ * measures 3.51:1 — below the 4.5:1 AA floor for text. (The dark theme is fine:
+ * an 80% fill over a near-black page goes darker, 8.90:1.)
+ *
+ * `--primary-hover` already exists for exactly this: an OPAQUE one-step-darker
+ * teal in light, one-step-lighter in dark, on which `--primary-foreground`
+ * measures 6.46:1 / 5.15:1. Use it in both themes so the hover step is opaque
+ * and surface-independent.
+ */
+.btn:not([data-variant]):hover:not(:disabled),
+.btn[data-variant="primary"]:hover:not(:disabled) {
+    background-color: var(--primary-hover);
 }
 
-/* Button sizes */
-.btn-sm {
-    padding: 4px 12px;
-    font-size: 12px;
-    gap: 4px;
-}
-
-.btn-md {
-    padding: 8px 16px;
-    font-size: 14px;
-    gap: 6px;
-}
-
-.btn-lg {
-    padding: 12px 20px;
-    font-size: 16px;
-    gap: 8px;
-}
-
-/* Icon-only buttons */
-.btn-icon-only {
-    padding: 8px;
-    gap: 0;
-}
-
-.btn-icon-only.btn-sm {
-    padding: 6px;
-}
-
-.btn-icon-only.btn-lg {
-    padding: 10px;
-}
-
-/* Button variants */
-.btn-primary {
-    background: var(--accent-color);
-    /* Black, not white: the brand fill is identical in both themes and white on
-       it is 2.4:1, while black is 8.9:1. See `--accent-color-foreground`. */
-    color: var(--accent-color-foreground);
-    border: 1px solid var(--accent-color);
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-    transform: translateY(-1px);
-}
-
-.btn-primary:active:not(:disabled) {
-    transform: translateY(0);
-}
-
-.btn-secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background: var(--bg-tertiary);
-    border-color: var(--accent-color);
-}
-
-.btn-secondary:active:not(:disabled) {
-    transform: scale(0.98);
-}
-
-.btn-ghost {
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid transparent;
-}
-
-.btn-ghost:hover:not(:disabled) {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.btn-danger {
-    background: transparent;
-    color: var(--destructive);
-    border: 1px solid transparent;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: var(--destructive-subtle);
-    /* The emphasis red is only 3.90:1 on its own light tint, so the label
-       switches to the on-tint ink for the hover state (8.2:1 / 8.5:1). */
+/*
+ * DESTRUCTIVE.
+ *
+ * Lyra paints `--destructive` as TEXT on a 10% tint of itself. Measured in the
+ * light theme that is 3.99:1 — the same failure theme.css already documents
+ * where it defines `--destructive-subtle-foreground` ("the emphasis red is only
+ * 3.90:1 on its own light tint"). The app's four-slot tinted-chip tokens are the
+ * fix that already exists: the emphasis red becomes the FILL's tint and the
+ * label switches to the on-tint ink (8.2:1 light / 8.5:1 dark).
+ *
+ * Same shape as Lyra's variant — a tinted red button, not a solid red fill — so
+ * this is a recolor, not a redesign.
+ */
+.btn[data-variant="destructive"] {
+    background-color: var(--destructive-subtle);
     color: var(--destructive-subtle-foreground);
     border-color: var(--destructive-border);
 }
 
-/* Icon button (minimal, icon-only) */
-.icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 0.2s ease;
-}
-
-.icon-btn:hover:not(:disabled) {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.icon-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.icon-btn-ghost {
-    background: transparent;
-    border-color: transparent;
-}
-
-.icon-btn-ghost:hover:not(:disabled) {
-    background: var(--bg-hover);
-}
-
-.icon-btn-danger {
-    color: var(--destructive);
-}
-
-.icon-btn-danger:hover:not(:disabled) {
-    background: var(--destructive-subtle);
-    color: var(--destructive-subtle-foreground);
-    border-color: var(--destructive-border);
+/*
+ * Lyra's own hover (`bg-destructive/20`) is layered and therefore loses to the
+ * rule above, so the hover step has to be restated. `--destructive` as a border
+ * against its own tint is the emphasis cue; the label stays the on-tint ink.
+ */
+.btn[data-variant="destructive"]:hover:not(:disabled) {
+    border-color: var(--destructive);
 }
