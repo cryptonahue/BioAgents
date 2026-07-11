@@ -58,6 +58,15 @@ The system operates through two main routes:
 
 Both routes use the same agent architecture but differ in their orchestration and iteration patterns.
 
+> **Note — two engines coexist.** The deep-research pipeline described below
+> (`src/agents/*`, using `src/llm/provider.ts`) is one engine. A newer,
+> self-contained tool-calling **chat-agent** loop (`src/chat-agent/*`) answers
+> chat requests in-process mode and in the queue when `CHAT_AGENT_QUEUE_ENABLED=true`.
+> A product layer, **CoralGPT** (Privy auth + whitelist, public waitlist, paper
+> Library with per-paper RAG), is built on top of this engine. See
+> [CLAUDE.md](CLAUDE.md) for the dual-engine flag matrix and
+> [CORALGPT.md](documentation/docs/CORALGPT.md) for the product layer.
+
 ### Agents
 
 **Agents** are the core concept in this repository. Each agent is a self-contained, independent function that performs a specific task in the research workflow. Agents are designed to be modular and reusable across different routes and contexts.
@@ -99,6 +108,12 @@ Both routes use the same agent architecture but differ in their orchestration an
    - **Deep Research Mode**: Includes current objective, next steps, and asks for feedback
    - **Chat Mode**: Concise answers without next steps
    - Preserves inline citations throughout
+
+The deep-research cycle also uses three orchestration agents not listed above:
+**Discovery** (`src/agents/discovery/`) identifies novel claims and links them to
+supporting evidence, **Clarification** (`src/agents/clarification/`) runs a
+pre-research Q&A to disambiguate the objective, and **Continue Research**
+(`src/agents/continueResearch/`) decides whether another research cycle is warranted.
 
 #### Adding New Agents
 

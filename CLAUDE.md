@@ -183,7 +183,7 @@ YOU MUST:
 
 CoralGPT is a product skin built on top of the BioAgents engine, living on the `dev` branch — NOT a fork. It adds Privy authentication with a whitelist gate, a public waitlist, a paper Library with per-paper grounded RAG chat, and OpenRouter/Qwen embedding support, all reusing the existing auth middleware, database, queue, and LLM infrastructure.
 
-**Two agent systems** now coexist. The deep-research system (`src/agents/*`) is the original fixed pipeline using `src/llm/provider.ts`. The chat-agent system (`src/chat-agent/*`) is a newer, self-contained tool-calling loop, decoupled from `src/llm/*`. Counter-intuitively the chat-agent loop is hand-rolled and is NOT built on the OpenAI Agents SDK (the unused `@openai/agents` dependency has been removed). The two systems touch at exactly one seam: the `literature_search` tool wraps `literatureAgent`.
+**Two agent systems** now coexist. The deep-research system (`src/agents/*`) is the original fixed pipeline using `src/llm/provider.ts`. The chat-agent system (`src/chat-agent/*`) is a newer, self-contained tool-calling loop, decoupled from `src/llm/*`. Counter-intuitively the chat-agent loop is hand-rolled and is NOT built on the OpenAI Agents SDK (the unused `@openai/agents` dependency has been removed). The chat-agent registers two tools (`src/chat-agent/tools/`): `literature-search` (wraps `literatureAgent` — the main seam back into the deep-research stack) and `research-brain-search` (queries the Research Brain evidence store).
 
 **Dual-engine flag matrix** — a chat request is answered by different engines depending on two flags:
 
@@ -229,10 +229,13 @@ src/
 │   ├── library.ts       # /api/library/* (CoralGPT paper library + RAG)
 │   ├── waitlist.ts      # POST /api/waitlist (CoralGPT public signup)
 │   ├── artifacts.ts     # /api/artifacts/download
-│   ├── deep-research/   # /api/deep-research/*
+│   ├── deep-research/   # /api/deep-research/* (start, status, branch, paper, discoveries)
+│   ├── research-brain.ts       # /api/research-brain/* (sources, claims, facts, figures/:id/image)
+│   ├── research-brain-graph.ts # /api/research-brain/graph/* (compound search, co-occurrence)
+│   ├── research-brain-citations.ts # /api/research-brain/citations/:sourceId (paper→paper graph)
 │   ├── x402/            # Payment-gated routes (Base/USDC)
 │   ├── b402/            # Payment-gated routes (BNB/USDT)
-│   └── admin/           # Bull Board dashboard
+│   └── admin/           # Bull Board dashboard, cost totals, table-merge review
 ├── chat-agent/           # Tool-calling chat loop (NOT @openai/agents)
 │   ├── runner.ts        # Entry point, provider/model selection
 │   ├── loop.ts          # Anthropic tool-calling loop
@@ -245,13 +248,19 @@ src/
 │   ├── hypothesis/      # Hypothesis generation
 │   ├── planning/        # Research planning
 │   ├── reflection/      # Self-reflection/critique
+│   ├── discovery/       # Novel-claim identification with evidence links
+│   ├── clarification/   # Pre-research Q&A to disambiguate the objective
+│   ├── continueResearch/# Decides whether to run another research cycle
+│   ├── fileUpload/      # File parsing, storage, description generation
 │   └── reply/           # Response generation
 ├── services/             # Business logic layer
 │   ├── chat/            # Chat-related services
 │   ├── queue/           # BullMQ job queue
 │   │   ├── connection.ts    # Redis connection management
 │   │   ├── queues.ts        # Queue definitions (chat, deep-research)
-│   │   ├── workers/         # Worker implementations
+│   │   ├── workers/         # chat, deep-research, paper-generation, file-process,
+│   │   │                    #   document-ingestion, bioprospecting,
+│   │   │                    #   compoundAuthority (6h PubChem), discoveryReeval (cron)
 │   │   └── notify.ts        # Redis pub/sub notifications
 │   ├── websocket/       # WebSocket handler for real-time updates
 │   ├── privy-auth.ts    # Privy token verification (CoralGPT auth)

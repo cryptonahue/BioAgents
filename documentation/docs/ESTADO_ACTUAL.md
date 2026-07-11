@@ -117,17 +117,24 @@ contradicciones internas entre ellos.
   entorno sin `DEFAULT_OPENROUTER_MODEL` seteado caía en el modelo inexistente
   que quemó $8. El override por env sigue teniendo prioridad. Tests 8/8 OK.
 
-### Features de segunda vuelta (roadmap STATUS.es.md, aún abiertos)
-- Recuperación fuzzy de compuestos vía PubChem (200 fallidos / 235 pendientes
-  de 22 canónicos).
-- Migración de lado de lectura para `research_discoveries` (tabla se llena
-  pero ningún consumidor la lee).
-- Worker de re-evaluación automática (cron) + alertas.
+### Features de segunda vuelta (roadmap re-verificado 2026-07-10)
+
+**⚠️ El roadmap de `STATUS.es.md` estaba stale — estos ya están HECHOS:**
+- ✅ Lado de lectura de discoveries: `GET /api/deep-research/conversations/:id/discoveries`
+  existe y lee las `is_current` con evidencia joineada (`routes/deep-research/discoveries.ts`).
+- ✅ Worker de re-evaluación automática: `discoveryReeval.worker.ts` corre con
+  job repetible BullMQ `discovery-reeval` (tick tipo cron).
+
+**Genuinamente abiertos (verificado):**
 - Grafo de menciones de entidades (KG PR #2) y linker semántico LLM (KG PR #3).
+  Hoy solo existe el KG v1: `searchCompounds` + `/graph/compounds/search`.
+- Recuperación fuzzy de compuestos vía PubChem (200 fallidos / 235 pendientes
+  de 22 canónicos) — requiere chequear la DB en vivo.
 - Papers multi-idioma.
 - Anotación/edición de provenance.
 - Re-spike de extracción XObject con `pdfjs@6` (v1 quedó como
   `wontfix: documented-v1-limitation`).
+- Cierre de x402 Phase 5 (test E2E de pago real) — código v2 presente.
 
 ### Higiene (lo más urgente y barato)
 - **663 commits sin pushear** en `dev2`. Definir la estrategia de merge/PR.
@@ -168,12 +175,16 @@ generan ruido. Recomendación por cada uno:
 
 ---
 
-## 6. CLAUDE.md — desajustes menores a corregir
+## 6. CLAUDE.md / README — desajustes ✅ CORREGIDOS (2026-07-10)
 
-- Dice que `literature_search` es el único seam del chat-agent → hay una
-  segunda tool, `research-brain-search`.
-- No menciona los agentes `clarification/`, `continueResearch/`, `fileUpload/`.
-- No menciona el subsistema de bioprospección (workers + rutas + UI admin).
+- ~~`literature_search` como único seam~~ → documentadas las 2 tools
+  (`literature-search` + `research-brain-search`).
+- ~~Agentes faltantes~~ → agregados `discovery`, `clarification`,
+  `continueResearch`, `fileUpload` al árbol de CLAUDE.md y al README.
+- ~~Subsistema de bioprospección sin mencionar~~ → agregadas rutas
+  `research-brain*` y workers (bioprospecting/compoundAuthority/discoveryReeval)
+  al árbol de CLAUDE.md.
+- README: agregada nota de "dos motores + CoralGPT" que antes no existía.
 
 ---
 
