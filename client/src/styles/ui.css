@@ -14,85 +14,105 @@
  */
 
 /* ---------------------------------------------------------------------------
- * Modal
+ * Modal — `components/ui/Modal.tsx`
+ *
+ * The overlay, the scrim, the centering, the open/close transition and the
+ * close-button placement are all Basecoat's `.dialog` now, on a native
+ * `<dialog>`. The hand-written `.ui-modal` / `.ui-modal__backdrop` rules and
+ * the two keyframes they animated with are DELETED, not overridden — a
+ * half-migrated overlay gets the worst of both.
+ *
+ * Four things remain, and each is here because Basecoat cannot express it
+ * against this app's tokens or this app's build. Same shape as the four blocks
+ * `buttons.css` keeps, and for the same kind of reason.
  * ------------------------------------------------------------------------ */
 
-.ui-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: ui-modal-fade-in 0.2s ease-out;
+/* 1. PREFLIGHT'S BORDER RESET, scoped to `.dialog`.
+ *
+ * Lyra is written assuming Tailwind Preflight, which this app deliberately does
+ * not load (see the header of basecoat.css). Preflight's `*` rule zeroes
+ * `border-width` on every element; Basecoat's own dialog.css therefore never
+ * bothers to. But the UA stylesheet gives `<dialog>` a `border: solid` — a
+ * ~3px inset frame in `currentColor` — and `global.css`'s universal reset only
+ * clears `margin` / `padding`, not `border`. Left alone, every modal paints a
+ * stray bordered box at the top-left of the viewport, because `.dialog` is
+ * `bg-transparent` and its panel is `position: fixed` out of the flow, so the
+ * dialog's own box collapses to nothing but that border.
+ *
+ * The close button needs the other half of the same reset, for the reason
+ * `buttons.css` spells out: without Preflight a bare `<button>` keeps the UA's
+ * `buttonface` fill and `buttontext` ink, and Lyra's close-button rules
+ * (`opacity-70`, `hover:opacity-100`, `absolute top-2 end-2`) assume it is
+ * already transparent and inherits its color.
+ *
+ * Both sit in the `base` layer so any Basecoat component rule that DOES want a
+ * border or a fill here still wins — layers later in the order beat earlier
+ * ones, and Basecoat's components live in `components`. Unlayered, this would
+ * outrank all of them. */
+@layer base {
+  .dialog {
+    border-width: 0;
+    border-style: solid;
+  }
+
+  .ui-modal__close {
+    background-color: transparent;
+    color: inherit;
+    font-family: inherit;
+  }
 }
 
-/* The scrim is `--overlay`, the shared token. A scrim does NOT invert between
-   themes — it darkens whatever is behind it in both. It was `rgba(0,0,0,.85)`,
-   which is the same idea with a hardcoded number. */
-.ui-modal__backdrop {
-  position: absolute;
-  inset: 0;
+/* 2. THE APP'S SCRIM.
+ *
+ * Lyra's `::backdrop` is `bg-black/10` — a 10% wash. That is a reasonable
+ * default for a dialog over a document, and much too weak for the two surfaces
+ * this app actually opens modals over: the landing's full-bleed hero photograph
+ * and a rendered PDF page. `--overlay` is the shared scrim token (0.5 light /
+ * 0.6 dark) and does NOT invert between themes — a scrim darkens what is behind
+ * it in both. The 8px blur is the value `.ui-modal__backdrop` already used. */
+.dialog::backdrop {
   background: var(--overlay);
   backdrop-filter: blur(8px);
-  animation: ui-modal-fade-in 0.2s ease-out;
 }
 
+/* 3. THE PANEL IS A STRUCTURAL SHELL, NOT A LYRA CARD.
+ *
+ * Lyra paints `.dialog > *` as the card itself: `bg-popover`, `p-4`, `ring-1`,
+ * `text-xs/relaxed`. Every one of this modal's contents already carries its own
+ * card — `.payment-modal` and `.wallet-panel` (wallet.css), `.confirm-dialog`
+ * (global.css), `.admin-dialog` (admin.css), `.waitlist-form` and
+ * `.waitlist-success` (coralgpt.css). Painting Lyra's surface here would nest a
+ * second card inside the first, in all six.
+ *
+ * Collapsing those six onto Lyra's card is the obviously nicer end state and it
+ * is NOT available: two of them live in `coralgpt.css`, which is pinned dark for
+ * the marketing landing and is out of bounds until a light landing is designed.
+ * Half of them is worse than none. So the panel opts out of Lyra's four surface
+ * declarations and keeps everything else `.dialog` gives it — the centering, the
+ * max-height, the `@starting-style` scale-in, the close-button anchor.
+ *
+ * `overflow-y` is not an opt-out but a gap: Lyra caps the panel's height
+ * (`max-h-[calc(100%-2rem)]`) and never says what happens when the content is
+ * taller. The waitlist form is nine fields tall and would simply be clipped. */
 .ui-modal__panel {
-  position: relative;
-  width: 100%;
-  max-height: 90vh;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  font: inherit;
   overflow-y: auto;
-  animation: ui-modal-slide-up 0.3s ease-out;
 }
 
-.ui-modal__close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  z-index: 1;
-}
-
-.ui-modal__close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.ui-modal__close:focus-visible {
+/* 4. THE CLOSE BUTTON'S FOCUS RING.
+ *
+ * Lyra sets `focus-visible:outline-hidden` on the dialog's close button and
+ * paints focus as a Tailwind ring that never materializes in this build —
+ * exactly the hole `buttons.css` had to patch for `.btn`. Tab-walked in
+ * Chromium: without this the close button takes focus and shows nothing at all.
+ * `--ring` is the app's opaque focus token, measured against every surface a
+ * ring lands on (see theme.css). */
+.dialog > * > .ui-modal__close:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-@keyframes ui-modal-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes ui-modal-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 /* ---------------------------------------------------------------------------

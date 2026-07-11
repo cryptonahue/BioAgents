@@ -1,10 +1,19 @@
 /**
- * Reusable confirmation modal. Renders a fixed-position overlay + centered
- * dialog with a Cancel and a Confirm action. Closes on backdrop click or
- * Escape (unless `busy`). Use for destructive actions so a stray click can't
- * do damage.
+ * Reusable confirmation modal. Use for destructive actions so a stray click
+ * can't do damage.
+ *
+ * It no longer builds its own overlay: the fixed-position scrim, the centering,
+ * the Escape handling and the backdrop click all come from `ui/Modal`, which is
+ * a native `<dialog>` on Basecoat's `.dialog`. `busy` maps onto Modal's
+ * `dismissible` — while the confirmed action is in flight, Escape and the
+ * backdrop are both vetoed, which is what the old hand-rolled keydown listener
+ * was doing by hand.
+ *
+ * `showClose` is off: the footer's Cancel IS the close affordance, and a second
+ * X floating over it read as a third, ambiguous choice on a destructive prompt.
  */
-import { useEffect } from "preact/hooks";
+import { Modal } from "./ui/Modal";
+import { Button } from "./ui/Button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -30,54 +39,32 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onCancel]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="confirm-overlay"
-      onClick={() => {
-        if (!busy) onCancel();
-      }}
+    <Modal
+      isOpen={open}
+      onClose={onCancel}
+      maxWidth="420px"
+      showClose={false}
+      dismissible={!busy}
+      label={title}
     >
-      <div
-        className="confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="confirm-dialog">
         <h3 className="confirm-title">{title}</h3>
         <p className="confirm-message">{message}</p>
         <div className="confirm-actions">
-          <button
-            type="button"
-            className="confirm-btn confirm-btn--cancel"
-            onClick={onCancel}
-            disabled={busy}
-          >
+          <Button variant="secondary" onClick={onCancel} disabled={busy}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={`confirm-btn ${
-              destructive ? "confirm-btn--danger" : "confirm-btn--primary"
-            }`}
+          </Button>
+          <Button
+            variant={destructive ? "danger" : "primary"}
             onClick={onConfirm}
             disabled={busy}
+            loading={busy}
           >
             {busy ? "Deleting…" : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

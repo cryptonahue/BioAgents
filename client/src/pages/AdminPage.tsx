@@ -1,5 +1,6 @@
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
+import { Modal } from "../components/ui/Modal";
 import {
   isContradictionOpen,
   useAdmin,
@@ -562,13 +563,20 @@ function UnmergeDialog(props: {
     await props.onSubmit(reasonCode, reasonDetail.trim() || null);
   };
 
+  // The scrim, the centering and the Escape/backdrop dismissal all come from
+  // `ui/Modal` (a native <dialog> on Basecoat's `.dialog`) rather than from a
+  // second hand-rolled overlay. The form is not dismissible while the unmerge
+  // is in flight, and it keeps its own footer Cancel instead of Modal's X.
   return (
-    <div class="admin-dialog-backdrop" onClick={() => props.onCancel()}>
-      <form
-        class="admin-dialog"
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
-      >
+    <Modal
+      isOpen
+      onClose={() => props.onCancel()}
+      maxWidth="480px"
+      showClose={false}
+      dismissible={!props.isLoading}
+      label="Unmerge fact"
+    >
+      <form class="admin-dialog" onSubmit={handleSubmit}>
         <h2>Unmerge fact</h2>
         <p>
           Soft-delete the active edge for this fact. The merge becomes
@@ -624,7 +632,7 @@ function UnmergeDialog(props: {
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 

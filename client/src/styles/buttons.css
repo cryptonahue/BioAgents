@@ -78,15 +78,20 @@
  * PRIMARY HOVER.
  *
  * Lyra's hover is `hover:bg-primary/80` — `--primary` at 80% alpha, which
- * composites over whatever is behind the button. In the LIGHT theme that
- * lightens the teal to #3391ab, and `--primary-foreground` (#ecfeff) on it
- * measures 3.51:1 — below the 4.5:1 AA floor for text. (The dark theme is fine:
- * an 80% fill over a near-black page goes darker, 8.90:1.)
+ * composites over whatever is behind the button. It fails the 4.5:1 AA floor in
+ * BOTH themes, for opposite reasons:
  *
- * `--primary-hover` already exists for exactly this: an OPAQUE one-step-darker
- * teal in light, one-step-lighter in dark, on which `--primary-foreground`
- * measures 6.46:1 / 5.15:1. Use it in both themes so the hover step is opaque
- * and surface-independent.
+ *   light  80% of #007595 over the page lightens the teal to #3391ab, and
+ *          `--primary-foreground` (#ecfeff) on it measures 3.51:1.
+ *   dark   80% of the (bright) #00b6e2 over the near-black page DARKENS it to
+ *          #0294b7, and the dark ink (#053345) on it measures 3.77:1.
+ *
+ * An alpha hover moves the fill toward the page in whichever direction the page
+ * lies, and in both themes that is the direction the ink is NOT. `--primary-hover`
+ * exists for exactly this: an OPAQUE step AWAY from the page — darker in light
+ * (#006382), lighter in dark (#2ac8f3) — on which `--primary-foreground` measures
+ * 6.46:1 and 6.80:1. Use it in both themes so the hover step is opaque and
+ * surface-independent.
  */
 .btn:not([data-variant]):hover:not(:disabled),
 .btn[data-variant="primary"]:hover:not(:disabled) {

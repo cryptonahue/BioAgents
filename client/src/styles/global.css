@@ -3384,18 +3384,18 @@ textarea::placeholder {
   overflow-y: auto;
 }
 
-/* ---- Confirm dialog (reusable destructive-action modal) ---- */
-.confirm-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: var(--overlay);
-  backdrop-filter: blur(4px);
-}
+/* ---- Confirm dialog (reusable destructive-action modal) ----
+ *
+ * The overlay is gone: `ConfirmDialog.tsx` renders through `ui/Modal`, so the
+ * scrim, the centering and the Escape/backdrop dismissal are Basecoat's
+ * `.dialog` on a native <dialog>. `.confirm-overlay` and the six `.confirm-btn*`
+ * skins went with it — the buttons are `ui/Button` (Basecoat `.btn`) now.
+ *
+ * What is left is the CARD and its typography. It stays hand-written for the
+ * reason ui.css block 3 gives: Lyra would paint the card on the modal PANEL, and
+ * two of the six things this app puts in a modal live in `coralgpt.css`, which
+ * is pinned dark and out of bounds. Until those can move, every modal's content
+ * carries its own surface. */
 .confirm-dialog {
   width: 100%;
   max-width: 420px;
@@ -3421,37 +3421,4 @@ textarea::placeholder {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-.confirm-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-.confirm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.confirm-btn--cancel {
-  background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-.confirm-btn--cancel:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
-.confirm-btn--danger {
-  background: var(--error-color);
-  color: var(--destructive-foreground);
-}
-.confirm-btn--danger:hover:not(:disabled) {
-  background: var(--destructive-subtle-foreground);
-  color: var(--primary-foreground);
-}
-.confirm-btn--primary {
-  background: var(--accent-color);
-  color: var(--accent-color-foreground);
 }

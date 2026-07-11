@@ -355,25 +355,21 @@
   font-size: 13px;
 }
 
-/* ----------------- Dialog (unmerge) ----------------- */
-
-.admin-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+/* ----------------- Dialog (unmerge) -----------------
+ *
+ * The backdrop is gone: the unmerge form renders through `ui/Modal`, so the
+ * scrim, the centering and the Escape/backdrop dismissal are Basecoat's
+ * `.dialog` on a native <dialog>. Sizing moved to the Modal call site
+ * (`maxWidth="480px"`), which is the primitive's job.
+ *
+ * The CARD stays here. See ui.css block 3 for why the modal panel cannot paint
+ * it. */
 
 .admin-dialog {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
-  max-width: 480px;
-  width: 90%;
   box-shadow: var(--shadow-lg);
 }
 
