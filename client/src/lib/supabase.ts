@@ -90,6 +90,9 @@ export interface Message {
   response_time?: number;
   source?: string;
   created_at?: string;
+  // When the assistant's answer was written into the row. Absent on databases
+  // that have not run the add_messages_updated_at migration yet.
+  updated_at?: string;
   files?: any; // JSONB field for file metadata
 }
 

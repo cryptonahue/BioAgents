@@ -63,7 +63,10 @@ CREATE TABLE messages (
   response_time INTEGER, -- in milliseconds
   source TEXT DEFAULT 'ui', -- 'ui', 'twitter', etc.
   files JSONB, -- stores file metadata for uploads
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- The answer is written into this row after the LLM finishes, so updated_at
+  -- is when the assistant actually replied.
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create indexes for common queries
@@ -108,6 +111,11 @@ CREATE TRIGGER update_states_updated_at
 
 CREATE TRIGGER update_conversation_states_updated_at
   BEFORE UPDATE ON conversation_states
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_messages_updated_at
+  BEFORE UPDATE ON messages
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 

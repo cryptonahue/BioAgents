@@ -93,14 +93,16 @@ function convertDBMessagesToUIMessages(dbMessages: DBMessage[]): Message[] {
     }
 
     // Add assistant message (content/answer) if not empty.
-    // The answer shares the row with the question, and `messages` only stores
-    // created_at, so both carry the same timestamp.
+    // The answer shares the row with the question and is written once the LLM
+    // finishes, so updated_at is when the assistant replied — minutes after
+    // created_at for deep research. Fall back to created_at on databases that
+    // predate the add_messages_updated_at migration.
     if (dbMsg.content && dbMsg.content.trim() !== "") {
       uiMessages.push({
         id: Date.now() + idCounter++,
         role: "assistant",
         content: dbMsg.content,
-        timestamp: msgTimestamp,
+        timestamp: dbMsg.updated_at ? new Date(dbMsg.updated_at) : msgTimestamp,
       });
     }
   }

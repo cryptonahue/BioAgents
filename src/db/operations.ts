@@ -51,6 +51,10 @@ export interface Message {
   response_time?: number;
   source?: string;
   files?: any; // JSONB field for file metadata
+  created_at?: string;
+  // Maintained by the update_messages_updated_at trigger. The answer is written
+  // into the row after the LLM finishes, so this is when the assistant replied.
+  updated_at?: string;
 }
 
 // User operations
