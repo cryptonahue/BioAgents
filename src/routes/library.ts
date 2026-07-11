@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import path from "path";
+import { readdir } from "fs/promises";
 import { authResolver } from "../middleware/authResolver";
 import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
@@ -52,16 +53,53 @@ function getDocsPath(): string {
 }
 
 /** Resolve a safe absolute path for a document title, guarding against traversal. */
-function resolveDocFilePath(title: string): string | null {
-  const docsPath = getDocsPath();
-  const docsRoot = path.resolve(docsPath);
+function isUnderDocsRoot(candidate: string, root: string): boolean {
+  return candidate === root || candidate.startsWith(root + path.sep);
+}
+
+/**
+ * Recursively find a file by basename under `dir`, staying within `root`.
+ * Startup ingestion recurses into docs/ subfolders but stores each paper's
+ * title as the bare basename, so the source file may live one or more levels
+ * below docsRoot. Symlinked directories are NOT followed (Dirent.isDirectory()
+ * is false for symlinks), which keeps the search inside the docs tree.
+ */
+async function findFileByName(
+  dir: string,
+  name: string,
+  root: string,
+): Promise<string | null> {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    const full = path.resolve(dir, entry.name);
+    if (!isUnderDocsRoot(full, root)) continue;
+    if (entry.isDirectory()) {
+      const nested = await findFileByName(full, name, root);
+      if (nested) return nested;
+    } else if (entry.isFile() && entry.name === name) {
+      return full;
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve a paper title (a basename) to an existing file path under the docs
+ * root, searching subfolders. Returns null when no matching file exists.
+ */
+async function resolveDocFilePath(title: string): Promise<string | null> {
+  const docsRoot = path.resolve(getDocsPath());
   // title is a basename; strip any path separators defensively.
   const safeName = path.basename(title);
-  const fullPath = path.resolve(docsRoot, safeName);
-  if (fullPath !== docsRoot && !fullPath.startsWith(docsRoot + path.sep)) {
-    return null;
+
+  // Fast path: file sits flat at the docs root.
+  const flat = path.resolve(docsRoot, safeName);
+  if (isUnderDocsRoot(flat, docsRoot) && (await Bun.file(flat).exists())) {
+    return flat;
   }
-  return fullPath;
+
+  // Fall back to a recursive search (papers ingested from docs/ subfolders).
+  return findFileByName(docsRoot, safeName, docsRoot);
 }
 
 async function getVectorSearch() {
@@ -307,23 +345,27 @@ export const libraryRoute = new Elysia()
         return { error: "Invalid docId" };
       }
 
-      const filePath = resolveDocFilePath(title);
+      const filePath = await resolveDocFilePath(title);
       if (!filePath) {
-        set.status = 400;
-        return { error: "Invalid path" };
+        // The paper is indexed (DB has its chunks) but the original file is
+        // not on disk. Return a framable HTML notice with X-Frame-Options:
+        // SAMEORIGIN so the SPA iframe renders a friendly message instead of
+        // being blocked by the global X-Frame-Options: DENY (which would
+        // surface as an ERR_BLOCKED_BY_RESPONSE in the viewer).
+        logger.warn({ title }, "library_file_not_found");
+        return new Response(
+          `<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:system-ui,sans-serif;color:#c4c4c8;background:#0b0f14;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center"><div style="max-width:34ch;padding:24px"><h3 style="color:#f5f5f5;margin:0 0 8px">Source file unavailable</h3><p style="margin:0">This paper is indexed, but its original file is not present on the server.</p></div></body>`,
+          {
+            status: 404,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "X-Frame-Options": "SAMEORIGIN",
+            },
+          },
+        );
       }
 
       const file = Bun.file(filePath);
-      if (!(await file.exists())) {
-        logger.warn({ title, filePath }, "library_file_not_found");
-        set.status = 404;
-        return {
-          error: "File not found on disk",
-          message:
-            "The paper is indexed but its source file is not available on the server.",
-        };
-      }
-
       const ext = path.extname(filePath).slice(1).toLowerCase();
       const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
