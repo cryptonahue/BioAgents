@@ -348,6 +348,39 @@
   white-space: nowrap;
 }
 
+/* Clickable source title — opens the dedicated evidence viewer. */
+.graph-source-open {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: #c4b5fd;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-source-open:hover {
+  text-decoration: underline;
+  color: #ddd6fe;
+}
+
+/* "Evidence" button on a linked fact — opens the inline EvidenceLightbox. */
+.graph-evidence-btn {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #93c5fd;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.graph-evidence-btn:hover {
+  background: #1e293b;
+  border-color: #3b82f6;
+}
+
 .graph-tag-row {
   display: flex;
   flex-wrap: wrap;

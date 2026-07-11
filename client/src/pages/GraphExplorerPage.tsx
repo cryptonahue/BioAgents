@@ -5,6 +5,12 @@ import {
   type GraphEdge,
   type GraphNode,
 } from "../components/graph/GraphCanvas";
+import { openProvenanceLightbox } from "../utils/provenanceTrigger";
+
+/** Open a source in the dedicated evidence viewer (new tab). */
+function openSourceViewer(sourceId: string): void {
+  window.open(`/viewer/${sourceId}`, "_blank", "noopener,noreferrer");
+}
 
 /**
  * GraphExplorerPage — user-facing Knowledge Graph explorer at `/graph`.
@@ -610,6 +616,14 @@ function DetailCard({
                       DOI
                     </a>
                   )}
+                  <button
+                    type="button"
+                    class="graph-evidence-btn"
+                    onClick={() => openProvenanceLightbox(f.id, f.source_id)}
+                    title="Open this fact's evidence"
+                  >
+                    Evidence
+                  </button>
                 </div>
               </article>
             ))}
@@ -621,7 +635,14 @@ function DetailCard({
             <h3>Sources</h3>
             {expansion.sources.map((s) => (
               <div key={s.id} class="graph-source-row">
-                <span class="graph-source-title">{s.title || "Source"}</span>
+                <button
+                  type="button"
+                  class="graph-source-title graph-source-open"
+                  onClick={() => openSourceViewer(s.id)}
+                  title="Open source in the evidence viewer"
+                >
+                  {s.title || "Source"}
+                </button>
                 <span class="graph-source-meta">
                   {s.fact_count} facts
                   {s.doi && (
