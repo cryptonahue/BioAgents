@@ -8,28 +8,14 @@
   box-sizing: border-box;
 }
 
-:root {
-  --bg-primary: #020913;
-  --bg-secondary: #06101f;
-  --bg-tertiary: #0b1a30;
-  --bg-hover: #12233c;
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1a1;
-  --text-tertiary: #707070;
-  --border-color: #16273d;
-  --accent-color: #10b981;
-  --accent-hover: #059669;
-  --accent-light: rgba(16, 185, 129, 0.1);
-  --accent-glow: rgba(16, 185, 129, 0.15);
-  --user-msg-bg: #12233c;
-  --assistant-msg-bg: transparent;
-  --error-color: #ef4444;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  --shadow-green: 0 4px 16px rgba(16, 185, 129, 0.15);
-  --sidebar-width: 260px;
-  --card-bg: rgba(20, 20, 20, 0.8);
-  --card-hover: rgba(26, 26, 26, 0.95);
-}
+/*
+ * The design tokens that used to live here (--bg-primary, --text-primary,
+ * --accent-color, …) now live in ./theme.css, where they derive from the
+ * Basecoat token set and therefore respond to the light/dark theme.
+ * theme.css is pulled in via ./basecoat.css, which index.jsx imports before
+ * this file. Do not redeclare tokens here — theme.css is the single source
+ * of truth.
+ */
 
 body {
   font-family:

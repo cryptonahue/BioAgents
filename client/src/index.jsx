@@ -5,12 +5,16 @@ import Router, { route } from 'preact-router';
 import { usePrivy } from '@privy-io/react-auth';
 import { CDPProvider } from './providers/CDPProvider';
 import { CoralPrivyProvider } from './providers/PrivyProvider';
-import { AuthProvider } from './contexts';
+import { AuthProvider, ThemeProvider } from './contexts';
 import { ProvenanceProvider } from './contexts/ProvenanceContext';
 import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, GraphExplorerPage, ViewerPage, LibraryViewerPage, SettingsPage } from './pages';
 import { useAuth } from './hooks';
 import { AppLayout } from './components/AppLayout';
 import { Footer } from './components/Footer';
+// Basecoat (Tailwind layers + component CSS + design tokens) must come first:
+// it is layered, and the legacy hand-written CSS below is not, so the legacy
+// rules keep winning specificity ties on existing components.
+import './styles/basecoat.css';
 import './styles/global.css';
 import './styles/coralgpt.css';
 import './styles/library.css';
@@ -228,7 +232,14 @@ function Root() {
 
 const root = document.getElementById('app');
 if (root) {
-  render(<Root />, root);
+  // ThemeProvider wraps Root (not each shell) so the LoadingScreen and every
+  // auth branch — legacy, x402 and CoralGPT — share one theme source.
+  render(
+    <ThemeProvider>
+      <Root />
+    </ThemeProvider>,
+    root,
+  );
 } else {
   console.error('Root element #app not found');
 }

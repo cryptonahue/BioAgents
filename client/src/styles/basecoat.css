@@ -1,0 +1,37 @@
+/**
+ * Basecoat UI entrypoint.
+ *
+ * Pulls in Tailwind (theme + utilities) and the Basecoat "Lyra" component
+ * layer, then applies our own tokens on top.
+ *
+ * WITHOUT PREFLIGHT — on purpose. `@import "tailwindcss"` would also pull in
+ * `preflight.css`, which resets margins, list styles, headings, form controls
+ * and borders across the board. The client ships ~9k lines of hand-written CSS
+ * that predates Tailwind and relies on browser defaults in places; Preflight
+ * would visibly break it. `global.css` already provides the only reset this app
+ * needs (`* { margin: 0; padding: 0; box-sizing: border-box }`).
+ *
+ * Importing the layers explicitly (instead of the `tailwindcss` barrel) is the
+ * documented Tailwind v4 way to opt out of Preflight. Both subpaths are real
+ * export entries in `tailwindcss@4`.
+ *
+ * Import order matters:
+ *   - Basecoat Lyra ships its own `:root` / `.dark` token defaults (greys).
+ *     `theme.css` is imported after it so our palette wins.
+ *   - `index.jsx` imports THIS file before `global.css`, so the legacy
+ *     hand-written rules still win specificity ties on existing components.
+ */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@import "basecoat-css/lyra";
+
+@import "./theme.css";
+
+/* Tailwind's automatic source detection roots at this file's directory, which
+   would only ever see CSS. Point it at the client source tree so utility
+   classes used in JSX/TSX are actually emitted. */
+@source "../";

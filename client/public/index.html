@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,6 +20,26 @@
     <meta name="twitter:title" content="{{SEO_TITLE}}">
     <meta name="twitter:description" content="{{SEO_DESCRIPTION}}">
     <meta name="twitter:image" content="{{OG_IMAGE_URL}}">
+    <!--
+      Theme bootstrap. Runs before first paint so a stored "light" preference
+      does not flash the dark UI (and vice versa). The <html> element ships
+      with class="dark", so doing nothing here keeps the historical dark-only
+      look. Keep the storage key in sync with client/src/contexts/ThemeContext.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('bioagents.theme');
+          if (stored === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else if (stored === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          /* localStorage can throw in private mode / sandboxed iframes. */
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/index.css">
     <script>
       (function () {
