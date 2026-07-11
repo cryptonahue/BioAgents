@@ -4,6 +4,7 @@ import { useLibraryList } from "../hooks";
 import type { LibraryPaper } from "../hooks/useLibrary";
 import { fetchPaperAbstract, deleteLibraryPaper } from "../hooks/useLibrary";
 import { Icon } from "../components/icons";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { uploadResearchBrainSource } from "../hooks/useResearchBrain";
 
 interface LibraryPageProps {
@@ -76,38 +77,49 @@ function DeletePaperButton({
   onError: (msg: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const title = displayTitle(paper);
 
-  const handleDelete = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const doDelete = async () => {
     if (busy) return;
-    const confirmed = window.confirm(
-      `Delete "${title}"? This removes the paper and its evidence.`,
-    );
-    if (!confirmed) return;
     setBusy(true);
     onError("");
     try {
       await deleteLibraryPaper(paper.docId);
+      setConfirmOpen(false);
       onDeleted();
     } catch (err: any) {
       onError(err?.message || "Could not delete the paper");
+      setConfirmOpen(false);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <button
-      type="button"
-      className="paper-action-delete"
-      onClick={handleDelete}
-      disabled={busy}
-      title={`Delete "${title}"`}
-      aria-label={`Delete ${title}`}
-    >
-      <Icon name="trash" size={15} />
-    </button>
+    <>
+      <button
+        type="button"
+        className="paper-action-delete"
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmOpen(true);
+        }}
+        title={`Delete "${title}"`}
+        aria-label={`Delete ${title}`}
+      >
+        <Icon name="trash" size={15} />
+      </button>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete paper"
+        message={`"${title}" and all its evidence will be permanently removed. This can't be undone.`}
+        confirmLabel="Delete"
+        busy={busy}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }
 
