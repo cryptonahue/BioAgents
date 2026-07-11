@@ -95,9 +95,111 @@ BIOPROSPECTING_CONTRADICTION_DETECTION=false  # rule-based + (optionally) LLM ti
 BIOPROSPECTING_CONTRADICTION_LLM=false        # LLM tier only. Costs money. Default OFF.
 ```
 
+---
+
+# PR2 — Cross-source rule-based detection (LLM-free, deterministic)
+
+## Why
+
+`runContradictionDetection` loads facts with
+`getBioprospectingFactsForSource(sourceId)` — one paper at a time. A disagreement
+BETWEEN papers, the scientifically interesting case, was structurally
+undetectable. PR2 adds a corpus-wide sweep. It is 100% deterministic: **zero LLM
+calls, zero spend** (asserted by a test that walks the module's transitive import
+graph). The LLM tier stays OFF.
+
+## What ships in PR2
+
+1. **Cross-source detection** (`contradictionCrossSource.ts`, new). Groups facts
+   corpus-wide by (`compound_canonical_id`, `normalizeForMatch(bioactivity)`) —
+   the canonical id is the compound half because across papers the same molecule
+   is spelled a dozen ways. Only groups spanning **≥ 2 distinct sources** are
+   candidates, and a conflict counts only when the two opposite sides are
+   asserted by **different** sources (an opposition confined to one paper is the
+   intra-source tier's row). The intra-source path is untouched — PR2 is
+   additive.
+
+2. **Group-level rows, not pairwise.** N agonist facts vs M antagonist facts
+   would be N×M rows. Instead: **ONE row per (group, conflict axis)**. A
+   deterministic representative pair (lowest-id fact on each side, cross-source)
+   goes in `fact_a_id` / `fact_b_id`, so the pair-shaped schema is preserved; the
+   full picture — every conflicting fact id, every source id/title, the per-side
+   values, the axis — goes in `metadata`, tagged
+   `metadata.detection = 'cross_source_rule_based'`. That is also what an
+   operator wants to read: *"Lupinacidin A / antitumor: opposite directions
+   across papers X, Y, Z"*.
+
+3. **Bounds (future-proofing, not a present emergency).** Measured on the live
+   corpus: 145 groups, only **3** span >1 source, max group size **9**. There is
+   no combinatorial bomb today; there will be as papers land.
+   `BIOPROSPECTING_CONTRADICTION_MAX_GROUP_SIZE` (default **200**) and
+   `BIOPROSPECTING_CONTRADICTION_MAX_ROWS_PER_RUN` (default **500**). An
+   oversized group is **skipped and logged at ERROR** — never silently
+   truncated. A run that hits the row cap stops and reports `truncated: true`,
+   also at ERROR.
+
+4. **Unique index + idempotent upsert.** The table had **no unique index** and
+   the writer did SELECT-then-INSERT, so a re-run (or a race) duplicated rows.
+   Migration `20260711030000_add_contradiction_unique_key.sql` collapses any
+   pre-existing duplicates (keeping the oldest row, so an operator's decision
+   survives) and adds `uniq_contradictions_fact_pair_type` on
+   `(fact_a_id, fact_b_id, conflict_type)`. `upsertBioprospectingContradictionRow`
+   now does a real `ON CONFLICT DO UPDATE` against it. `status` is deliberately
+   **omitted from the payload**: on insert the column default `'open'` applies;
+   on conflict a `resolved` / `dismissed` decision is preserved. A re-detection
+   must never resurrect a dismissed contradiction. `metadata` / `severity` /
+   `explanation` ARE refreshed, so a growing group updates its own row.
+
+5. **Manual/scheduled trigger.** `scripts/detect-contradictions.ts
+   --cross-source [--dry-run] [--limit N] [--max-group-size N] [--max-rows N]`.
+   Deliberately **not** wired into the per-source ingest path — a corpus-wide
+   pass on every ingest would be quadratic in the corpus size.
+
+6. **Flag.** Reuses `BIOPROSPECTING_CONTRADICTION_DETECTION`.
+   `BIOPROSPECTING_CONTRADICTION_LLM` stays OFF and is irrelevant to this path.
+
+7. **Tests that import the real module.** `contradictionCrossSource.test.ts`
+   drives the real `runCrossSourceContradictionDetection` and injects only the IO
+   boundary (`deps`) — no `mock.module`, so nothing leaks into other suites.
+
+## Notes on `conflict_type`
+
+The live table constrains `conflict_type` to
+`compound_mismatch | bioactivity_mismatch | organism_mismatch |
+measurement_mismatch`, so PR2 reuses values from that set rather than inventing
+`cross_source_*` labels a CHECK constraint would reject mid-sweep. The direction
+axis uses the honest `measurement_mismatch` (the intra tier's `compound_mismatch`
+for the same axis remains a tracked follow-up). Cross-source rows are identified
+by `metadata.detection`.
+
+## Environment flags (PR2)
+
+```bash
+BIOPROSPECTING_CONTRADICTION_MAX_GROUP_SIZE=200   # skip (loudly) groups above N facts
+BIOPROSPECTING_CONTRADICTION_MAX_ROWS_PER_RUN=500 # stop a sweep after N rows
+```
+
 ## Out of scope (tracked follow-ups)
 
-- Cross-source detection → **PR2** (rule-based, group-level rows, bounded).
+- The **LLM tier** stays OFF; an LLM cost **cap** / extending
+  `costService.ApiProvider` → **PR3**.
+- Mislabeled `conflict_type` on the intra-source tier.
+- `ContradictionDetectionOptions.force` — destructured, never read.
+- `listContradictionsGlobal` accepts `sourceId` but never filters on it.
+- The admin UI does not yet surface `metadata.detection` / the cross-source
+  source list, so a group-level row currently reads as a plain pair in the
+  review queue.
+- `contradictionDetector.test.ts` is still the copy-paste kind (it re-implements
+  the detector and asserts against the copy). PR2 did not rewrite it.
+- Facts with no `compound_canonical_id` are invisible to the cross-source sweep
+  (reported as `factsWithoutCanonicalId`); run `scripts/normalize-compounds.ts`
+  first to maximize coverage.
+
+---
+
+## PR1 — Out of scope (tracked follow-ups)
+
+- Cross-source detection → **PR2** (shipped above).
 - LLM cost **cap** / extending `costService.ApiProvider` → **PR3**.
 - Mislabeled `conflict_type` values (a `measurement_direction` conflict is stored as
   `compound_mismatch`; a `relation_type` conflict as `bioactivity_mismatch`).

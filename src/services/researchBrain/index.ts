@@ -2,6 +2,7 @@ export * from "./bioprospectingExtractor";
 export * from "./compoundAuthority";
 export * from "./costService";
 export * from "./discoveryPersistence";
+export * from "./contradictionCrossSource";
 export * from "./contradictionDb";
 export * from "./contradictionDetector";
 export * from "./contradictionLlM";
