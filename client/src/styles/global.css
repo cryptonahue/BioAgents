@@ -610,9 +610,17 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+/*
+ * The mark used to be an <img src="/images/BIOLogo-dark.svg">, which is a white
+ * shape on transparency — invisible on a light sidebar. It is now an inline
+ * SVG filled with `currentColor` (see BioAgentsMark.tsx for why that path was
+ * chosen over a second asset, a mask, or filter: invert), so `color` here is
+ * what actually paints it and the mark follows the theme.
+ */
 .sidebar-powered-logo {
   height: 16px;
   width: auto;
+  color: var(--text-secondary);
   opacity: 0.9;
 }
 

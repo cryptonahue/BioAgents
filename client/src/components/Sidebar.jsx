@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
 import { Icon } from './icons';
+import { BioAgentsMark } from './BioAgentsMark';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth, useAdmin } from '../hooks';
 import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
@@ -414,12 +415,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </div>
             <div className="sidebar-powered-by">
               <span className="sidebar-powered-label">powered by</span>
-              <img
-                src="/images/BIOLogo-dark.svg?v=2"
-                alt="BioAgents"
-                className="sidebar-powered-logo"
-                decoding="async"
-              />
+              {/* The mark is inlined, not an <img>, so it can be filled with
+                  currentColor and follow the theme. See BioAgentsMark.tsx. */}
+              <BioAgentsMark className="sidebar-powered-logo" />
             </div>
             <div
               className="sidebar-version"
