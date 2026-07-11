@@ -20,10 +20,26 @@ async function main() {
   const dryRun = hasFlag("dry-run");
   const onlyMissing = !hasFlag("all");
 
+  // Recovery-pass opt-in flags. When none are passed the CLI
+  // reproduces today's behavior exactly (original-name-only lookup,
+  // `pending`-only candidate set, no attempts reset, never promote).
+  const includeFailed = hasFlag("include-failed");
+  const tryFuzzyVariants = hasFlag("try-fuzzy-variants");
+  const acceptLocal = hasFlag("accept-local");
+  const maxVariants = Number(readArg("max-variants") || "3");
+
   const result = await normalizeBioprospectingCompounds({
     limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
     dryRun,
     onlyMissing,
+    includeFailed,
+    tryFuzzyVariants,
+    maxVariantsPerFact:
+      Number.isFinite(maxVariants) && maxVariants >= 0 ? maxVariants : 3,
+    // Only takes effect when the env master-arm
+    // COMPOUND_AUTHORITY_ACCEPT_LOCAL=true is also set; the driver
+    // resolves the two-gate flag internally.
+    promoteLocalOnMiss: acceptLocal,
   });
 
   console.log("Compound normalization completed");

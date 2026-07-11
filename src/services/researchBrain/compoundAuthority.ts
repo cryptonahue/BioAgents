@@ -64,6 +64,7 @@ export const COMPOUND_AUTHORITY_REASONS = {
   adminPromote: "admin_promote",
   adminAliasAdded: "admin_alias_added",
   compoundTextChanged: "compound_text_changed",
+  localPromoted: "local_promoted",
 } as const;
 
 export type CompoundAuthorityReason =
@@ -1494,6 +1495,93 @@ export async function upsertCanonicalByPubChem(
 }
 
 /**
+ * Upsert a canonical `research_compounds` row for a genuinely-absent
+ * (not-in-PubChem) compound. Keyed on `normalized_name` (UNIQUE), so
+ * repeat calls for the same normalized name converge to one row. No
+ * PubChem CID is fetched or stored (`pubchem_cid = NULL`); `status =
+ * 'local'`, `inchi_key = NULL`, and `metadata.unverified = true` so
+ * every consumer can surface the compound as unverified.
+ *
+ * Race-safe: SELECT-by-`normalized_name` first, then an
+ * on-conflict-ignore INSERT and a re-SELECT, so even a lost race under
+ * concurrency converges to the single winning row. Issues ZERO PubChem
+ * calls — it only fires after PubChem + every variant has 404'd.
+ */
+export async function upsertCanonicalLocal(input: {
+  canonicalName: string;
+  compoundKind?: "small_molecule" | "peptide" | "protein" | "lipid" | "other";
+}): Promise<UpsertCanonicalResult> {
+  const raw = (input.canonicalName || "").trim();
+  const normalized = normalizeForCompoundLookup(raw);
+  if (!normalized) {
+    throw new Error("canonicalName is required");
+  }
+
+  // 1) Converge on an existing row (any status) for this normalized name.
+  const { data: existing, error: existingError } = await supabase
+    .from("research_compounds")
+    .select("id")
+    .eq("normalized_name", normalized)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) {
+    return { id: (existing as { id: string }).id, inserted: false };
+  }
+
+  // 2) Insert a fresh unverified `local` row with ON CONFLICT DO NOTHING on the
+  //    UNIQUE `normalized_name`, so a concurrent inserter is a no-op (returns no
+  //    row) instead of throwing; the re-SELECT below then converges on the winner.
+  const { data: inserted, error: insertError } = await supabase
+    .from("research_compounds")
+    .upsert(
+      {
+        canonical_name: raw,
+        normalized_name: normalized,
+        inchi_key: null,
+        pubchem_cid: null,
+        compound_kind: input.compoundKind ?? "small_molecule",
+        status: "local",
+        metadata: {
+          unverified: true,
+          promoted_by: "compound_authority_recovery",
+          promoted_at: new Date().toISOString(),
+        },
+      },
+      { onConflict: "normalized_name", ignoreDuplicates: true },
+    )
+    .select("id")
+    .maybeSingle();
+  if (insertError) {
+    // Real insert error (unique conflicts are ignored above, not raised).
+    // Re-SELECT in case a racer committed the row meanwhile, else rethrow.
+    const { data: raced, error: racedError } = await supabase
+      .from("research_compounds")
+      .select("id")
+      .eq("normalized_name", normalized)
+      .maybeSingle();
+    if (racedError) throw racedError;
+    if (raced) {
+      return { id: (raced as { id: string }).id, inserted: false };
+    }
+    throw insertError;
+  }
+  if (inserted) {
+    return { id: (inserted as { id: string }).id, inserted: true };
+  }
+  // Insert returned no row (on-conflict-ignore). Re-SELECT the winner.
+  const { data: raced, error: racedError } = await supabase
+    .from("research_compounds")
+    .select("id")
+    .eq("normalized_name", normalized)
+    .maybeSingle();
+  if (racedError) throw racedError;
+  if (raced) {
+    return { id: (raced as { id: string }).id, inserted: false };
+  }
+  throw new Error("upsertCanonicalLocal: failed to resolve canonical row");
+}
+
+/**
  * Idempotent alias insert. On duplicate `(compound_id,
  * normalized_alias)` the call is a no-op (no new row, no error).
  * Returns `{ id, inserted }`.
@@ -1569,6 +1657,14 @@ export type NormalizeBackfillParams = {
    * candidates; the rest are diminishing returns). Set to 0 to
    * disable regardless of `tryFuzzyVariants`. */
   maxVariantsPerFact?: number;
+  /** Recovery-pass opt-in: when a fact's name + all deterministic
+   * variants genuinely 404 and the retry budget is exhausted, promote
+   * it to a canonical `research_compounds` row (status='local', null
+   * CID, unverified) instead of stamping `failed`. Gated by the
+   * `COMPOUND_AUTHORITY_ACCEPT_LOCAL` env master-arm — this param is a
+   * no-op unless that env is "true". Default: false. The routine 6h
+   * tick never sets this, so it never promotes. */
+  promoteLocalOnMiss?: boolean;
 };
 
 export type BackfillSummary = {
@@ -1587,6 +1683,9 @@ export type BackfillSummary = {
    * (does not include the first attempt with the original name).
    * Useful for cost guard-rails. */
   fuzzyCalls: number;
+  /** Facts promoted to a status='local' canonical after genuine
+   * PubChem exhaustion. 0 when the flag/env are off. */
+  localPromotions: number;
   elapsed: number;
 };
 
@@ -1631,6 +1730,14 @@ export async function normalizeBioprospectingCompounds(
     0,
     Math.min(20, params.maxVariantsPerFact ?? 3),
   );
+  // Two-gate accept-as-canonical flag, resolved INSIDE the driver so
+  // the env is never read at module top-level (worker-TDZ safety). The
+  // per-pass param must be set AND the env master-arm must be armed;
+  // the routine 6h tick passes no param, so it never promotes even
+  // when the env is "true".
+  const promoteLocalOnMiss =
+    (params.promoteLocalOnMiss ?? false) &&
+    process.env.COMPOUND_AUTHORITY_ACCEPT_LOCAL === "true";
   // Resolve rate limit / max retries from the env-driven config
   // (read once at module load) and fall back to in-code defaults
   // when neither env nor explicit override is present. The spec
@@ -1650,6 +1757,7 @@ export async function normalizeBioprospectingCompounds(
     failed: 0,
     fuzzyHits: 0,
     fuzzyCalls: 0,
+    localPromotions: 0,
     elapsed: 0,
   };
 
@@ -1697,6 +1805,7 @@ export async function normalizeBioprospectingCompounds(
           fetchImpl: params.fetchImpl,
           tryFuzzyVariants,
           maxVariantsPerFact,
+          promoteLocalOnMiss,
         },
         summary,
         maxRetries,
@@ -1784,6 +1893,7 @@ type ProcessCtx = {
   fetchImpl?: typeof fetch;
   tryFuzzyVariants: boolean;
   maxVariantsPerFact: number;
+  promoteLocalOnMiss: boolean;
 };
 
 async function processOneFact(
@@ -1897,6 +2007,7 @@ async function processOneFact(
       `pubchem 404 not found${triedSuffix}`,
       summary,
       maxRetries,
+      ctx.promoteLocalOnMiss,
     );
     return;
   }
@@ -1917,7 +2028,13 @@ async function processOneFact(
     throw err;
   }
   if (props == null) {
-    await handleMiss(fact, "pubchem 404 not found (props)", summary, maxRetries);
+    await handleMiss(
+      fact,
+      "pubchem 404 not found (props)",
+      summary,
+      maxRetries,
+      ctx.promoteLocalOnMiss,
+    );
     return;
   }
 
@@ -1980,10 +2097,46 @@ async function handleMiss(
   errorMessage: string,
   summary: BackfillSummary,
   maxRetries: number,
+  promoteLocalOnMiss: boolean,
 ): Promise<void> {
   const nextAttempts = (fact.compound_authority_attempts ?? 0) + 1;
   const max = maxRetries;
   if (nextAttempts >= max) {
+    // Terminal genuine-miss branch: PubChem + every deterministic
+    // variant 404'd and the retry budget is exhausted.
+    if (promoteLocalOnMiss) {
+      // Accept-as-canonical: promote the compound to a `status='local'`,
+      // null-CID, unverified canonical row (zero PubChem calls) and link
+      // the fact as `verified`. Fires only when the per-pass param AND
+      // the env master-arm are both set (resolved in the driver).
+      const canonical = await upsertCanonicalLocal({
+        canonicalName: fact.compound,
+      });
+      try {
+        await upsertAlias({
+          compoundId: canonical.id,
+          alias: fact.compound,
+          source: "local_extraction",
+          confidence: "low",
+        });
+      } catch (err) {
+        // Alias insert failure is non-fatal — the canonical row is
+        // committed and a later pass will re-upsert the alias.
+        logger.warn(
+          { err, factId: fact.id, canonicalId: canonical.id },
+          "compound_authority_local_promotion_alias_upsert_failed",
+        );
+      }
+      await attachCanonicalToFact({
+        factId: fact.id,
+        canonicalId: canonical.id,
+        status: "verified",
+        reason: COMPOUND_AUTHORITY_REASONS.localPromoted,
+        attempts: 0,
+      });
+      summary.localPromotions++;
+      return;
+    }
     await attachCanonicalToFact({
       factId: fact.id,
       canonicalId: null,
