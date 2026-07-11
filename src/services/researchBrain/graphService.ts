@@ -108,6 +108,89 @@ export type SearchCompoundsResult = {
 };
 
 // ---------------------------------------------------------------------------
+// KG v2 — entity mention graph types (LLM-free, read-only)
+// ---------------------------------------------------------------------------
+
+/** The three consultable entity kinds. Allowlist source of truth in TS. */
+export type EntityKind = "bioactivity" | "application_area" | "assay_model";
+
+/** Fixed allowlist mirroring the SQL RPCs' `p_kind IN (...)` guard. */
+export const ENTITY_KINDS: readonly EntityKind[] = [
+  "bioactivity",
+  "application_area",
+  "assay_model",
+] as const;
+
+/**
+ * Thrown when a caller passes a `kind` outside {@link ENTITY_KINDS}.
+ * The route layer maps this to HTTP 400 before any DB access, keeping a
+ * clean 400-vs-500 boundary (a raw SQL `RAISE` would otherwise surface
+ * as a generic RPC error -> 500).
+ */
+export class UnknownEntityKindError extends Error {
+  readonly kind: string;
+  constructor(kind: string) {
+    super(`unknown entity kind: ${kind}`);
+    this.name = "UnknownEntityKindError";
+    this.kind = kind;
+  }
+}
+
+/** Narrowing guard for the entity-kind allowlist. */
+export function isEntityKind(value: unknown): value is EntityKind {
+  return (
+    typeof value === "string" &&
+    (ENTITY_KINDS as readonly string[]).includes(value)
+  );
+}
+
+/** One entity node as returned by search.
+ *  `{ kind, value, display }` is the stable identity triple; a future
+ *  Approach-B canonical `entity_id?: string` is purely additive here. */
+export type EntityNode = {
+  kind: EntityKind;
+  value: string; // normalized key (graph_normalize_entity output)
+  display: string; // most frequent raw form, for UI
+  compound_count: number;
+  fact_count: number;
+  source_count: number;
+};
+
+/** A compound linked to an expanded entity value. */
+export type EntityExpandCompound = {
+  id: string;
+  canonical_name: string;
+  fact_count: number;
+};
+
+/** A single fact linked to an expanded entity value (1-hop). */
+export type EntityExpandFact = {
+  id: string;
+  source_id: string | null;
+  compound_canonical_id: string | null;
+  result_summary: string | null;
+  quote: string | null;
+  page: number | null;
+  doi: string | null;
+};
+
+/** A source doc linked to an expanded entity value. */
+export type EntityExpandSource = {
+  id: string;
+  title: string;
+  doi: string | null;
+  url: string | null;
+  fact_count: number;
+};
+
+/** The 1-hop neighborhood of one normalized entity value. */
+export type EntityExpansion = {
+  compounds: EntityExpandCompound[];
+  facts: EntityExpandFact[];
+  sources: EntityExpandSource[];
+};
+
+// ---------------------------------------------------------------------------
 // clampLimit — defensive numeric guard shared across all read paths
 // ---------------------------------------------------------------------------
 
@@ -437,4 +520,130 @@ async function topByStringField(
     value: row.value,
     fact_count: Number(row.fact_count),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// KG v2 — searchEntities / expandEntity (entity mention graph)
+// ---------------------------------------------------------------------------
+
+/**
+ * Search distinct normalized entity nodes within a kind, via the
+ * `public.graph_entity_search` RPC (which reads the live
+ * `research_graph_entities` UNION view). The optional `query` is
+ * substring-filtered over the normalized value; passing an empty query
+ * lists the top nodes by `fact_count`.
+ *
+ * `kind` is validated against {@link ENTITY_KINDS} up-front and throws a
+ * typed {@link UnknownEntityKindError} (route -> 400) rather than relying
+ * only on the SQL `RAISE`. Read-only. Default `limit` 20, max 100
+ * (silently clamped; never throws for out-of-range). `BIGINT` counts
+ * arrive as strings and are coerced via `Number(...)`, same as
+ * {@link getTopCoOccurring}.
+ */
+export async function searchEntities(params: {
+  kind: EntityKind;
+  query?: string;
+  limit?: number;
+}): Promise<EntityNode[]> {
+  if (!isEntityKind(params.kind)) {
+    throw new UnknownEntityKindError(String(params.kind));
+  }
+  const safeLimit = clampLimit(params.limit, 20, 100);
+  const query = (params.query ?? "").trim();
+
+  const { data, error } = await supabase.rpc("graph_entity_search", {
+    p_kind: params.kind,
+    p_query: query,
+    p_limit: safeLimit,
+  });
+  if (error) throw error;
+
+  return ((data ?? []) as Array<{
+    kind: EntityKind;
+    value: string;
+    display: string;
+    compound_count: number | string;
+    fact_count: number | string;
+    source_count: number | string;
+  }>).map((row) => ({
+    kind: row.kind,
+    value: row.value,
+    display: row.display,
+    compound_count: Number(row.compound_count),
+    fact_count: Number(row.fact_count),
+    source_count: Number(row.source_count),
+  }));
+}
+
+/**
+ * Expand one normalized entity `value` to its 1-hop neighborhood
+ * (compounds / facts / sources) via the `public.graph_entity_expand`
+ * RPC. The RPC returns a single `jsonb` `{ compounds, facts, sources }`.
+ *
+ * `value` is passed to the RPC VERBATIM — the service does NOT
+ * re-normalize it. Normalization lives only in SQL
+ * (`graph_normalize_entity`); re-normalizing here would risk
+ * double-normalization drift and violate the single-source invariant.
+ *
+ * `kind` is validated against {@link ENTITY_KINDS} up-front and throws a
+ * typed {@link UnknownEntityKindError} (route -> 400). A value that
+ * matches nothing resolves to `{ compounds: [], facts: [], sources: [] }`
+ * — it MUST NOT reject. Default `limit` 20, max 100 (silently clamped).
+ */
+export async function expandEntity(params: {
+  kind: EntityKind;
+  value: string;
+  limit?: number;
+}): Promise<EntityExpansion> {
+  if (!isEntityKind(params.kind)) {
+    throw new UnknownEntityKindError(String(params.kind));
+  }
+  const safeLimit = clampLimit(params.limit, 20, 100);
+
+  const { data, error } = await supabase.rpc("graph_entity_expand", {
+    p_kind: params.kind,
+    p_value: params.value,
+    p_limit: safeLimit,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as {
+    compounds?: Array<{
+      id: string;
+      canonical_name: string;
+      fact_count: number | string;
+    }>;
+    facts?: EntityExpandFact[];
+    sources?: Array<{
+      id: string;
+      title: string;
+      doi: string | null;
+      url: string | null;
+      fact_count: number | string;
+    }>;
+  };
+
+  return {
+    compounds: (payload.compounds ?? []).map((c) => ({
+      id: c.id,
+      canonical_name: c.canonical_name,
+      fact_count: Number(c.fact_count),
+    })),
+    facts: (payload.facts ?? []).map((f) => ({
+      id: f.id,
+      source_id: f.source_id,
+      compound_canonical_id: f.compound_canonical_id,
+      result_summary: f.result_summary,
+      quote: f.quote,
+      page: f.page,
+      doi: f.doi,
+    })),
+    sources: (payload.sources ?? []).map((s) => ({
+      id: s.id,
+      title: s.title,
+      doi: s.doi,
+      url: s.url,
+      fact_count: Number(s.fact_count),
+    })),
+  };
 }

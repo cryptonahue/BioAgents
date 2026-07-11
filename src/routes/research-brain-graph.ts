@@ -1,6 +1,12 @@
 import { Elysia } from "elysia";
 import { authResolver } from "../middleware/authResolver";
-import { searchCompounds } from "../services/researchBrain/graphService";
+import {
+  ENTITY_KINDS,
+  expandEntity,
+  isEntityKind,
+  searchCompounds,
+  searchEntities,
+} from "../services/researchBrain/graphService";
 import logger from "../utils/logger";
 
 /**
@@ -63,6 +69,95 @@ export const researchBrainGraphRoute = new Elysia({
         logger.error(
           { err: error, q, limit, expand },
           "research_brain_graph_compounds_search_failed",
+        );
+        set.status = 500;
+        return { error: "internal_error" };
+      }
+    },
+    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+  )
+  /**
+   * KG v2 — entity mention graph read endpoints (PR #2 of
+   * bioprospecting-knowledge-graph). Read-only, LLM-free, admin-gated.
+   *
+   *   - GET /graph/entities/:kind/search
+   *       path:   :kind (bioactivity | application_area | assay_model)
+   *       query:  q (optional; empty -> top nodes), limit (1-100, default 20)
+   *       200:    { kind, query, limit, entities: EntityNode[] }
+   *       400:    { error: "unknown entity kind", allowed: [...] }
+   *       500:    { error: "internal_error" }
+   *   - GET /graph/entities/:kind/:value/expand
+   *       path:   :kind (allowlisted), :value (URL-decoded normalized key)
+   *       query:  limit (1-100, default 20)
+   *       200:    { kind, value, limit, expansion: EntityExpansion }
+   *       200:    empty arrays when the value matches nothing (empty-not-error)
+   *       400:    { error: "unknown entity kind", allowed: [...] }
+   *       500:    { error: "internal_error" }
+   */
+  .get(
+    "/graph/entities/:kind/search",
+    async ({ params, query, set }) => {
+      const kind = (params as { kind?: string }).kind ?? "";
+      if (!isEntityKind(kind)) {
+        set.status = 400;
+        return { error: "unknown entity kind", allowed: ENTITY_KINDS };
+      }
+
+      const q = ((query as { q?: unknown } | undefined)?.q ?? "")
+        .toString()
+        .trim();
+
+      const rawLimit = (query as { limit?: unknown } | undefined)?.limit;
+      const limit =
+        rawLimit != null && Number.isFinite(Number(rawLimit))
+          ? Math.max(1, Math.min(100, Math.trunc(Number(rawLimit))))
+          : 20;
+
+      try {
+        const entities = await searchEntities({ kind, query: q, limit });
+        return { kind, query: q, limit, entities };
+      } catch (error) {
+        logger.error(
+          { err: error, kind, q, limit },
+          "research_brain_graph_entities_search_failed",
+        );
+        set.status = 500;
+        return { error: "internal_error" };
+      }
+    },
+    { beforeHandle: authResolver({ required: true, role: "admin" }) },
+  )
+  .get(
+    "/graph/entities/:kind/:value/expand",
+    async ({ params, query, set }) => {
+      const kind = (params as { kind?: string }).kind ?? "";
+      if (!isEntityKind(kind)) {
+        set.status = 400;
+        return { error: "unknown entity kind", allowed: ENTITY_KINDS };
+      }
+
+      const rawValue = (params as { value?: string }).value ?? "";
+      let value: string;
+      try {
+        value = decodeURIComponent(rawValue);
+      } catch {
+        // Malformed percent-encoding — fall back to the raw segment.
+        value = rawValue;
+      }
+
+      const rawLimit = (query as { limit?: unknown } | undefined)?.limit;
+      const limit =
+        rawLimit != null && Number.isFinite(Number(rawLimit))
+          ? Math.max(1, Math.min(100, Math.trunc(Number(rawLimit))))
+          : 20;
+
+      try {
+        const expansion = await expandEntity({ kind, value, limit });
+        return { kind, value, limit, expansion };
+      } catch (error) {
+        logger.error(
+          { err: error, kind, value, limit },
+          "research_brain_graph_entities_expand_failed",
         );
         set.status = 500;
         return { error: "internal_error" };
