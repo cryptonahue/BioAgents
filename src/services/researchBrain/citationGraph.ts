@@ -20,13 +20,39 @@
  * weakest because the same species appears across many
  * unrelated studies.
  *
+ * Candidate selection is a UNION (logical OR) of the three
+ * signals — NOT an intersection. The DOI is a *bonus signal*, it
+ * is never applied as an AND-filter on the candidate query.
+ * (It used to be: `.ilike("doi", sourceDoi)` narrowed the
+ * candidate set to same-DOI sources whenever the focus had a
+ * DOI, silently dropping every shared-compound / shared-species
+ * neighbor for every real paper.)
+ *
  * v1 scope (LLM-free):
- *   - No pre-computed graph table. Every request issues ONE
- *     Supabase query (a single SELECT with EXISTS subqueries +
- *     per-edge aggregates). Cost is O(neighbors) not O(corpus).
- *   - Auth: admin-only via authResolver at the route layer.
+ *   - No pre-computed graph table. Every request issues a bounded
+ *     set of Supabase queries (focus row -> focus canonical keys ->
+ *     3 parallel OR-branches -> candidate hydration). Cost is
+ *     O(neighbors) not O(corpus): each fact scan is capped by
+ *     `CITATION_FACT_SCAN_CAP` and the candidate set by
+ *     `candidateLimit = min(500, limit * 10)`.
+ *   - Auth: any authenticated caller via authResolver at the route layer.
  *   - No mutation. This is a pure read path.
  *   - No LLM. The verdict is a deterministic SQL computation.
+ *
+ * Canonical-id coverage drives everything here: a fact with a NULL
+ * `compound_canonical_id` and a NULL `species_taxon_id` can never
+ * produce an edge. Measure it before drawing conclusions from an
+ * empty graph:
+ *
+ *   SELECT count(*)                                                          AS facts,
+ *          count(compound_canonical_id)                                      AS with_compound,
+ *          round(100.0 * count(compound_canonical_id) / nullif(count(*),0), 1) AS pct_compound,
+ *          count(species_taxon_id)                                           AS with_taxon,
+ *          round(100.0 * count(species_taxon_id) / nullif(count(*),0), 1)      AS pct_taxon
+ *   FROM research_bioprospecting_facts;
+ *
+ * (Full coverage query, including the per-source rollup, lives in
+ * `openspec/changes/graph-neighborhood-edges/design.md` Part 4.)
  *
  * v2 (when OpenRouter has credit):
  *   - Add a BFS expansion (1-2 hops) using this same edge
@@ -118,6 +144,13 @@ export const CITATION_WEIGHT_COMPOUND = 3;
 export const CITATION_WEIGHT_SPECIES = 2;
 export const CITATION_WEIGHT_DOI = 5;
 
+/**
+ * Hard cap on the number of fact rows scanned per OR-branch. Keeps
+ * the shared-compound / shared-species branches bounded on a large
+ * corpus (a hub compound can appear in thousands of facts).
+ */
+export const CITATION_FACT_SCAN_CAP = 5000;
+
 const EMPTY_RESULT: CitationGraphResult = {
   sourceId: "",
   edges: [],
@@ -178,6 +211,49 @@ export function deriveEdgeKinds(input: {
   return out;
 }
 
+/**
+ * Collect the distinct, non-empty string values of `values`,
+ * preserving first-seen order. Pure function.
+ */
+function uniqueStrings(values: unknown[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const v of values) {
+    if (typeof v !== "string" || !v) continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Group overlap rows (`{ source_id, <field> }`) by `source_id`, de-duping
+ * the field values and skipping the focus source itself. The rows come
+ * from a branch query already filtered by the focus's key set, so every
+ * value is by construction an OVERLAP with the focus. Pure function.
+ */
+function buildOverlapMap(
+  rows: Array<Record<string, unknown>>,
+  field: string,
+  excludeSourceId: string,
+): Map<string, string[]> {
+  const m = new Map<string, string[]>();
+  for (const r of rows) {
+    const sid = r.source_id;
+    const value = r[field];
+    if (typeof sid !== "string" || !sid || sid === excludeSourceId) continue;
+    if (typeof value !== "string" || !value) continue;
+    const arr = m.get(sid);
+    if (arr) {
+      if (!arr.includes(value)) arr.push(value);
+    } else {
+      m.set(sid, [value]);
+    }
+  }
+  return m;
+}
+
 // ---------------------------------------------------------------------------
 // buildCitationGraph — main entry point
 // ---------------------------------------------------------------------------
@@ -185,19 +261,28 @@ export function deriveEdgeKinds(input: {
 /**
  * Build the citation graph (direct neighbors) for `sourceId`.
  *
- * The query plan is a single Supabase round-trip:
+ * The query plan:
  *   1. Read the source's `doi` (and confirm it exists) — one SELECT.
- *   2. SELECT every other source that shares at least one
- *      `compound_canonical_id` OR `species_taxon_id` OR `doi`
- *      with the source. The EXISTS subqueries filter in one pass.
- *   3. For each candidate neighbor, aggregate the per-edge
- *      shared-compound and shared-species ids in a second
- *      SELECT (batched via `.in('source_id', ids)`).
- *   4. Compose the edges, sort by weight desc, slice to limit.
+ *   2. Read the source's canonical keys — its distinct
+ *      `compound_canonical_id` / `species_taxon_id` set — one SELECT.
+ *   3. Candidate UNION: three OR-branches in ONE `Promise.all`
+ *        (A) facts sharing a `compound_canonical_id` with the focus,
+ *        (B) facts sharing a `species_taxon_id` with the focus,
+ *        (C) sources with the same DOI (skipped when the focus has none).
+ *      Branches A and B double as the per-edge shared-id aggregate:
+ *      because they are filtered by the focus's own key set, every row
+ *      they return IS an overlap. `candidateIds = (A ∪ B ∪ C) \ {sourceId}`,
+ *      capped at `candidateLimit = min(500, limit * 10)`.
+ *   4. Hydrate the candidates (title / doi / trust_tier) — one SELECT.
+ *   5. Compose the edges, sort by weight desc, slice to limit.
+ *
+ * The DOI is a *bonus signal* (`+CITATION_WEIGHT_DOI` in
+ * `computeCitationWeight`) and an *entry point* into the candidate set —
+ * never a filter that narrows it.
  *
  * Errors are non-fatal: an unrecoverable DB error returns the
  * empty result. Operators see the failure via the
- * `citation_graph_failed` log event.
+ * `citation_graph_*_failed` log events.
  */
 export async function buildCitationGraph(
   params: CitationGraphParams,
@@ -239,41 +324,149 @@ export async function buildCitationGraph(
   const sourceDoi = ((sourceRow as { doi: string | null }).doi || "").trim();
   const sourceDoiLower = sourceDoi.toLowerCase();
 
-  // 2) Select every other source that shares something. PostgREST
-  //    does not support FULL OUTER JOINs on correlated subqueries,
-  //    so we OR three EXISTS clauses. The result is the set of
-  //    `other_source_id` candidates with their title + doi + tier.
+  // 2) Read the focus source's own canonical keys. These are what a
+  //    neighbor has to overlap with; querying by them (instead of by
+  //    candidate id) means every returned row IS an overlap, so the
+  //    candidate branch and the per-edge aggregate collapse into the
+  //    same query.
+  const { data: focusFactRows, error: focusFactErr } = await sb
+    .from("research_bioprospecting_facts")
+    .select("compound_canonical_id, species_taxon_id")
+    .eq("source_id", sourceId)
+    .limit(CITATION_FACT_SCAN_CAP);
+  if (focusFactErr) {
+    // Non-fatal: the DOI branch can still produce edges.
+    logger.warn(
+      { err: focusFactErr, ...baseLog },
+      "citation_graph_focus_keys_failed",
+    );
+  }
+
+  const focusCompoundIds = uniqueStrings(
+    ((focusFactRows || []) as Array<{ compound_canonical_id: unknown }>).map(
+      (r) => r.compound_canonical_id,
+    ),
+  );
+  const focusTaxonIds = uniqueStrings(
+    ((focusFactRows || []) as Array<{ species_taxon_id: unknown }>).map(
+      (r) => r.species_taxon_id,
+    ),
+  );
+
+  // 3) Candidate UNION — three OR-branches, in parallel.
   //
-  //    We pull a generous candidate set (limit * 10) so the per-
-  //    candidate aggregation in step 3 can filter down to the
-  //    top N by weight without missing a strong-but-rare signal.
+  //    The candidate set is (A ∪ B ∪ C), NOT (A ∩ C). The DOI is one of
+  //    three ways to ENTER the set; it never removes a shared-compound
+  //    or shared-species neighbor. A branch with no focus key to match
+  //    on is skipped (no query issued) rather than degenerating into an
+  //    unfiltered scan of `research_sources`.
+  //
+  //    We pull a generous candidate set (limit * 10, capped at 500) so
+  //    step 5's top-N-by-weight can pick the strongest edges without
+  //    missing a strong-but-rare signal.
   const candidateLimit = Math.min(500, limit * 10);
-  let candidates: Array<{
-    id: string;
-    title: string;
-    doi: string | null;
-    trust_tier: string;
-  }> = [];
-  const candidateErr = await (async (): Promise<null | { message: string }> => {
-    let q = sb
-      .from("research_sources")
-      .select("id, title, doi, trust_tier")
-      .neq("id", sourceId)
-      .limit(candidateLimit);
-    if (sourceDoiLower) {
-      // Two ways to share a DOI: the source has one AND the
-      // other has the same, OR the source has none but the
-      // other has a DOI matching facts' doi column (rare but
-      // possible after migrations). We match on the doi column
-      // first; the EXISTS on fact-level DOI is a fallback that
-      // adds the rare case at the end of this function.
-      q = q.ilike("doi", sourceDoi);
-    }
-    const { data, error } = await q;
-    if (error) return error;
-    candidates = (data || []) as typeof candidates;
-    return null;
-  })();
+  type BranchResult = { data: unknown[] | null; error: unknown };
+  const emptyBranch = (): Promise<BranchResult> =>
+    Promise.resolve({ data: [], error: null });
+
+  const [compoundBranch, speciesBranch, doiBranch] = (await Promise.all([
+    focusCompoundIds.length > 0
+      ? sb
+          .from("research_bioprospecting_facts")
+          .select("source_id, compound_canonical_id")
+          .in("compound_canonical_id", focusCompoundIds)
+          .neq("source_id", sourceId)
+          .limit(CITATION_FACT_SCAN_CAP)
+      : emptyBranch(),
+    focusTaxonIds.length > 0
+      ? sb
+          .from("research_bioprospecting_facts")
+          .select("source_id, species_taxon_id")
+          .in("species_taxon_id", focusTaxonIds)
+          .neq("source_id", sourceId)
+          .limit(CITATION_FACT_SCAN_CAP)
+      : emptyBranch(),
+    sourceDoiLower
+      ? sb
+          .from("research_sources")
+          .select("id")
+          .ilike("doi", sourceDoi)
+          .neq("id", sourceId)
+          .limit(candidateLimit)
+      : emptyBranch(),
+  ])) as unknown as [BranchResult, BranchResult, BranchResult];
+
+  if (compoundBranch.error) {
+    logger.warn(
+      { err: compoundBranch.error, ...baseLog },
+      "citation_graph_compound_branch_failed",
+    );
+  }
+  if (speciesBranch.error) {
+    logger.warn(
+      { err: speciesBranch.error, ...baseLog },
+      "citation_graph_species_branch_failed",
+    );
+  }
+  if (doiBranch.error) {
+    logger.warn(
+      { err: doiBranch.error, ...baseLog },
+      "citation_graph_doi_branch_failed",
+    );
+  }
+  if (compoundBranch.error && speciesBranch.error && doiBranch.error) {
+    logger.error({ ...baseLog }, "citation_graph_candidates_failed");
+    return { ...EMPTY_RESULT, sourceId, elapsed: Date.now() - startedAt };
+  }
+
+  // Branch rows double as the per-edge shared-id aggregate: they are
+  // already filtered by the focus's key set, so `compoundMap.get(x)`
+  // holds exactly the compounds `x` SHARES with the focus.
+  const compoundMap = buildOverlapMap(
+    (compoundBranch.data || []) as Array<Record<string, unknown>>,
+    "compound_canonical_id",
+    sourceId,
+  );
+  const speciesMap = buildOverlapMap(
+    (speciesBranch.data || []) as Array<Record<string, unknown>>,
+    "species_taxon_id",
+    sourceId,
+  );
+  const doiSourceIds = uniqueStrings(
+    ((doiBranch.data || []) as Array<{ id: unknown }>).map((r) => r.id),
+  ).filter((id) => id !== sourceId);
+
+  // Union, ordered compound -> species -> DOI (matching the weight
+  // coefficients 3 > 2; DOI hits are rare), then capped.
+  const candidateIds: string[] = [];
+  const seen = new Set<string>([sourceId]);
+  for (const id of [
+    ...compoundMap.keys(),
+    ...speciesMap.keys(),
+    ...doiSourceIds,
+  ]) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    candidateIds.push(id);
+    if (candidateIds.length >= candidateLimit) break;
+  }
+
+  if (candidateIds.length === 0) {
+    return {
+      sourceId,
+      edges: [],
+      totalNeighbors: 0,
+      elapsed: Date.now() - startedAt,
+      sourceFound: true,
+    };
+  }
+
+  // 4) Hydrate the candidates (title / doi / trust_tier).
+  const { data: candidateRows, error: candidateErr } = await sb
+    .from("research_sources")
+    .select("id, title, doi, trust_tier")
+    .in("id", candidateIds)
+    .limit(candidateLimit);
   if (candidateErr) {
     logger.error(
       { err: candidateErr, ...baseLog },
@@ -281,6 +474,12 @@ export async function buildCitationGraph(
     );
     return { ...EMPTY_RESULT, sourceId, elapsed: Date.now() - startedAt };
   }
+  const candidates = (candidateRows || []) as Array<{
+    id: string;
+    title: string;
+    doi: string | null;
+    trust_tier: string;
+  }>;
 
   if (candidates.length === 0) {
     return {
@@ -292,67 +491,11 @@ export async function buildCitationGraph(
     };
   }
 
-  const candidateIds = candidates.map((c) => c.id);
-
-  // 3) Per-candidate aggregate: count of shared compounds,
-  //    list of shared compound canonical ids, same for species.
-  //    Two queries (compound, species) batched via `.in()`.
-  const [compoundResult, speciesResult] = await Promise.all([
-    sb
-      .from("research_bioprospecting_facts")
-      .select("source_id, compound_canonical_id")
-      .in("source_id", candidateIds)
-      .not("compound_canonical_id", "is", null),
-    sb
-      .from("research_bioprospecting_facts")
-      .select("source_id, species_taxon_id")
-      .in("source_id", candidateIds)
-      .not("species_taxon_id", "is", null),
-  ]);
-
-  type Agg = { source_id: string; ids: string[] };
-  function buildAggMap(
-    rows: Array<{ source_id: string; [k: string]: unknown }> | null,
-    field: string,
-  ): Map<string, string[]> {
-    const m = new Map<string, string[]>();
-    for (const r of rows || []) {
-      const sid = (r as { source_id: string }).source_id;
-      const v = (r as Record<string, unknown>)[field];
-      if (typeof v !== "string" || !v) continue;
-      const arr = m.get(sid) || [];
-      if (!arr.includes(v)) arr.push(v);
-      m.set(sid, arr);
-    }
-    return m;
-  }
-
-  const compoundMap = buildAggMap(
-    (compoundResult.data || []) as Array<{ source_id: string; compound_canonical_id: string }>,
-    "compound_canonical_id",
-  );
-  const speciesMap = buildAggMap(
-    (speciesResult.data || []) as Array<{ source_id: string; species_taxon_id: string }>,
-    "species_taxon_id",
-  );
-
-  if (compoundResult.error) {
-    logger.warn(
-      { err: compoundResult.error, ...baseLog },
-      "citation_graph_compound_agg_failed",
-    );
-  }
-  if (speciesResult.error) {
-    logger.warn(
-      { err: speciesResult.error, ...baseLog },
-      "citation_graph_species_agg_failed",
-    );
-  }
-
-  // 4) Compose the edges. A neighbor with 0 shared compounds,
+  // 5) Compose the edges. A candidate with 0 shared compounds,
   //    0 shared species, and no DOI match is a false positive
-  //    (came from the candidate step but the inner fact
-  //    aggregates came back empty). Skip those.
+  //    (e.g. it entered via the DOI branch but the hydrated `doi`
+  //    no longer matches). Skip those — the OR-union widens the
+  //    candidate set, it does not weaken the edge predicate.
   const edges: CitationEdge[] = [];
   for (const c of candidates) {
     const sharedCompounds = compoundMap.get(c.id) || [];

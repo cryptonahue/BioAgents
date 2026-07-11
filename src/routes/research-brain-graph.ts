@@ -1,13 +1,41 @@
 import { Elysia } from "elysia";
 import { authResolver } from "../middleware/authResolver";
 import {
+  composeNeighborhood,
   ENTITY_KINDS,
   expandEntity,
+  FocusNotFoundError,
   isEntityKind,
+  NEIGHBORHOOD_DEFAULT_FANOUT,
+  NEIGHBORHOOD_DEFAULT_LIMIT,
+  NEIGHBORHOOD_MAX_FANOUT,
+  NEIGHBORHOOD_MAX_LIMIT,
   searchCompounds,
   searchEntities,
+  UnknownEntityKindError,
 } from "../services/researchBrain/graphService";
 import logger from "../utils/logger";
+
+const UUID_RE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/** Focus discriminants accepted by `/graph/neighborhood`. */
+const FOCUS_TYPES = ["entity", "compound", "source"] as const;
+type FocusType = (typeof FOCUS_TYPES)[number];
+
+function isFocusType(value: unknown): value is FocusType {
+  return (
+    typeof value === "string" && (FOCUS_TYPES as readonly string[]).includes(value)
+  );
+}
+
+/** Parse an integer query param, clamped to `[1, max]`, `def` when absent. */
+function parseBoundedInt(raw: unknown, def: number, max: number): number {
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(1, Math.min(max, Math.trunc(n)));
+}
 
 /**
  * v1 knowledge-graph read endpoints, mounted under
@@ -169,5 +197,130 @@ export const researchBrainGraphRoute = new Elysia({
     },
     // READ-ONLY aggregate graph data — open to any authenticated caller
     // (was admin-only). This file must stay read-only (no mutations).
+    { beforeHandle: authResolver({ required: true }) },
+  )
+  /**
+   * KG v3 — neighborhood endpoint (`graph-neighborhood-edges`).
+   *
+   *   - GET /graph/neighborhood
+   *       query: type   (entity | compound | source, required)
+   *              kind   (required iff type=entity; ENTITY_KINDS allowlist)
+   *              value  (required iff type=entity; normalized entity key,
+   *                      passed to expandEntity VERBATIM)
+   *              id     (required iff type=compound|source; UUID)
+   *              limit  (1-100, default 20)  — neighbors per class
+   *              fanout (1-5,  default 3)    — neighbor expansions used for
+   *                                            the induced edges
+   *       auth:  any authenticated caller (read-only)
+   *       200:   { focus, nodes, edges, meta }
+   *       200:   focus node + zero edges when an entity value matches nothing
+   *              (empty-not-error, mirrors /expand)
+   *       400:   { error: "unknown focus type", allowed: [...] }
+   *              { error: "unknown entity kind", allowed: [...] }
+   *              { error: "missing query parameter value" }
+   *              { error: "id must be a UUID" }
+   *       404:   { error: "compound not found" | "source not found" }
+   *       500:   { error: "internal_error" }
+   *
+   * The payload is composed ON THE FLY from `expandEntity`,
+   * `getTopCoOccurring` and `buildCitationGraph`. No new table, no stored
+   * edge, no refresh hook, no LLM, no write.
+   */
+  .get(
+    "/graph/neighborhood",
+    async ({ query, set }) => {
+      const q = (query ?? {}) as Record<string, unknown>;
+
+      const type = (q.type ?? "").toString().trim();
+      if (!isFocusType(type)) {
+        set.status = 400;
+        return { error: "unknown focus type", allowed: FOCUS_TYPES };
+      }
+
+      const limit = parseBoundedInt(
+        q.limit,
+        NEIGHBORHOOD_DEFAULT_LIMIT,
+        NEIGHBORHOOD_MAX_LIMIT,
+      );
+      const fanout = parseBoundedInt(
+        q.fanout,
+        NEIGHBORHOOD_DEFAULT_FANOUT,
+        NEIGHBORHOOD_MAX_FANOUT,
+      );
+
+      // Discriminated param set: (kind, value) for an entity, (id) otherwise.
+      if (type === "entity") {
+        const kind = (q.kind ?? "").toString().trim();
+        if (!isEntityKind(kind)) {
+          set.status = 400;
+          return { error: "unknown entity kind", allowed: ENTITY_KINDS };
+        }
+        const rawValue = (q.value ?? "").toString();
+        let value: string;
+        try {
+          value = decodeURIComponent(rawValue);
+        } catch {
+          // Malformed percent-encoding — fall back to the raw param.
+          value = rawValue;
+        }
+        if (!value.trim()) {
+          set.status = 400;
+          return { error: "missing query parameter value" };
+        }
+
+        try {
+          return await composeNeighborhood({
+            type: "entity",
+            kind,
+            value,
+            limit,
+            fanout,
+          });
+        } catch (error) {
+          if (error instanceof UnknownEntityKindError) {
+            set.status = 400;
+            return { error: "unknown entity kind", allowed: ENTITY_KINDS };
+          }
+          logger.error(
+            { err: error, type, kind, value, limit, fanout },
+            "research_brain_graph_neighborhood_failed",
+          );
+          set.status = 500;
+          return { error: "internal_error" };
+        }
+      }
+
+      const id = (q.id ?? "").toString().trim();
+      if (!id) {
+        set.status = 400;
+        return { error: "missing query parameter id" };
+      }
+      if (!UUID_RE.test(id)) {
+        set.status = 400;
+        return { error: "id must be a UUID" };
+      }
+
+      try {
+        return await composeNeighborhood({
+          type,
+          id,
+          limit,
+          fanout,
+        });
+      } catch (error) {
+        if (error instanceof FocusNotFoundError) {
+          set.status = 404;
+          return { error: `${error.focusType} not found` };
+        }
+        logger.error(
+          { err: error, type, id, limit, fanout },
+          "research_brain_graph_neighborhood_failed",
+        );
+        set.status = 500;
+        return { error: "internal_error" };
+      }
+    },
+    // READ-ONLY aggregate graph data — open to any authenticated caller.
+    // This file must stay read-only (no mutations).
     { beforeHandle: authResolver({ required: true }) },
   );

@@ -444,3 +444,75 @@ describe("GET /api/research-brain/graph/compounds/search (limit clamp)", () => {
     expect(body.limit).toBe(20);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GET /graph/neighborhood — param validation + auth
+// (`graph-neighborhood-edges`). The happy path is covered by the service
+// unit tests in `graphService.neighborhood.test.ts`; here we only assert the
+// route contract: 400s BEFORE any DB access, and the auth gate.
+// ---------------------------------------------------------------------------
+
+describe("GET /api/research-brain/graph/neighborhood (validation)", () => {
+  it("returns 400 for an unknown focus type", async () => {
+    const res = await researchBrainGraphRoute.handle(
+      new Request(
+        "http://test/api/research-brain/graph/neighborhood?type=fact&id=x",
+        { headers: { Authorization: `Bearer ${adminToken}` } },
+      ),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; allowed: string[] };
+    expect(body.error).toBe("unknown focus type");
+    expect(body.allowed).toEqual(["entity", "compound", "source"]);
+    // No DB access happened.
+    expect(calls).toHaveLength(0);
+  });
+
+  it("returns 400 for an entity kind outside the allowlist", async () => {
+    const res = await researchBrainGraphRoute.handle(
+      new Request(
+        "http://test/api/research-brain/graph/neighborhood?type=entity&kind=nope&value=x",
+        { headers: { Authorization: `Bearer ${adminToken}` } },
+      ),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; allowed: string[] };
+    expect(body.error).toBe("unknown entity kind");
+    expect(body.allowed).toContain("bioactivity");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("returns 400 when an entity focus has no value", async () => {
+    const res = await researchBrainGraphRoute.handle(
+      new Request(
+        "http://test/api/research-brain/graph/neighborhood?type=entity&kind=bioactivity",
+        { headers: { Authorization: `Bearer ${adminToken}` } },
+      ),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("missing query parameter value");
+  });
+
+  it("returns 400 when a compound focus id is not a UUID", async () => {
+    const res = await researchBrainGraphRoute.handle(
+      new Request(
+        "http://test/api/research-brain/graph/neighborhood?type=compound&id=not-a-uuid",
+        { headers: { Authorization: `Bearer ${adminToken}` } },
+      ),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("id must be a UUID");
+    expect(calls).toHaveLength(0);
+  });
+});
+
+// NOTE: there is deliberately no "401 without auth" test here. `authResolver`
+// snapshots `getAuthConfig()` when the route is DEFINED, and ESM import
+// hoisting means the route module is evaluated before this file's
+// `process.env.AUTH_MODE = "jwt"` assignment — so the resolver sees
+// `mode: "none"` and allows anonymous. The two pre-existing auth tests above
+// fail for exactly this reason (they predate this change). The gate itself is
+// the same `authResolver({ required: true })` used by every other route in
+// this file; it is a harness limitation, not a route one.

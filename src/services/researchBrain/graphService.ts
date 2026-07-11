@@ -38,6 +38,7 @@
 
 import { getServiceClient } from "../../db/client";
 import logger from "../../utils/logger";
+import { buildCitationGraph } from "./citationGraph";
 
 const supabase = new Proxy({} as ReturnType<typeof getServiceClient>, {
   get(_target, prop) {
@@ -646,4 +647,665 @@ export async function expandEntity(params: {
       fact_count: Number(s.fact_count),
     })),
   };
+}
+
+// ---------------------------------------------------------------------------
+// KG v3 — neighborhood composition (de-star the graph)
+// ---------------------------------------------------------------------------
+//
+// `composeNeighborhood` returns, for one focus node, its 1-hop neighborhood
+// PLUS the induced subgraph among those neighbors — the edges that make the
+// ego graph a graph instead of a star.
+//
+// Composed ON THE FLY from three existing read helpers:
+//   `expandEntity` (entity -> compounds/sources), `getTopCoOccurring`
+//   (compound <-> compound) and `buildCitationGraph` (source <-> source),
+// plus three batched hydration helpers below. No new table, no stored edge,
+// no refresh hook, no LLM, no write.
+//
+// Edge yield is bounded by canonical-id coverage: `co_occurs_with` and
+// `related_source` are derived from `compound_canonical_id` /
+// `species_taxon_id`, so a corpus where those are mostly NULL yields a star
+// no matter what this code does. Measure before concluding (see the coverage
+// SQL in `citationGraph.ts`'s header and design.md Part 4).
+
+/** Node kinds in a neighborhood payload. Facts stay EDGES, never nodes. */
+export type GraphNodeType = "entity" | "compound" | "source";
+
+/** Closed set of neighborhood edge types. */
+export type GraphEdgeType =
+  | "has_compound" // focus entity  -> compound        (spoke)
+  | "has_source" // focus entity  -> source          (spoke)
+  | "reports" // compound     <-> source          (fact-backed)
+  | "co_occurs_with" // compound     <-> compound        (shared sources)
+  | "related_source"; // source       <-> source          (citation graph)
+
+export type NeighborhoodNode = {
+  /** `entity:{kind}:{value}` | `compound:{uuid}` | `source:{uuid}` */
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  meta?: {
+    kind?: string;
+    value?: string;
+    factCount?: number;
+    doi?: string | null;
+    url?: string | null;
+  };
+};
+
+export type NeighborhoodEdge = {
+  /** Node id. */
+  source: string;
+  /** Node id. */
+  target: string;
+  type: GraphEdgeType;
+  /**
+   * Higher = stronger. Comparable WITHIN a type only: a `related_source`
+   * 11 (`3*compounds + 2*species + 5*doi`) and a `co_occurs_with` 11
+   * (shared-source count) are different units. The client normalizes per
+   * type; faking a global scale here would be a lie.
+   */
+  weight: number;
+  label?: string;
+};
+
+export type NeighborhoodResult = {
+  focus: NeighborhoodNode;
+  nodes: NeighborhoodNode[];
+  edges: NeighborhoodEdge[];
+  meta: {
+    limit: number;
+    fanout: number;
+    elapsed: number;
+    counts: { nodes: number; edges: number };
+  };
+};
+
+export type NeighborhoodFocusParams =
+  | { type: "entity"; kind: EntityKind; value: string }
+  | { type: "compound"; id: string }
+  | { type: "source"; id: string };
+
+export type ComposeNeighborhoodParams = NeighborhoodFocusParams & {
+  /** Neighbors per class. Default 20, max 100 (silently clamped). */
+  limit?: number;
+  /** Neighbor expansions used for induced edges. Default 3, max 5. */
+  fanout?: number;
+};
+
+/** Default / max neighbors per class. */
+export const NEIGHBORHOOD_DEFAULT_LIMIT = 20;
+export const NEIGHBORHOOD_MAX_LIMIT = 100;
+/**
+ * Default / max fan-out: how many neighbors get expanded to find induced
+ * edges. This is the N+1 guard — `buildCitationGraph` is ~4 round trips
+ * each, so the cap keeps the worst case bounded (see design.md Part 2).
+ */
+export const NEIGHBORHOOD_DEFAULT_FANOUT = 3;
+export const NEIGHBORHOOD_MAX_FANOUT = 5;
+
+/** Hard cap on fact rows scanned by {@link getFactLinks}. */
+export const FACT_LINK_SCAN_CAP = 5000;
+
+/**
+ * Thrown when a `compound` / `source` focus id does not resolve to a row.
+ * The route layer maps this to HTTP 404 (an unmatched *entity* value is
+ * NOT an error — it resolves to an empty neighborhood, per `expandEntity`).
+ */
+export class FocusNotFoundError extends Error {
+  readonly focusType: "compound" | "source";
+  readonly id: string;
+  constructor(focusType: "compound" | "source", id: string) {
+    super(`${focusType} not found: ${id}`);
+    this.name = "FocusNotFoundError";
+    this.focusType = focusType;
+    this.id = id;
+  }
+}
+
+/** One compound<->source fact link. Both endpoints are always non-null. */
+export type FactLink = {
+  fact_id: string;
+  source_id: string;
+  compound_canonical_id: string;
+};
+
+/** Minimal source row for graph hydration. */
+export type GraphSourceRow = {
+  id: string;
+  title: string;
+  doi: string | null;
+  url: string | null;
+};
+
+/** Minimal canonical-compound row for graph hydration. */
+export type GraphCompoundRow = {
+  id: string;
+  canonical_name: string;
+  fact_count: number;
+};
+
+// --- Batched hydration helpers ---------------------------------------------
+
+/**
+ * Batched fact-link read: every `(source_id, compound_canonical_id)` pair
+ * matching the given id sets, in ONE query. Passing both sets ANDs them —
+ * that is exactly the `reports` induced-edge query (links whose BOTH
+ * endpoints are in the neighbor set). Facts with a NULL compound or source
+ * are skipped: they cannot be an edge.
+ *
+ * Read-only. Returns `[]` when both id sets are empty (no query issued).
+ */
+export async function getFactLinks(params: {
+  compoundIds?: string[];
+  sourceIds?: string[];
+  limit?: number;
+}): Promise<FactLink[]> {
+  const compoundIds = distinct(params.compoundIds ?? []);
+  const sourceIds = distinct(params.sourceIds ?? []);
+  if (compoundIds.length === 0 && sourceIds.length === 0) return [];
+
+  let q = supabase
+    .from("research_bioprospecting_facts")
+    .select("id, source_id, compound_canonical_id")
+    .not("compound_canonical_id", "is", null)
+    .not("source_id", "is", null);
+  if (compoundIds.length > 0) q = q.in("compound_canonical_id", compoundIds);
+  if (sourceIds.length > 0) q = q.in("source_id", sourceIds);
+
+  const { data, error } = await q.limit(
+    clampLimit(params.limit, FACT_LINK_SCAN_CAP, FACT_LINK_SCAN_CAP),
+  );
+  if (error) throw error;
+
+  const out: FactLink[] = [];
+  for (const row of (data ?? []) as Array<{
+    id: string;
+    source_id: string | null;
+    compound_canonical_id: string | null;
+  }>) {
+    if (!row.source_id || !row.compound_canonical_id) continue;
+    out.push({
+      fact_id: row.id,
+      source_id: row.source_id,
+      compound_canonical_id: row.compound_canonical_id,
+    });
+  }
+  return out;
+}
+
+/** Batched `research_sources` hydration. Read-only; `[]` for an empty input. */
+export async function getSourcesByIds(
+  ids: string[],
+): Promise<GraphSourceRow[]> {
+  const unique = distinct(ids);
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("research_sources")
+    .select("id, title, doi, url")
+    .in("id", unique);
+  if (error) throw error;
+  return ((data ?? []) as Array<{
+    id: string;
+    title: string | null;
+    doi: string | null;
+    url: string | null;
+  }>).map((row) => ({
+    id: row.id,
+    title: row.title ?? "",
+    doi: row.doi ?? null,
+    url: row.url ?? null,
+  }));
+}
+
+/**
+ * Batched canonical-compound hydration off the aggregates matview (it
+ * carries `fact_count`, which doubles as the node weight). A compound with
+ * zero facts is absent from the matview — and absent from a fact-derived
+ * graph by definition.
+ *
+ * Read-only; `[]` for an empty input.
+ */
+export async function getCompoundsByIds(
+  ids: string[],
+): Promise<GraphCompoundRow[]> {
+  const unique = distinct(ids);
+  if (unique.length === 0) return [];
+  const { data, error } = await supabase
+    .from("research_graph_compound_aggregates")
+    .select("compound_id, canonical_name, fact_count")
+    .in("compound_id", unique);
+  if (error) throw error;
+  return ((data ?? []) as Array<{
+    compound_id: string;
+    canonical_name: string | null;
+    fact_count: number | string | null;
+  }>).map((row) => ({
+    id: row.compound_id,
+    canonical_name: row.canonical_name ?? "",
+    fact_count: Number(row.fact_count ?? 0),
+  }));
+}
+
+// --- Pure id/format helpers -------------------------------------------------
+
+/** Distinct, non-empty strings, first-seen order. */
+function distinct(values: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const v of values) {
+    if (typeof v !== "string" || !v) continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
+/** `entity:{kind}:{value}` — matches the client's existing id convention. */
+export function entityNodeId(kind: string, value: string): string {
+  return `entity:${kind}:${value}`;
+}
+/** `compound:{uuid}` */
+export function compoundNodeId(id: string): string {
+  return `compound:${id}`;
+}
+/** `source:{uuid}` */
+export function sourceNodeId(id: string): string {
+  return `source:${id}`;
+}
+
+/** Undirected, per-type edge key. `a-b` and `b-a` collapse to one edge. */
+function edgeKey(edge: {
+  source: string;
+  target: string;
+  type: GraphEdgeType;
+}): string {
+  return `${edge.type}|${[edge.source, edge.target].sort().join("|")}`;
+}
+
+// --- composeNeighborhood ----------------------------------------------------
+
+type NeighborCompound = { id: string; label: string; factCount: number };
+type NeighborSource = {
+  id: string;
+  label: string;
+  doi: string | null;
+  url: string | null;
+  factCount: number;
+};
+
+/**
+ * Compose the 1-hop neighborhood of a focus node PLUS the induced subgraph
+ * among its neighbors.
+ *
+ * Steps (see design.md Part 2):
+ *   1. Resolve the focus and its neighbor sets (`N_c` compounds, `N_s` sources).
+ *   2. Emit the focus->neighbor spokes.
+ *   3. Induced edges, each pruned to endpoints that are BOTH in the neighbor
+ *      set — that pruning is what makes the subgraph *induced*:
+ *        a. `reports`        — one batched `getFactLinks({N_c, N_s})`
+ *        b. `co_occurs_with` — `getTopCoOccurring` on the top-`fanout` of N_c
+ *        c. `related_source` — `buildCitationGraph` on the top-`fanout` of N_s
+ *      Each class short-circuits when it has < 2 neighbors (nothing can be
+ *      induced between fewer than two nodes).
+ *   4. Dedupe (nodes by id, edges by type + unordered pair, max weight wins),
+ *      sort by weight desc.
+ *
+ * Read-only. No LLM. Throws {@link UnknownEntityKindError} (-> 400) and
+ * {@link FocusNotFoundError} (-> 404); an entity value that matches nothing
+ * resolves to a focus-only neighborhood (200, empty-not-error).
+ */
+export async function composeNeighborhood(
+  params: ComposeNeighborhoodParams,
+): Promise<NeighborhoodResult> {
+  const startedAt = Date.now();
+  const limit = clampLimit(
+    params.limit,
+    NEIGHBORHOOD_DEFAULT_LIMIT,
+    NEIGHBORHOOD_MAX_LIMIT,
+  );
+  const fanout = clampLimit(
+    params.fanout,
+    NEIGHBORHOOD_DEFAULT_FANOUT,
+    NEIGHBORHOOD_MAX_FANOUT,
+  );
+
+  const nodes = new Map<string, NeighborhoodNode>();
+  const edges = new Map<string, NeighborhoodEdge>();
+
+  /** First write wins (the focus is written first). */
+  const addNode = (node: NeighborhoodNode): void => {
+    if (!nodes.has(node.id)) nodes.set(node.id, node);
+  };
+  /** Undirected dedupe per type; on collision the max weight wins. */
+  const addEdge = (edge: NeighborhoodEdge): void => {
+    if (edge.source === edge.target) return;
+    const key = edgeKey(edge);
+    const prev = edges.get(key);
+    if (!prev) {
+      edges.set(key, edge);
+      return;
+    }
+    if (edge.weight > prev.weight) {
+      edges.set(key, { ...prev, weight: edge.weight, label: edge.label ?? prev.label });
+    }
+  };
+
+  const compoundNeighbors = new Map<string, NeighborCompound>();
+  const sourceNeighbors = new Map<string, NeighborSource>();
+  /**
+   * Source focus only: facts joining the focus source to each neighbor
+   * compound. That count — not the compound's global `fact_count` — is the
+   * weight of the `reports` spoke.
+   */
+  let focusLinkCount = new Map<string, number>();
+
+  // --- 1) Resolve the focus + its neighbor sets ------------------------------
+  let focus: NeighborhoodNode;
+
+  if (params.type === "entity") {
+    // `value` is passed to expandEntity VERBATIM — normalization lives in SQL.
+    const expansion = await expandEntity({
+      kind: params.kind,
+      value: params.value,
+      limit,
+    });
+    focus = {
+      id: entityNodeId(params.kind, params.value),
+      type: "entity",
+      label: params.value,
+      meta: { kind: params.kind, value: params.value },
+    };
+    for (const c of expansion.compounds) {
+      compoundNeighbors.set(c.id, {
+        id: c.id,
+        label: c.canonical_name,
+        factCount: c.fact_count,
+      });
+    }
+    for (const s of expansion.sources) {
+      sourceNeighbors.set(s.id, {
+        id: s.id,
+        label: s.title,
+        doi: s.doi,
+        url: s.url,
+        factCount: s.fact_count,
+      });
+    }
+  } else if (params.type === "compound") {
+    const [row] = await getCompoundsByIds([params.id]);
+    if (!row) throw new FocusNotFoundError("compound", params.id);
+    focus = {
+      id: compoundNodeId(row.id),
+      type: "compound",
+      label: row.canonical_name,
+      meta: { factCount: row.fact_count },
+    };
+
+    const [coOccurring, links] = await Promise.all([
+      getTopCoOccurring(params.id, limit),
+      getFactLinks({ compoundIds: [params.id] }),
+    ]);
+    for (const c of coOccurring) {
+      compoundNeighbors.set(c.compound_id, {
+        id: c.compound_id,
+        label: c.canonical_name,
+        factCount: c.fact_count,
+      });
+    }
+    const linkCount = countBySource(links);
+    const sourceIds = [...linkCount.keys()]
+      .sort((a, b) => (linkCount.get(b) ?? 0) - (linkCount.get(a) ?? 0))
+      .slice(0, limit);
+    for (const s of await getSourcesByIds(sourceIds)) {
+      sourceNeighbors.set(s.id, {
+        id: s.id,
+        label: s.title,
+        doi: s.doi,
+        url: s.url,
+        factCount: linkCount.get(s.id) ?? 0,
+      });
+    }
+  } else {
+    const [row] = await getSourcesByIds([params.id]);
+    if (!row) throw new FocusNotFoundError("source", params.id);
+    focus = {
+      id: sourceNodeId(row.id),
+      type: "source",
+      label: row.title,
+      meta: { doi: row.doi, url: row.url },
+    };
+
+    const [links, citation] = await Promise.all([
+      getFactLinks({ sourceIds: [params.id] }),
+      buildCitationGraph({ sourceId: params.id, limit }),
+    ]);
+    focusLinkCount = countByCompound(links);
+    const compoundIds = [...focusLinkCount.keys()]
+      .sort(
+        (a, b) => (focusLinkCount.get(b) ?? 0) - (focusLinkCount.get(a) ?? 0),
+      )
+      .slice(0, limit);
+    for (const c of await getCompoundsByIds(compoundIds)) {
+      compoundNeighbors.set(c.id, {
+        id: c.id,
+        label: c.canonical_name,
+        factCount: c.fact_count,
+      });
+    }
+    for (const e of citation.edges) {
+      if (e.otherSourceId === params.id) continue;
+      sourceNeighbors.set(e.otherSourceId, {
+        id: e.otherSourceId,
+        label: e.otherTitle,
+        doi: e.otherDoi,
+        url: null,
+        // The citation weight IS this neighbor's strength; there is no
+        // fact_count in the citation payload.
+        factCount: e.weight,
+      });
+      addEdge({
+        source: focus.id,
+        target: sourceNodeId(e.otherSourceId),
+        type: "related_source",
+        weight: e.weight,
+        label: e.kinds.join(", "),
+      });
+    }
+  }
+
+  addNode(focus);
+  for (const c of compoundNeighbors.values()) {
+    addNode({
+      id: compoundNodeId(c.id),
+      type: "compound",
+      label: c.label,
+      meta: { factCount: c.factCount },
+    });
+  }
+  for (const s of sourceNeighbors.values()) {
+    addNode({
+      id: sourceNodeId(s.id),
+      type: "source",
+      label: s.label,
+      meta: { factCount: s.factCount, doi: s.doi, url: s.url },
+    });
+  }
+
+  // --- 2) Spokes: focus -> neighbor ----------------------------------------
+  //
+  // Spoke TYPE follows the focus type: an entity links to its compounds and
+  // sources structurally (`has_compound` / `has_source`), while a compound
+  // focus links to a source through facts (`reports`) and to another compound
+  // through shared sources (`co_occurs_with`). A source focus's spokes to
+  // other sources are citation edges (`related_source`, emitted above).
+  if (params.type === "entity") {
+    for (const c of compoundNeighbors.values()) {
+      addEdge({
+        source: focus.id,
+        target: compoundNodeId(c.id),
+        type: "has_compound",
+        weight: c.factCount,
+      });
+    }
+    for (const s of sourceNeighbors.values()) {
+      addEdge({
+        source: focus.id,
+        target: sourceNodeId(s.id),
+        type: "has_source",
+        weight: s.factCount,
+      });
+    }
+  } else if (params.type === "compound") {
+    for (const c of compoundNeighbors.values()) {
+      addEdge({
+        source: focus.id,
+        target: compoundNodeId(c.id),
+        type: "co_occurs_with",
+        weight: c.factCount,
+      });
+    }
+    for (const s of sourceNeighbors.values()) {
+      addEdge({
+        source: focus.id,
+        target: sourceNodeId(s.id),
+        type: "reports",
+        weight: s.factCount,
+      });
+    }
+  } else {
+    for (const c of compoundNeighbors.values()) {
+      addEdge({
+        source: compoundNodeId(c.id),
+        target: focus.id,
+        type: "reports",
+        weight: focusLinkCount.get(c.id) ?? 1,
+      });
+    }
+  }
+
+  // --- 3) Induced subgraph among the neighbors ------------------------------
+  const neighborCompoundIds = [...compoundNeighbors.keys()];
+  const neighborSourceIds = [...sourceNeighbors.keys()];
+
+  // 3a) reports — compound <-> source, fact-backed. ONE batched query; the
+  //     AND of both id sets means every returned link already has BOTH
+  //     endpoints inside the neighbor set.
+  if (neighborCompoundIds.length > 0 && neighborSourceIds.length > 0) {
+    const links = await getFactLinks({
+      compoundIds: neighborCompoundIds,
+      sourceIds: neighborSourceIds,
+    });
+    const pairCounts = new Map<string, number>();
+    for (const link of links) {
+      const key = `${link.compound_canonical_id}|${link.source_id}`;
+      pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
+    }
+    for (const [key, count] of pairCounts) {
+      const [compoundId, sourceId] = key.split("|");
+      addEdge({
+        source: compoundNodeId(compoundId),
+        target: sourceNodeId(sourceId),
+        type: "reports",
+        weight: count,
+      });
+    }
+  }
+
+  // 3b) co_occurs_with — compound <-> compound. Fan-out bounded: only the
+  //     top-`fanout` neighbor compounds are expanded, in one Promise.all wave.
+  if (neighborCompoundIds.length >= 2) {
+    const seeds = topBy([...compoundNeighbors.values()], fanout);
+    const results = await Promise.all(
+      seeds.map((seed) => getTopCoOccurring(seed.id, limit)),
+    );
+    seeds.forEach((seed, i) => {
+      for (const hit of results[i] ?? []) {
+        // INDUCED: keep only edges whose other endpoint is a neighbor too.
+        if (!compoundNeighbors.has(hit.compound_id)) continue;
+        addEdge({
+          source: compoundNodeId(seed.id),
+          target: compoundNodeId(hit.compound_id),
+          type: "co_occurs_with",
+          weight: hit.fact_count,
+        });
+      }
+    });
+  }
+
+  // 3c) related_source — source <-> source. Same fan-out bound;
+  //     `buildCitationGraph` is the expensive term (~4 round trips each).
+  if (neighborSourceIds.length >= 2) {
+    const seeds = topBy([...sourceNeighbors.values()], fanout);
+    const results = await Promise.all(
+      seeds.map((seed) => buildCitationGraph({ sourceId: seed.id, limit })),
+    );
+    seeds.forEach((seed, i) => {
+      for (const edge of results[i]?.edges ?? []) {
+        // INDUCED: keep only edges whose other endpoint is a neighbor too.
+        if (!sourceNeighbors.has(edge.otherSourceId)) continue;
+        addEdge({
+          source: sourceNodeId(seed.id),
+          target: sourceNodeId(edge.otherSourceId),
+          type: "related_source",
+          weight: edge.weight,
+          label: edge.kinds.join(", "),
+        });
+      }
+    });
+  }
+
+  // --- 4) Emit --------------------------------------------------------------
+  // Defensive: an edge must never reference an id absent from `nodes`.
+  const emittedEdges = [...edges.values()]
+    .filter((e) => nodes.has(e.source) && nodes.has(e.target))
+    .sort((a, b) => b.weight - a.weight);
+  const emittedNodes = [...nodes.values()];
+
+  return {
+    focus,
+    nodes: emittedNodes,
+    edges: emittedEdges,
+    meta: {
+      limit,
+      fanout,
+      elapsed: Date.now() - startedAt,
+      counts: { nodes: emittedNodes.length, edges: emittedEdges.length },
+    },
+  };
+}
+
+/** Count fact links per `source_id`. Pure. */
+function countBySource(links: FactLink[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const l of links) m.set(l.source_id, (m.get(l.source_id) ?? 0) + 1);
+  return m;
+}
+
+/** Count fact links per `compound_canonical_id`. Pure. */
+function countByCompound(links: FactLink[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const l of links) {
+    m.set(
+      l.compound_canonical_id,
+      (m.get(l.compound_canonical_id) ?? 0) + 1,
+    );
+  }
+  return m;
+}
+
+/** Top-N neighbors by `factCount` desc, id asc for a stable tie-break. Pure. */
+function topBy<T extends { id: string; factCount: number }>(
+  items: T[],
+  n: number,
+): T[] {
+  return [...items]
+    .sort((a, b) =>
+      b.factCount !== a.factCount
+        ? b.factCount - a.factCount
+        : a.id.localeCompare(b.id),
+    )
+    .slice(0, n);
 }

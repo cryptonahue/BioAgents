@@ -274,9 +274,33 @@ describe("GET /api/research-brain/citations/:sourceId (no neighbors)", () => {
 
 describe("GET /api/research-brain/citations/:sourceId (sorted edges)", () => {
   it("returns edges sorted by weight desc", async () => {
+    // Query order (see `buildCitationGraph`): focus row -> focus canonical
+    // keys -> OR-branches (only the compound branch fires here: the focus
+    // has no species key and no DOI) -> candidate hydration.
     client = scriptedMock(
       [
+        // 1) focus row
         { kind: "single", data: { id: TEST_SOURCE_ID, doi: null }, error: null },
+        // 2) focus canonical keys
+        {
+          kind: "many",
+          data: [
+            { compound_canonical_id: "C1", species_taxon_id: null },
+            { compound_canonical_id: "C2", species_taxon_id: null },
+          ],
+          error: null,
+        },
+        // 3) compound OR-branch: rows are, by construction, overlaps
+        {
+          kind: "many",
+          data: [
+            { source_id: "src2", compound_canonical_id: "C1" },
+            { source_id: "src3", compound_canonical_id: "C1" },
+            { source_id: "src3", compound_canonical_id: "C2" },
+          ],
+          error: null,
+        },
+        // 4) candidate hydration
         {
           kind: "many",
           data: [
@@ -295,16 +319,6 @@ describe("GET /api/research-brain/citations/:sourceId (sorted edges)", () => {
           ],
           error: null,
         },
-        {
-          kind: "many",
-          data: [
-            { source_id: "src2", compound_canonical_id: "C1" },
-            { source_id: "src3", compound_canonical_id: "C1" },
-            { source_id: "src3", compound_canonical_id: "C2" },
-          ],
-          error: null,
-        },
-        { kind: "many", data: [], error: null }, // species
       ],
       calls,
     );
@@ -339,7 +353,16 @@ describe("GET /api/research-brain/citations/:sourceId (limit clamp)", () => {
     // mock's recorded calls.
     client = scriptedMock(
       [
-        { kind: "single", data: { id: TEST_SOURCE_ID, doi: null }, error: null },
+        // 1) focus row — WITH a DOI, so the DOI OR-branch queries
+        //    `research_sources` and we can inspect its bound.
+        {
+          kind: "single",
+          data: { id: TEST_SOURCE_ID, doi: "10.3390/md23050044" },
+          error: null,
+        },
+        // 2) focus canonical keys (none)
+        { kind: "many", data: [], error: null },
+        // 3) DOI OR-branch (no same-DOI source)
         { kind: "many", data: [], error: null },
       ],
       calls,
@@ -353,12 +376,14 @@ describe("GET /api/research-brain/citations/:sourceId (limit clamp)", () => {
       ),
     );
     expect(res.status).toBe(200);
-    // The candidate SELECT's limit arg should be the cap (100) * 10 = 1000.
+    // limit is clamped to CITATION_GRAPH_MAX_LIMIT (100), so the
+    // `research_sources` scan is bounded by
+    // candidateLimit = min(500, 100 * 10) = 500.
     const limitCall = calls.find(
       (c) => c.method === "limit" && c.table === "research_sources",
     );
     expect(limitCall).toBeDefined();
-    expect(limitCall!.args[0]).toBeLessThanOrEqual(1000);
+    expect(limitCall!.args[0]).toBeLessThanOrEqual(500);
   });
 });
 
