@@ -391,7 +391,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               </div>
               <div className="brain-filter-row">
                 <label>
-                  Valor mínimo
+                  Minimum value
                   <input
                     type="number"
                     value={measurementMin}
@@ -402,7 +402,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   />
                 </label>
                 <label>
-                  Unidad
+                  Unit
                   <select
                     value={measurementUnit}
                     onChange={(e) =>
@@ -530,9 +530,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   </div>
                   <div className="brain-plan-stats">
                     <span>{facts.length} facts</span>
-                    <span>{directCount} directas</span>
-                    <span>{indirectCount} indirectas</span>
-                    <span>{hypothesisCount} hipótesis</span>
+                    <span>{directCount} direct</span>
+                    <span>{indirectCount} indirect</span>
+                    <span>{hypothesisCount} hypothesis</span>
                   </div>
                 </div>
 
@@ -569,19 +569,19 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("verified")}
                     >
-                      Verificar
+                      Verify
                     </button>
                     <button
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("needs_review")}
                     >
-                      Revisar
+                      Review
                     </button>
                     <button
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("incorrect")}
                     >
-                      Incorrecto
+                      Incorrect
                     </button>
                     <button
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
@@ -648,7 +648,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             .length > 0 && (
                             <div className="brain-correction-history">
                               <div className="brain-correction-title">
-                                Última corrección
+                                Last correction
                                 {fact.lastEntityCorrection.correctedAt
                                   ? ` · ${new Date(
                                       fact.lastEntityCorrection.correctedAt,
@@ -782,7 +782,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             <button
                               onClick={() => route(fact.evidenceUrl || "")}
                             >
-                              fragmento {fact.chunkIndex ?? ""}
+                              fragment {fact.chunkIndex ?? ""}
                             </button>
                           )}
                         </div>
@@ -793,7 +793,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
 
                         <div className="brain-entity-editor">
                           <div className="brain-entity-editor-title">
-                            Corrección de entidades
+                            Entity correction
                           </div>
                           <div className="brain-entity-grid">
                             {ENTITY_FIELDS.map((field) => (
@@ -817,7 +817,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             disabled={updatingEntityFactId === fact.id}
                             onClick={() => handleSaveEntities(fact)}
                           >
-                            Guardar entidades
+                            Save entities
                           </button>
                         </div>
 
@@ -851,13 +851,13 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                               )
                             }
                           >
-                            Guardar nota
+                            Save note
                           </button>
                           <button
                             disabled={reviewingFactId === fact.id}
                             onClick={() => handleReviewFact(fact, "verified")}
                           >
-                            Verificar
+                            Verify
                           </button>
                           <button
                             disabled={reviewingFactId === fact.id}
@@ -865,13 +865,13 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                               handleReviewFact(fact, "needs_review")
                             }
                           >
-                            Revisar
+                            Review
                           </button>
                           <button
                             disabled={reviewingFactId === fact.id}
                             onClick={() => handleReviewFact(fact, "incorrect")}
                           >
-                            Incorrecto
+                            Incorrect
                           </button>
                           <button
                             disabled={reviewingFactId === fact.id}
@@ -911,7 +911,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                         </button>
                       ))}
                       {evidencePack.sources.length === 0 && (
-                        <span className="brain-side-empty">Sin fuentes.</span>
+                        <span className="brain-side-empty">No sources.</span>
                       )}
                     </div>
                   </aside>

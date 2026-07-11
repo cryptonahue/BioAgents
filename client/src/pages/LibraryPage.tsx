@@ -176,16 +176,14 @@ function PaperCard({
                 >
                   <Icon name="microscope" size={12} />
                   {paper.evidenceCount === 0
-                    ? "Sin evidencias"
-                    : `${paper.evidenceCount} evidencia${
-                        paper.evidenceCount === 1 ? "" : "s"
-                      }`}
+                    ? "No evidence"
+                    : `${paper.evidenceCount} evidence`}
                 </span>
               )}
               {typeof paper.bioprospectingFactCount === "number" &&
                 paper.bioprospectingFactCount > 0 && (
                   <span className="paper-biofacts">
-                    {paper.bioprospectingFactCount} datos
+                    {paper.bioprospectingFactCount} facts
                   </span>
                 )}
               {paper.trustTier && (
@@ -200,7 +198,7 @@ function PaperCard({
                 <span className="paper-tag">{paper.type.toUpperCase()}</span>
               )}
               {paper.chunkCount != null && (
-                <span>{paper.chunkCount} fragmentos</span>
+                <span>{paper.chunkCount} fragments</span>
               )}
               {paper.size ? (
                 <span title={`${paper.size} bytes`}>
@@ -311,7 +309,7 @@ function PaperRow({
             >
               <Icon name="microscope" size={11} />
               {paper.evidenceCount === 0
-                ? "Sin evidencias"
+                ? "No evidence"
                 : `${paper.evidenceCount} ev.`}
             </span>
           )}
@@ -319,7 +317,7 @@ function PaperRow({
           {typeof paper.bioprospectingFactCount === "number" &&
             paper.bioprospectingFactCount > 0 && (
               <span className="paper-biofacts">
-                {paper.bioprospectingFactCount} datos
+                {paper.bioprospectingFactCount} facts
               </span>
             )}
           {paper.trustTier && (

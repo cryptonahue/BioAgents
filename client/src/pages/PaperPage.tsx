@@ -163,7 +163,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                       setFocusedFragment(null);
                       if (docId) route(`/library/${docId}`, true);
                     }}
-                    aria-label="Cerrar fragmento enfocado"
+                    aria-label="Close focused fragment"
                   >
                     ×
                   </button>
@@ -329,7 +329,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                             return (
                               <div key={key} className="paper-source-detail">
                                 <span className="paper-source-detail-idx">
-                                  [{s.index}] fragmento {s.chunkIndex}
+                                  [{s.index}] fragment {s.chunkIndex}
                                 </span>
                                 <p>{s.snippet}…</p>
                               </div>
@@ -379,8 +379,8 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                 </label>
                 <span className="paper-mode-hint">
                   {fullContext && !fullContextTooBig
-                    ? "Contexto completo"
-                    : "RAG (fragmentos)"}
+                    ? "Full context"
+                    : "RAG (fragments)"}
                 </span>
               </div>
               <div className="paper-input-row">
