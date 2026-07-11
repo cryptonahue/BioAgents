@@ -65,7 +65,7 @@ export function resolveLLM(opts: ResolveLLMOptions): ResolvedLLM {
   // Built inside the function (not at module load) for TDZ safety in the worker.
   const defaultModels: Record<LLMProviderName, string> = {
     anthropic: process.env.DEFAULT_ANTHROPIC_MODEL || "claude-sonnet-4-6",
-    openrouter: process.env.DEFAULT_OPENROUTER_MODEL || "qwen/qwen3.6-plus",
+    openrouter: process.env.DEFAULT_OPENROUTER_MODEL || "minimax/minimax-m3",
     openai: process.env.DEFAULT_OPENAI_MODEL || "gpt-4o",
     google: process.env.DEFAULT_GOOGLE_MODEL || "gemini-2.5-pro",
   };
