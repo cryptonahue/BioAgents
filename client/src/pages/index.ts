@@ -14,3 +14,4 @@ export { CorpusDashboardPage } from './CorpusDashboardPage';
 export { AdminPage } from './AdminPage';
 export { ViewerPage } from './ViewerPage';
 export { LibraryViewerPage } from './LibraryViewerPage';
+export { SettingsPage } from './SettingsPage';

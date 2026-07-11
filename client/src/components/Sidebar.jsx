@@ -1,14 +1,43 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
 import { Button, IconButton } from './ui';
+import { Icon } from './icons';
 import { useAuth, useAdmin } from '../hooks';
 import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
 
 export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout, currentPath = '' }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { logout, isLoggingOut } = useAuth();
+  const { logout, isLoggingOut, userEmail } = useAuth();
   const { isAdmin } = useAdmin();
   const { version, sha, buildDate } = useVersion();
+
+  // User identity derived from the signed-in email. Username is the local part
+  // of the address; the avatar shows its first character uppercased.
+  const username = userEmail ? userEmail.split('@')[0] : 'Account';
+  const avatarInitial = (username.charAt(0) || 'U').toUpperCase();
+
+  // User menu popover (opens upward from the footer pill).
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close the user menu on outside click and on Escape.
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onPointer = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [userMenuOpen]);
 
   // Active section highlight. Falls back to the live pathname so the
   // sidebar still marks the right item if the parent doesn't pass it.
@@ -328,16 +357,50 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
           </div>
 
           <div className="sidebar-footer">
-            <Button
-              variant="ghost"
-              icon="logout"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="sidebar-logout-btn"
-              title="Logout"
-            >
-              {isLoggingOut ? 'Logging out...' : 'Logout'}
-            </Button>
+            <div className="sidebar-user" ref={userMenuRef}>
+              <button
+                type="button"
+                className={`sidebar-user-trigger${userMenuOpen ? ' open' : ''}`}
+                onClick={() => setUserMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                title={userEmail || 'Account'}
+              >
+                <span className="sidebar-user-avatar">{avatarInitial}</span>
+                <span className="sidebar-user-name">{username}</span>
+                <Icon name="chevronDown" size={16} className="sidebar-user-chevron" />
+              </button>
+              {userMenuOpen && (
+                <div className="sidebar-user-menu" role="menu">
+                  <div className="sidebar-user-menu-email">
+                    {userEmail || 'Signed in'}
+                  </div>
+                  <div className="sidebar-user-menu-sep" />
+                  <button
+                    type="button"
+                    className="sidebar-user-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      route('/settings');
+                    }}
+                  >
+                    <Icon name="settings" size={16} />
+                    <span>Settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="sidebar-user-menu-item sidebar-user-menu-item--danger"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                  >
+                    <Icon name="logout" size={16} />
+                    <span>{isLoggingOut ? 'Logging out…' : 'Log out'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="sidebar-powered-by">
               <span className="sidebar-powered-label">powered by</span>
               <img

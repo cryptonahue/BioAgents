@@ -83,6 +83,7 @@ body {
 .app-content > .paper-page,
 .app-content > .admin-page,
 .app-content > .corpus-page,
+.app-content > .settings-page,
 .app-content > .viewer-page {
   flex: 1;
   min-height: 0;
@@ -581,19 +582,22 @@ body {
   cursor: default;
 }
 
-.sidebar-logout-btn {
+/* User menu (ChatGPT/Claude-style pill + upward popover) */
+.sidebar-user {
+  position: relative;
+}
+
+.sidebar-user-trigger {
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 10px;
   background: transparent;
   border: none;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   gap: 10px;
   cursor: pointer;
-  color: var(--text-tertiary);
-  font-size: 14px;
+  color: var(--text-secondary);
   font-family:
     "Inter",
     -apple-system,
@@ -601,20 +605,211 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  transition: all 0.15s;
+  transition: background 0.15s ease;
 }
 
-.sidebar-logout-btn:hover {
+.sidebar-user-trigger:hover,
+.sidebar-user-trigger.open {
   background: var(--bg-hover);
-  color: var(--text-secondary);
 }
 
-.sidebar-logout-btn svg {
-  width: 18px;
-  height: 18px;
+.sidebar-user-avatar {
   flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sidebar-user-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.sidebar-user-trigger.open .sidebar-user-chevron {
+  transform: rotate(180deg);
+}
+
+/* Popover opens upward, above the pill. */
+.sidebar-user-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-user-menu-email {
+  padding: 8px 10px 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-menu-sep {
+  height: 1px;
+  margin: 2px 0;
+  background: var(--border-color);
+}
+
+.sidebar-user-menu-item {
+  width: 100%;
+  padding: 9px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-user-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-user-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sidebar-user-menu-item svg {
+  flex-shrink: 0;
+}
+
+.sidebar-user-menu-item--danger {
+  color: var(--error-color, #ef4444);
+}
+
+.sidebar-user-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--error-color, #ef4444) 12%, transparent);
+  color: var(--error-color, #ef4444);
+}
+
+/* Settings page (mirrors library-page/library-main layout) */
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.settings-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 24px 64px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.settings-heading h1 {
+  font-size: 26px;
+  margin: 0 0 8px;
+}
+
+.settings-heading p {
+  color: var(--text-secondary);
+  margin: 0 0 28px;
+  line-height: 1.5;
+}
+
+.settings-section {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  padding: 20px;
+}
+
+.settings-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: var(--text-primary);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.settings-row-label {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.settings-row-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--error-color, #ef4444);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.settings-logout-btn:hover {
+  background: color-mix(in srgb, var(--error-color, #ef4444) 12%, transparent);
+}
+
+.settings-logout-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Main content area */

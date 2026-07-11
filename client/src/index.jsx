@@ -7,7 +7,7 @@ import { CDPProvider } from './providers/CDPProvider';
 import { CoralPrivyProvider } from './providers/PrivyProvider';
 import { AuthProvider } from './contexts';
 import { ProvenanceProvider } from './contexts/ProvenanceContext';
-import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, ViewerPage, LibraryViewerPage } from './pages';
+import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, ViewerPage, LibraryViewerPage, SettingsPage } from './pages';
 import { useAuth } from './hooks';
 import { AppLayout } from './components/AppLayout';
 import { Footer } from './components/Footer';
@@ -79,6 +79,7 @@ function LegacyAppShell() {
         <LayoutRoute path="/brain" component={ResearchBrainPage} />
         <LayoutRoute path="/corpus" component={CorpusDashboardPage} />
         <LayoutRoute path="/admin" component={AdminPage} />
+        <LayoutRoute path="/settings" component={SettingsPage} />
         <Redirect path="/" to="/chat" />
         <NotFound default redirectTo="/chat" />
       </Router>
@@ -130,6 +131,7 @@ function CoralAppShell() {
         <LayoutRoute path="/viewer/:sourceId" component={ViewerPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/brain" component={ResearchBrainPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/admin" component={AdminPage} coralGptMode privyLogout={privyLogout} />
+        <LayoutRoute path="/settings" component={SettingsPage} coralGptMode privyLogout={privyLogout} />
         <NotFound default redirectTo="/" />
       </Router>
       <Footer />
