@@ -20,6 +20,8 @@
 services:
   worker:
     build: .
+    image: bioagents-worker
+    container_name: bioagents-worker
     command: ["bun", "run", "src/worker.ts"]
 
     # Coolify label to override default 30s stop timeout

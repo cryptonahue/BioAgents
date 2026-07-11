@@ -36,25 +36,25 @@ AS $$
     '1d'::text AS window_label,
     COUNT(*)::bigint AS found,
     COUNT(*) FILTER (
-      WHERE resolution_status = 'resolved' AND resolved_at >= NOW() - window_1d
+      WHERE status = 'resolved' AND resolved_at >= NOW() - window_1d
     )::bigint AS resolved,
     COUNT(*) FILTER (
-      WHERE resolution_status = 'dismissed' AND resolved_at >= NOW() - window_1d
+      WHERE status = 'dismissed' AND resolved_at >= NOW() - window_1d
     )::bigint AS dismissed
   FROM public.research_bioprospecting_contradictions
-  WHERE created_at >= NOW() - window_1d
+  WHERE detected_at >= NOW() - window_1d
   UNION ALL
   SELECT
     '7d'::text AS window_label,
     COUNT(*)::bigint AS found,
     COUNT(*) FILTER (
-      WHERE resolution_status = 'resolved' AND resolved_at >= NOW() - window_7d
+      WHERE status = 'resolved' AND resolved_at >= NOW() - window_7d
     )::bigint AS resolved,
     COUNT(*) FILTER (
-      WHERE resolution_status = 'dismissed' AND resolved_at >= NOW() - window_7d
+      WHERE status = 'dismissed' AND resolved_at >= NOW() - window_7d
     )::bigint AS dismissed
   FROM public.research_bioprospecting_contradictions
-  WHERE created_at >= NOW() - window_7d;
+  WHERE detected_at >= NOW() - window_7d;
 $$;
 
 -- Restrict execution to the service role. The route authenticates

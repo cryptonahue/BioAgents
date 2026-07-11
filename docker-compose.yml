@@ -60,6 +60,7 @@ services:
   # API Server - Handles HTTP requests and WebSocket connections
   # ==========================================================================
   bioagents:
+    image: bioagents-bioagents
     build:
       context: .
       args:
