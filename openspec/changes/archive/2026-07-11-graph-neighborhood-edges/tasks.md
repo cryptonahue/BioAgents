@@ -74,4 +74,4 @@ Delivery: 2 commits. Commit 1 = backend (this batch). Commit 2 = frontend.
 - `bun run build:client` — succeeds (index.js 7300kb, index.css 132kb).
 - Manual: `/graph` -> search+select -> cross-edges (`co_occurs_with`,
   `related_source`, `reports`) render BETWEEN neighbors, not only as spokes.
-</content>
+
