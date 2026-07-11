@@ -231,6 +231,14 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               Research Brain
             </Button>
+            <Button
+              variant="ghost"
+              icon="share"
+              onClick={() => route('/graph')}
+              className={`sidebar-library-btn${navActive('/graph')}`}
+            >
+              Graph
+            </Button>
             {isAdmin && (
               <Button
                 variant="ghost"

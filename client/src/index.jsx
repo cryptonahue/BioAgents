@@ -7,7 +7,7 @@ import { CDPProvider } from './providers/CDPProvider';
 import { CoralPrivyProvider } from './providers/PrivyProvider';
 import { AuthProvider } from './contexts';
 import { ProvenanceProvider } from './contexts/ProvenanceContext';
-import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, ViewerPage, LibraryViewerPage, SettingsPage } from './pages';
+import { LoginPage, ChatPage, LandingPage, AccessPendingPage, LibraryPage, PaperPage, ResearchBrainPage, CorpusDashboardPage, AdminPage, GraphExplorerPage, ViewerPage, LibraryViewerPage, SettingsPage } from './pages';
 import { useAuth } from './hooks';
 import { AppLayout } from './components/AppLayout';
 import { Footer } from './components/Footer';
@@ -17,6 +17,7 @@ import './styles/library.css';
 import './styles/corpus.css';
 import './styles/admin.css';
 import './styles/provenance.css';
+import './styles/graph.css';
 
 function LoadingScreen() {
   return (
@@ -77,6 +78,7 @@ function LegacyAppShell() {
         <LayoutRoute path="/library/:docId/viewer" component={LibraryViewerPage} />
         <LayoutRoute path="/viewer/:sourceId" component={ViewerPage} />
         <LayoutRoute path="/brain" component={ResearchBrainPage} />
+        <LayoutRoute path="/graph" component={GraphExplorerPage} />
         <LayoutRoute path="/corpus" component={CorpusDashboardPage} />
         <LayoutRoute path="/admin" component={AdminPage} />
         <LayoutRoute path="/settings" component={SettingsPage} />
@@ -130,6 +132,7 @@ function CoralAppShell() {
         <LayoutRoute path="/library/:docId/viewer" component={LibraryViewerPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/viewer/:sourceId" component={ViewerPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/brain" component={ResearchBrainPage} coralGptMode privyLogout={privyLogout} />
+        <LayoutRoute path="/graph" component={GraphExplorerPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/admin" component={AdminPage} coralGptMode privyLogout={privyLogout} />
         <LayoutRoute path="/settings" component={SettingsPage} coralGptMode privyLogout={privyLogout} />
         <NotFound default redirectTo="/" />

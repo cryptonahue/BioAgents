@@ -12,6 +12,7 @@ export { PaperPage } from './PaperPage';
 export { ResearchBrainPage } from './ResearchBrainPage';
 export { CorpusDashboardPage } from './CorpusDashboardPage';
 export { AdminPage } from './AdminPage';
+export { GraphExplorerPage } from './GraphExplorerPage';
 export { ViewerPage } from './ViewerPage';
 export { LibraryViewerPage } from './LibraryViewerPage';
 export { SettingsPage } from './SettingsPage';
