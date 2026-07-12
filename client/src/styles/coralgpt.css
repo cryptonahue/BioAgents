@@ -549,12 +549,26 @@ body.coralgpt-scroll {
  * Footer
  * ------------------------------------------------------------------------- */
 
+/* The theme toggle lives here, so the footer is a row rather than a centered
+   line. The legal text still centers in the space left over: it is `flex: 1` and
+   the toggle is pushed to the trailing edge, so the copyright stays optically
+   centered on the page instead of drifting left by half the toggle's width. */
 .landing-footer {
   border-top: 1px solid var(--border-color);
-  padding: 24px;
-  text-align: center;
+  padding: 16px 24px;
   color: var(--text-tertiary);
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.landing-footer-legal {
+  flex: 1;
+  text-align: center;
+  /* The toggle is 28px wide (Lyra `icon-sm`); reserving the same width on the
+     leading side is what actually centers the text between them. */
+  margin-inline-start: 28px;
 }
 
 .landing-footer a {
@@ -564,6 +578,28 @@ body.coralgpt-scroll {
 
 .landing-footer a:hover {
   color: var(--teal-ink);
+}
+
+/* The two plain anchors on the page — the brand lockup and the footer link. They
+   wear no Basecoat class, so nothing restored a ring for them and they fell back
+   to the UA's `1px auto` default. That IS visible, but it is not the ring the
+   rest of the app uses, and a tab-walk should not change appearance halfway
+   through. Same pair as `buttons.css` and `badges.css`. */
+.landing-brand:focus-visible,
+.landing-footer a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .landing-footer {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .landing-footer-legal {
+    margin-inline-start: 0;
+  }
 }
 
 /* ---------------------------------------------------------------------------

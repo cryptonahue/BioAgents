@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { usePrivy } from '@privy-io/react-auth';
 import { WaitlistModal } from '../components/WaitlistModal';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../hooks';
 import { useLandingScroll } from '../hooks/useLandingScroll';
 
@@ -383,14 +384,22 @@ export function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        © 2026 CoralGPT · BioAgent powered by $CRLAI ·{' '}
-        <a
-          href="https://bioagents.xyz"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          BioAgents
-        </a>
+        <div className="landing-footer-legal">
+          © 2026 CoralGPT · BioAgent powered by $CRLAI ·{' '}
+          <a
+            href="https://bioagents.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            BioAgents
+          </a>
+        </div>
+        {/* The toggle only became meaningful once the pin was narrowed off the
+            page root — before that it would have flipped the rest of the app
+            while the landing stayed frozen dark. It carries its own aria-label
+            (naming the ACTION, not the state) and the house focus ring, both
+            from ThemeToggle. */}
+        <ThemeToggle />
       </footer>
 
       <WaitlistModal
