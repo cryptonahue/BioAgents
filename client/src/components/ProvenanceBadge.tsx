@@ -82,7 +82,8 @@ export function ProvenanceBadge({
 
   return (
     <span
-      className={`provenance-badge provenance-badge--${variant}`}
+      className={`badge provenance-badge provenance-badge--${variant}`}
+      data-tone={variant === "card" ? "provenance" : "neutral"}
       role="button"
       tabIndex={onActivate ? 0 : -1}
       aria-label={ariaLabel ?? DEFAULT_ARIA}

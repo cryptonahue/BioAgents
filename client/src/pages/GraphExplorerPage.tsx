@@ -759,7 +759,7 @@ function DetailCard({
             <h3>Bioactivities</h3>
             <div class="graph-tag-row">
               {compound.topBioactivities!.map((b) => (
-                <span key={b.value} class="graph-tag">
+                <span key={b.value} class="badge" data-tone="neutral">
                   {b.value} · {b.fact_count}
                 </span>
               ))}
@@ -772,7 +772,7 @@ function DetailCard({
             <h3>Geographies</h3>
             <div class="graph-tag-row">
               {compound.topGeographies!.map((g) => (
-                <span key={g.value} class="graph-tag">
+                <span key={g.value} class="badge" data-tone="neutral">
                   {g.value} · {g.fact_count}
                 </span>
               ))}

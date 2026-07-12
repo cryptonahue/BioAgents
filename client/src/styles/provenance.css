@@ -48,31 +48,34 @@
   background: var(--bbox-chunk-fill);
 }
 
-/* ---- Provenance type badge ---- */
+/* ---- Provenance type badge ----
+   The pill itself is Basecoat's `.badge`. What is left here is the AFFORDANCE
+   (this badge is a `<span role="button">`, so it has to say it is clickable),
+   the TYPOGRAPHY, and the LAYOUT gutter. The color arrives through `data-tone`:
+   `neutral` inline, `provenance` on a fact card. `provenance` is the tone that
+   echoes the BLUE table bbox and reads `--bbox-table-ink`, not the generic
+   `--info`, so the badge and the box it points at cannot drift apart. See
+   `badges.css` and the `--bbox-*` block in `theme.css`.
+
+   The focus ring is gone from here because `badges.css` now paints it for every
+   `.badge`, interactive or not — this badge was the only one in the app that had
+   one before the migration. */
 .provenance-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--muted-foreground);
-  background: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  text-transform: lowercase;
-  letter-spacing: 0.01em;
   cursor: pointer;
   user-select: none;
+  text-transform: lowercase;
+  letter-spacing: 0.01em;
 }
-.provenance-badge:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.provenance-badge:hover {
-  background: var(--bg-hover);
+/* Lyra's `[a]:hover` rules only ever fire on an <a>, so the hover state of both
+   variants is declared here. It moves the ink and the edge, never the hue: the
+   card badge stays in the blue bbox family throughout. */
+.provenance-badge[data-tone="neutral"]:hover {
+  background-color: var(--bg-hover);
   color: var(--foreground);
+}
+.provenance-badge[data-tone="provenance"]:hover {
+  border-color: var(--info);
+  color: var(--info-subtle-foreground);
 }
 .provenance-badge--inline {
   margin-left: 12px;
@@ -84,17 +87,6 @@
   margin-left: 8px;
   font-variant: small-caps;
   letter-spacing: 0.04em;
-  background: var(--info-subtle);
-  border-color: var(--info-border);
-  /* Echoes the blue table bbox, so it tracks the bbox ink rather than the
-     generic `--info` — otherwise the badge and the box it points at could
-     drift apart. */
-  color: var(--bbox-table-ink);
-}
-.provenance-badge--card:hover {
-  background: var(--info-subtle);
-  border-color: var(--info);
-  color: var(--info-subtle-foreground);
 }
 
 /* ---- Evidence viewer (shared PDF.js mount) ---- */
@@ -542,36 +534,13 @@
   line-height: 1.4;
   color: var(--foreground);
 }
+/* LAYOUT + TYPOGRAPHY ONLY — the pill is `.badge[data-tone={claimTone(status)}]`.
+   It sits in a column flex, so it has to opt out of the stretch, and the status
+   arrives as a lowercase slug and is set in caps. */
 .claim-status {
   align-self: flex-start;
-  font-size: 10px;
-  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-.claim-status--supported {
-  background: var(--success-subtle);
-  border-color: var(--success-border);
-  color: var(--success-subtle-foreground);
-}
-.claim-status--partial {
-  background: var(--warning-subtle);
-  border-color: var(--warning-border);
-  color: var(--warning-subtle-foreground);
-}
-.claim-status--contradicted {
-  background: var(--destructive-subtle);
-  border-color: var(--destructive-border);
-  color: var(--destructive-subtle-foreground);
-}
-.claim-status--hypothesis,
-.claim-status--open_question {
-  background: var(--muted);
-  border-color: var(--border-strong);
-  color: var(--muted-foreground);
 }
 .viewer-page__empty {
   display: flex;

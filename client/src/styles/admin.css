@@ -163,25 +163,13 @@
   margin-bottom: 16px;
 }
 
-.admin-chip {
-  background: var(--muted);
-  color: var(--muted-foreground);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.admin-chip:hover {
-  color: var(--foreground);
-  border-color: var(--primary-ink);
-}
-
-.admin-chip.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
+/* The filter chip is the ONE badge in this app whose color is chrome rather than
+   meaning — selected vs. not — so it is the one place Basecoat's own vocabulary
+   genuinely fits, and it takes `data-variant` (`primary` selected, `outline` not)
+   instead of a project `data-tone`. See the header of `badges.css`.
+   Lyra's `[a]:hover` rules only ever fire on an <a>; this is a <button>, so the
+   hover edge is declared here. */
+.admin-chip[data-variant="outline"]:hover {
   border-color: var(--primary-ink);
 }
 
@@ -223,39 +211,11 @@
   background: var(--bg-hover);
 }
 
+/* TYPOGRAPHY ONLY — the pill is `.badge[data-tone={statusTone(status)}]`. The
+   status arrives from the API as a lowercase slug and is set in caps. */
 .admin-status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.admin-status-badge.status-unresolved {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-}
-
-.admin-status-badge.status-resolved {
-  background: var(--success-subtle);
-  color: var(--success-subtle-foreground);
-}
-
-.admin-status-badge.status-dismissed {
-  background: var(--muted);
-  color: var(--muted-foreground);
-}
-
-.admin-status-badge.status-active {
-  background: var(--success-subtle);
-  color: var(--success-subtle-foreground);
-}
-
-.admin-status-badge.status-inactive {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
 }
 
 /* ----------------- Action buttons ----------------- */

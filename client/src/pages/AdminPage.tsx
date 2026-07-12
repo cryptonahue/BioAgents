@@ -23,6 +23,18 @@ type TabId = "contras" | "dedup" | "stats";
 // Top-level page
 // ---------------------------------------------------------------------------
 
+/**
+ * The merge-review state is a SEMANTIC badge color. Basecoat ships only
+ * `destructive`, so the states map onto the project `data-tone` family — see
+ * `badges.css`. `dismissed` is deliberately neutral: it is not an outcome, it is
+ * the absence of one.
+ */
+function statusTone(status: string): "success" | "danger" | "neutral" {
+  if (status === "resolved" || status === "active") return "success";
+  if (status === "unresolved" || status === "inactive") return "danger";
+  return "neutral";
+}
+
 export function AdminPage() {
   const { isAdmin } = useAdmin();
   const [tab, setTab] = useState<TabId>("contras");
@@ -147,7 +159,7 @@ export function ContradictionRow({
         <code>{shortId(row.fact_b_id)}</code>
       </td>
       <td>
-        <span class={`admin-status-badge status-${row.status}`}>
+        <span class="badge admin-status-badge" data-tone={statusTone(row.status)}>
           {row.status}
         </span>
       </td>
@@ -267,7 +279,8 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
         {CONTRAS_STATUSES.map((s) => (
           <button
             key={s.value}
-            class={`admin-chip ${statusFilter === s.value ? "active" : ""}`}
+            class="badge admin-chip"
+            data-variant={statusFilter === s.value ? "primary" : "outline"}
             onClick={() => {
               setStatusFilter(s.value);
               setPage(0);
@@ -424,7 +437,8 @@ function DedupTab() {
         {DEDUP_WINDOWS.map((w) => (
           <button
             key={w.value}
-            class={`admin-chip ${window === w.value ? "active" : ""}`}
+            class="badge admin-chip"
+            data-variant={window === w.value ? "primary" : "outline"}
             onClick={() => setWindow(w.value)}
           >
             {w.label}
@@ -460,7 +474,8 @@ function DedupTab() {
                 <td>{new Date(event.mergedAt).toLocaleString()}</td>
                 <td>
                   <span
-                    class={`admin-status-badge status-${event.isActive ? "active" : "inactive"}`}
+                    class="badge admin-status-badge"
+                    data-tone={event.isActive ? "success" : "danger"}
                   >
                     {event.isActive ? "merged" : "unmerged"}
                   </span>

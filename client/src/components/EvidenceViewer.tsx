@@ -345,7 +345,10 @@ export function EvidenceViewer({
           ›
         </button>
         {type === "text-only" ? (
-          <span className="provenance-badge provenance-badge--inline">
+          <span
+            className="badge provenance-badge provenance-badge--inline"
+            data-tone="neutral"
+          >
             provenance: text-only
           </span>
         ) : null}

@@ -38,6 +38,21 @@ interface ViewerPageProps {
   sourceId?: string;
 }
 
+/**
+ * The claim's verification state is a SEMANTIC badge color. Basecoat ships only
+ * `destructive`, so the states map onto the project `data-tone` family — see
+ * `badges.css`. A hypothesis or an open question is not a verdict, so it stays
+ * neutral rather than borrowing a status hue it has not earned.
+ */
+function claimTone(
+  status: string,
+): "success" | "warning" | "danger" | "neutral" {
+  if (status === "supported") return "success";
+  if (status === "partial") return "warning";
+  if (status === "contradicted") return "danger";
+  return "neutral";
+}
+
 export function ViewerPage({ sourceId }: ViewerPageProps) {
   const id = sourceId ?? "";
   const { doc, isLoading, error, numPages } = usePdfDocument(id);
@@ -187,7 +202,8 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                         }}
                       >
                         <span
-                          className={`claim-status claim-status--${c.status}`}
+                          className="badge claim-status"
+                          data-tone={claimTone(c.status)}
                         >
                           {c.status.replace(/_/g, " ")}
                         </span>
