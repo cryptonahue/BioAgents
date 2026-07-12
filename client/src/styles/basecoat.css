@@ -32,6 +32,42 @@
 @import "./theme.css";
 
 /*
+ * Undo two document-level scroll declarations Basecoat makes on our behalf.
+ *
+ * `basecoat-css/dist/base/base.css` ends with:
+ *
+ *     html { @apply scroll-smooth; }
+ *     body { @apply bg-background text-foreground overscroll-none; }
+ *
+ * Neither is a component style and neither was asked for. `scroll-smooth` sets
+ * `scroll-behavior: smooth` on the document, which turns EVERY scroll into an
+ * animation — including the continuous, high-frequency deltas a trackpad emits.
+ * Each delta restarts the animation the previous one began, so the page fights
+ * the input and the scroll reads as stuck. Dragging the scrollbar bypasses the
+ * animation, which is why that keeps working: it is the classic signature of
+ * this rule, and it is the bug reported against the landing page.
+ *
+ * Smooth scrolling is a per-action decision (an anchor jump, a "back to top"),
+ * not a document default. Call `scrollIntoView({ behavior: "smooth" })` where a
+ * smooth scroll is actually wanted.
+ *
+ * `overscroll-none` disables scroll chaining and the platform's overscroll
+ * affordance document-wide, for the same "we know better" reason. It also has
+ * to go; the app-shell surfaces that genuinely want to trap scroll already say
+ * so on their own container.
+ *
+ * These live here rather than in global.css because they exist ONLY to cancel
+ * Basecoat, and they belong next to the import that brings it in.
+ */
+html {
+  scroll-behavior: auto;
+}
+
+body {
+  overscroll-behavior: auto;
+}
+
+/*
  * Typography token.
  *
  * Basecoat's component CSS is written against Tailwind utilities and uses
