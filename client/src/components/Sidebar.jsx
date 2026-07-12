@@ -112,6 +112,24 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
 
   const { today, yesterday, older } = groupSessions();
 
+  /**
+   * A session row is a `<div role="button" tabIndex={0}>` wearing Basecoat's
+   * `.item`, so the keyboard activation the browser gives a real `<button>` for
+   * free has to be spelled out: Enter and Space select the row, and Space has its
+   * default page-scroll suppressed.
+   *
+   * The row is a div rather than a button because it CONTAINS a button (the
+   * delete action), and a `<button>` may not nest interactive content. Making it
+   * a focusable div is what buys the row keyboard access at all — before this it
+   * had none, and the whole chat history was mouse-only.
+   */
+  const handleSessionKeyDown = (e, sessionId) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSessionSelect(sessionId);
+    }
+  };
+
   return (
     // `app-sidebar`, NOT `sidebar`. The bare `sidebar` class is Basecoat's own
     // sidebar COMPONENT (@layer components), and this div is not one — it has no
@@ -312,23 +330,30 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 {today.map((session) => (
                   <div
                     key={session.id}
-                    className={`session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    className={`item session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    data-variant="outline"
+                    role="button"
+                    tabIndex={0}
+                    aria-current={session.id === currentSessionId ? 'true' : undefined}
                     onClick={() => onSessionSelect(session.id)}
+                    onKeyDown={(e) => handleSessionKeyDown(e, session.id)}
                   >
-                    <div className="session-info">
+                    <section className="session-info">
                       <span className="session-title">{session.title || 'New conversation'}</span>
-                    </div>
-                    <IconButton
-                      icon="close"
-                      size={14}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteSession(session.id);
-                      }}
-                      title="Delete session"
-                      variant="ghost"
-                      className="delete-session-btn"
-                    />
+                    </section>
+                    <aside>
+                      <IconButton
+                        icon="close"
+                        size={14}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }}
+                        title="Delete session"
+                        variant="ghost"
+                        className="delete-session-btn"
+                      />
+                    </aside>
                   </div>
                 ))}
               </>
@@ -340,23 +365,30 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 {yesterday.map((session) => (
                   <div
                     key={session.id}
-                    className={`session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    className={`item session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    data-variant="outline"
+                    role="button"
+                    tabIndex={0}
+                    aria-current={session.id === currentSessionId ? 'true' : undefined}
                     onClick={() => onSessionSelect(session.id)}
+                    onKeyDown={(e) => handleSessionKeyDown(e, session.id)}
                   >
-                    <div className="session-info">
+                    <section className="session-info">
                       <span className="session-title">{session.title || 'New conversation'}</span>
-                    </div>
-                    <IconButton
-                      icon="close"
-                      size={14}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteSession(session.id);
-                      }}
-                      title="Delete session"
-                      variant="ghost"
-                      className="delete-session-btn"
-                    />
+                    </section>
+                    <aside>
+                      <IconButton
+                        icon="close"
+                        size={14}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }}
+                        title="Delete session"
+                        variant="ghost"
+                        className="delete-session-btn"
+                      />
+                    </aside>
                   </div>
                 ))}
               </>
@@ -368,23 +400,30 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 {older.map((session) => (
                   <div
                     key={session.id}
-                    className={`session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    className={`item session-item ${session.id === currentSessionId ? 'active' : ''}`}
+                    data-variant="outline"
+                    role="button"
+                    tabIndex={0}
+                    aria-current={session.id === currentSessionId ? 'true' : undefined}
                     onClick={() => onSessionSelect(session.id)}
+                    onKeyDown={(e) => handleSessionKeyDown(e, session.id)}
                   >
-                    <div className="session-info">
+                    <section className="session-info">
                       <span className="session-title">{session.title || 'New conversation'}</span>
-                    </div>
-                    <IconButton
-                      icon="close"
-                      size={14}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteSession(session.id);
-                      }}
-                      title="Delete session"
-                      variant="ghost"
-                      className="delete-session-btn"
-                    />
+                    </section>
+                    <aside>
+                      <IconButton
+                        icon="close"
+                        size={14}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }}
+                        title="Delete session"
+                        variant="ghost"
+                        className="delete-session-btn"
+                      />
+                    </aside>
                   </div>
                 ))}
               </>

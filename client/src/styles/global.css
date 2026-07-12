@@ -443,18 +443,42 @@ body {
   margin-top: 0;
 }
 
+/*
+ * SESSION ROWS — Basecoat's `.item[data-variant="outline"]`.
+ *
+ * Slice 5 filed these under "list rows, not Basecoat buttons" and skipped them.
+ * That was an INCONSISTENCY, not a technical constraint: slice 7 put the
+ * Library's list rows on this exact component, and a session row is the same
+ * shape — a body plus a trailing action. So it wears the same one now.
+ *
+ * Lyra supplies the flex row, the 1px border, the square box (`px-3 py-2.5`,
+ * `gap-2.5`), the `text-xs` ramp, `transition-colors` and — through
+ * `surfaces.css` — the 2px `--ring` focus outline that Lyra itself suppresses.
+ * `.item > section` is already `flex-1 flex-col` and `.item > aside` is already
+ * `flex items-center`, so the row's own `display`/`justify-content`/`gap`/
+ * `padding`/`border-radius` declarations are all gone, along with a dead
+ * `.active::before` (it painted a `transparent` 2px bar) and a
+ * `.session-info svg` rule for an icon the component stopped rendering.
+ *
+ * Three things Lyra does not give it:
+ *
+ *   The HOVER. Lyra only hovers `a.item`, and this is a focusable `<div>` (it
+ *   contains a button, so it cannot be one). Same call `library.css` records for
+ *   `.paper-row`.
+ *
+ *   The ACTIVE FILL. Selection is not an axis `.item` has — `data-variant` is a
+ *   look, not a selected/unselected state — so the brand-green fill and its glow
+ *   stay hand-written. The border has to be recoloured WITH the fill: without
+ *   that, `data-variant="outline"`'s `--border` hairline draws a grey ring around
+ *   the green row.
+ *
+ *   The RHYTHM. `.sessions-list` is a plain block, not an `.item-group`, and
+ *   Lyra's `.item-group` gap (16px) is far too loose for a history list. The 2px
+ *   margin stays.
+ */
 .session-item {
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 2px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  transition: all 0.15s;
-  border: none;
-  position: relative;
+  margin-bottom: 2px;
 }
 
 .session-item:hover {
@@ -463,31 +487,14 @@ body {
 
 .session-item.active {
   background: var(--accent-color);
+  border-color: var(--accent-color);
   box-shadow: 0 0 12px var(--accent-glow);
 }
 
-.session-item.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 20px;
-  background: transparent;
-  border-radius: 0 2px 2px 0;
-}
-
+/* Lyra's `> section` is `flex-1 flex-col` already; this is only the `min-width`
+   an ellipsis needs inside a flex item. */
 .session-info {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: 1;
   min-width: 0;
-}
-
-.session-info svg {
-  display: none;
 }
 
 .session-title {
