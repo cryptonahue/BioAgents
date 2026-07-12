@@ -784,7 +784,76 @@ body.coralgpt-scroll {
   font-weight: 400;
 }
 
-/* The submit spans the dialog. `.btn` is `w-fit` by default. */
+/*
+ * THE STEP PROGRESS BAR IS BASECOAT'S `.progress`, NOT A NEW PATTERN.
+ *
+ * The pack ships one (`components/progress.css`): a `flex w-full items-center
+ * overflow-hidden` track whose `> span` is the `h-full transition-all` fill. That
+ * is exactly the shape needed, so it is worn rather than reinvented — and the
+ * `transition-all` on the span is what animates the bar between steps for free.
+ *
+ * What Lyra does NOT ship is a HEIGHT or a COLOUR (its progress is a naked
+ * primitive, sized by the caller). Both come from tokens here: the track is
+ * `--muted`, the fill is `--primary`. Zero raw colours.
+ *
+ * There is no Basecoat JS anywhere in this app, so `role="progressbar"` and the
+ * `aria-valuemin/max/now` triplet are rendered by Preact — see `WaitlistModal`.
+ * The bar is decorative reinforcement of the "Step 2 of 3" label beside it; the
+ * label is the accessible source of truth.
+ */
+.waitlist-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.waitlist-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--muted);
+}
+
+.waitlist-progress > span {
+  background: var(--primary);
+}
+
+.waitlist-progress-label {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The step's own heading, under the dialog's title. Lyra inks `.card > section`
+   at body scale; this is the section's label, so it steps up in weight, not size. */
+.waitlist-step-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.waitlist-step-description {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Back + Continue. Back is absent on step 1, so the row is `flex-end`-anchored
+   and the submit keeps the full width it had when it was the only control. */
+.waitlist-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.waitlist-actions .btn {
+  flex: 1;
+}
+
+/* The submit spans the dialog when it is alone. `.btn` is `w-fit` by default. */
 .waitlist-submit {
   width: 100%;
 }
