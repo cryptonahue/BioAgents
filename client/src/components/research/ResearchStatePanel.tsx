@@ -232,29 +232,55 @@ export function ResearchStatePanel({
   // Show loading state when deep research is starting but no state yet
   const showLoadingState = isLoading && (!state || !state.currentObjective);
 
-  return (
-    <div className={`card research-state-panel ${isExpanded ? "expanded" : ""}`}>
-      <button
-        className="btn research-state-header"
-        data-variant="ghost"
-        aria-expanded={isExpanded}
-        onClick={onToggle}
-      >
-        <div className="research-state-header-left">
-          <Icon name="dna" size={18} className="research-state-icon" />
-          <span className="research-state-title">Research State</span>
-        </div>
-        <div className="research-state-header-right">
-          <Icon
-            name="chevronDown"
-            size={16}
-            className={`research-state-chevron ${isExpanded ? "expanded" : ""}`}
-          />
-        </div>
-      </button>
+  /**
+   * A controlled `<summary>`.
+   *
+   * `preventDefault()` cancels the browser's own toggle so the `open` attribute
+   * stays a function of Preact state, which is the only way a parent-owned
+   * `isExpanded` prop and a multi-open `expandedSections` record can survive a
+   * re-render. Activating a `<summary>` with Enter or Space dispatches a click, so
+   * this one handler covers pointer AND keyboard — there is no keydown handler and
+   * no `aria-expanded` to keep honest.
+   */
+  const toggleOnSummary = (fn: () => void) => (e: Event) => {
+    e.preventDefault();
+    fn();
+  };
 
-      {isExpanded && (
-        <div className="research-state-content">
+  return (
+    /*
+     * Basecoat's `.accordion`, which is written against native <details> /
+     * <summary>: every selector in `basecoat-css/dist/components/accordion.css` is
+     * `.accordion > details > summary`, so the markup IS the semantics. The panel
+     * itself qualifies — it is a card whose ENTIRE body collapses behind one header
+     * row, which is a disclosure by definition, and `<details>` fits it exactly the
+     * way it fits the sections inside it. The wrapper exists only to be the
+     * `.accordion` root the child selectors require.
+     *
+     * `accordion.js` is not loaded (no Basecoat JS is). The one thing it adds is
+     * single-open exclusivity, which is deliberately NOT wanted here — see the long
+     * note in research.css.
+     */
+    <div className="accordion research-state-panel-shell">
+      <details className="card research-state-panel" open={isExpanded}>
+        <summary
+          className="research-state-header"
+          onClick={toggleOnSummary(() => onToggle?.())}
+        >
+          <div className="research-state-header-left">
+            <Icon name="dna" size={18} className="research-state-icon" />
+            <span className="research-state-title">Research State</span>
+          </div>
+          {/* The chevron must be the LAST child of the <summary>: Lyra selects it as
+              `summary > svg:last-child` and rotates it on `details[open]`. */}
+          <Icon name="chevronDown" size={16} />
+        </summary>
+
+        {/* Still mounted conditionally, exactly as before: the panel's body holds a
+            live `setInterval` (ElapsedSince) and a slide-down animation, and a
+            closed <details> keeps its children mounted. */}
+        {isExpanded && (
+        <div className="research-state-content accordion">
           {/* Loading State */}
           {showLoadingState && (
             <div className="research-section research-loading-state">
@@ -279,22 +305,20 @@ export function ResearchStatePanel({
           )}
 
           {state?.researchBrainEvidence && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("brain")}
+            <details
+              className="research-section"
+              open={expandedSections.brain}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("brain"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="brainCircuit" size={14} />
                   <span>Research Brain Evidence</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.brain ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.brain && (
                 <div className="research-section-body">
                   <ul className="research-insights-list">
@@ -322,27 +346,25 @@ export function ResearchStatePanel({
                   </ul>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Hypothesis */}
           {state?.currentHypothesis && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("hypothesis")}
+            <details
+              className="research-section"
+              open={expandedSections.hypothesis}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("hypothesis"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="lightbulb" size={14} className="research-section-icon" />
                   <span>Hypothesis</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.hypothesis ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.hypothesis && (
                 <div className="research-section-body research-hypothesis">
                   <div className="research-hypothesis-content">
@@ -366,27 +388,25 @@ export function ResearchStatePanel({
                   </div>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Discoveries */}
           {state?.discoveries && state.discoveries.length > 0 && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("discoveries")}
+            <details
+              className="research-section"
+              open={expandedSections.discoveries}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("discoveries"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="microscope" size={14} className="research-section-icon" />
                   <span>Discoveries ({state.discoveries.length})</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.discoveries ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.discoveries && (
                 <div className="research-section-body">
                   <ul className="research-discoveries-list">
@@ -405,27 +425,25 @@ export function ResearchStatePanel({
                   </ul>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Key Insights */}
           {state?.keyInsights && state.keyInsights.length > 0 && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("insights")}
+            <details
+              className="research-section"
+              open={expandedSections.insights}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("insights"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="sparkles" size={14} className="research-section-icon" />
                   <span>Key Insights ({state.keyInsights.length})</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.insights ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.insights && (
                 <div className="research-section-body">
                   <ul className="research-insights-list">
@@ -444,27 +462,25 @@ export function ResearchStatePanel({
                   </ul>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Methodology */}
           {state?.methodology && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("methodology")}
+            <details
+              className="research-section"
+              open={expandedSections.methodology}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("methodology"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="microscope" size={14} className="research-section-icon" />
                   <span>Methodology</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.methodology ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.methodology && (
                 <div className="research-section-body">
                   <p className="research-methodology-text">
@@ -472,27 +488,25 @@ export function ResearchStatePanel({
                   </p>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Uploaded Datasets */}
           {state?.uploadedDatasets && state.uploadedDatasets.length > 0 && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("datasets")}
+            <details
+              className="research-section"
+              open={expandedSections.datasets}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("datasets"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="folder" size={14} className="research-section-icon" />
                   <span>Datasets ({state.uploadedDatasets.length})</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.datasets ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.datasets && (
                 <div className="research-section-body">
                   <div className="research-datasets-list">
@@ -519,27 +533,25 @@ export function ResearchStatePanel({
                   </div>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Completed Steps */}
           {completedSteps.length > 0 && (
-            <div className="research-section">
-              <button
-                className="btn research-section-toggle"
-                data-variant="ghost"
-                onClick={() => toggleSection("plan")}
+            <details
+              className="research-section"
+              open={expandedSections.plan}
+            >
+              <summary
+                className="research-section-toggle"
+                onClick={toggleOnSummary(() => toggleSection("plan"))}
               >
                 <div className="research-section-toggle-left">
                   <Icon name="checkCircle" size={14} className="research-section-icon" />
                   <span>Completed Steps ({completedSteps.length})</span>
                 </div>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.plan ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.plan && (
                 <div className="research-section-body">
                   <div className="research-steps-list">
@@ -666,7 +678,7 @@ export function ResearchStatePanel({
                   </div>
                 </div>
               )}
-            </div>
+            </details>
           )}
 
           {/* Current Step (if running) */}
@@ -683,23 +695,20 @@ export function ResearchStatePanel({
 
           {/* Activity Log (completed + current steps with timing) */}
           {state?.plan && state.plan.length > 0 && (
-            <div className="research-section research-activity-log">
-              <button
-                className="btn research-activity-log-header"
-                data-variant="ghost"
-                aria-expanded={!!expandedSections.activityLog}
-                onClick={() => toggleSection("activityLog")}
+            <details
+              className="research-section research-activity-log"
+              open={!!expandedSections.activityLog}
+            >
+              <summary
+                className="research-activity-log-header"
+                onClick={toggleOnSummary(() => toggleSection("activityLog"))}
               >
                 <span className="research-section-label">
                   <Icon name="clipboard" size={14} className="research-activity-log-icon" />
                   Activity Log ({state.plan.filter(s => s.end).length}/{state.plan.length} done)
                 </span>
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={`research-section-chevron ${expandedSections.activityLog ? "expanded" : ""}`}
-                />
-              </button>
+                <Icon name="chevronDown" size={14} />
+              </summary>
               {expandedSections.activityLog && (
                 <div className="research-activity-log-list">
                   {state.plan.map((step, idx) => {
@@ -760,10 +769,11 @@ export function ResearchStatePanel({
                   })}
                 </div>
               )}
-            </div>
+            </details>
           )}
         </div>
-      )}
+        )}
+      </details>
     </div>
   );
 }

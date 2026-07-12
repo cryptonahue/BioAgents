@@ -104,37 +104,37 @@ export function EvidenceBySourcePanel({
   const totalCount = sources.reduce((acc, s) => acc + s.count, 0);
 
   return (
-    <div className="evidence-by-source">
-      {/* A ghost `.btn`, like every other disclosure toggle in the research panel.
-          Before this it wore NO class and NO rule — `.evidence-by-source-*` has no
-          CSS anywhere in the client — so without Tailwind's Preflight it rendered as
-          a raw UA button: `background: buttonface`, `font-family: Arial`, and a 2px
-          OUTSET bevel. Measured in Chromium: `rgb(239,239,239)` in light and
-          `rgb(107,107,107)` in dark, i.e. a grey 3D button on a near-black panel. */}
-      <button
-        className="btn evidence-by-source-header"
-        data-variant="ghost"
-        aria-expanded={isPanelOpen}
-        onClick={() => setIsPanelOpen((prev) => !prev)}
-      >
-        <Icon name="microscope" size={14} className="evidence-by-source-icon" />
-        <span className="evidence-by-source-title">
-          Evidence ({okCount}/{sources.length} sources, {totalCount} chunks)
-        </span>
-        {failedCount > 0 && (
-          <span className="badge" data-tone="danger">
-            {failedCount} failed
-          </span>
-        )}
-        <Icon
-          name="chevronDown"
-          size={14}
-          className={`research-section-chevron ${isPanelOpen ? "expanded" : ""}`}
-        />
-      </button>
+    /* Basecoat's `.accordion`, like every other disclosure in the research panel:
+       native <details> / <summary>, so the role, the expanded state, Enter/Space and
+       the chevron rotation are the browser's, not ours. See the note in research.css.
 
-      {isPanelOpen && (
-        <div className="evidence-by-source-list">
+       Two skins ago this toggle wore NO class and NO rule — `.evidence-by-source-*`
+       has no CSS anywhere in the client — so without Tailwind's Preflight it rendered
+       as a raw UA button: `background: buttonface`, `font-family: Arial`, and a 2px
+       OUTSET bevel. */
+    <div className="accordion evidence-by-source">
+      <details open={isPanelOpen}>
+        <summary
+          className="evidence-by-source-header"
+          onClick={(e) => {
+            e.preventDefault();
+            setIsPanelOpen((prev) => !prev);
+          }}
+        >
+          <Icon name="microscope" size={14} className="evidence-by-source-icon" />
+          <span className="evidence-by-source-title">
+            Evidence ({okCount}/{sources.length} sources, {totalCount} chunks)
+          </span>
+          {failedCount > 0 && (
+            <span className="badge" data-tone="danger">
+              {failedCount} failed
+            </span>
+          )}
+          <Icon name="chevronDown" size={14} />
+        </summary>
+
+        {isPanelOpen && (
+        <div className="accordion evidence-by-source-list">
           {sources.map((source, idx) => {
             const meta = SOURCE_META[source.sourceName];
             const glyph = statusGlyph(source.status);
@@ -146,15 +146,17 @@ export function EvidenceBySourcePanel({
               }));
 
             return (
-              <div
+              <details
                 key={`${source.sourceName}-${idx}`}
                 className={`evidence-by-source-row evidence-by-source-${source.status}`}
+                open={isSourceOpen}
               >
-                <button
-                  className="btn evidence-by-source-row-header"
-                  data-variant="ghost"
-                  aria-expanded={isSourceOpen}
-                  onClick={toggleSource}
+                <summary
+                  className="evidence-by-source-row-header"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSource();
+                  }}
                 >
                   <span
                     className="evidence-by-source-row-icon"
@@ -180,12 +182,8 @@ export function EvidenceBySourcePanel({
                   <span className="evidence-by-source-row-duration">
                     {formatDuration(source.durationMs)}
                   </span>
-                  <Icon
-                    name="chevronDown"
-                    size={12}
-                    className={`research-section-chevron ${isSourceOpen ? "expanded" : ""}`}
-                  />
-                </button>
+                  <Icon name="chevronDown" size={12} />
+                </summary>
 
                 {isSourceOpen && (
                   <div className="evidence-by-source-row-body">
@@ -214,11 +212,12 @@ export function EvidenceBySourcePanel({
                     )}
                   </div>
                 )}
-              </div>
+              </details>
             );
           })}
         </div>
-      )}
+        )}
+      </details>
     </div>
   );
 }

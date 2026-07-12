@@ -163,43 +163,46 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
   );
 
   return (
-    <div className="card artifact-viewer">
-      <button
-        className="btn artifact-viewer-header"
-        data-variant="ghost"
-        aria-expanded={isExpanded}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="artifact-viewer-header-left">
-          <Icon name="code" size={16} className="artifact-viewer-icon" />
-          <span className="artifact-viewer-title">Code Execution Results</span>
-          <div className="artifact-viewer-badges">
-            {hasArtifacts && (
-              <span className="badge" data-tone="brand">
-                {allArtifacts.length} file{allArtifacts.length !== 1 ? "s" : ""}
-              </span>
-            )}
-            {hasErrors && (
-              <span className="badge" data-tone="danger">
-                {results.filter((r) => r.error).length} error
-                {results.filter((r) => r.error).length !== 1 ? "s" : ""}
-              </span>
-            )}
-            {totalExecutionTime > 0 && (
-              <span className="badge artifact-badge-time" data-tone="neutral">
-                {(totalExecutionTime / 1000).toFixed(1)}s
-              </span>
-            )}
+    /* Basecoat's `.accordion` on native <details> / <summary>, like every other
+       disclosure in the research panel. The `.card` sits on the <details> so the
+       header bar still caps the card's own box. */
+    <div className="accordion artifact-viewer-shell">
+      <details className="card artifact-viewer" open={isExpanded}>
+        <summary
+          className="artifact-viewer-header"
+          onClick={(e) => {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }}
+        >
+          <div className="artifact-viewer-header-left">
+            <Icon name="code" size={16} className="artifact-viewer-icon" />
+            <span className="artifact-viewer-title">Code Execution Results</span>
+            <div className="artifact-viewer-badges">
+              {hasArtifacts && (
+                <span className="badge" data-tone="brand">
+                  {allArtifacts.length} file{allArtifacts.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {hasErrors && (
+                <span className="badge" data-tone="danger">
+                  {results.filter((r) => r.error).length} error
+                  {results.filter((r) => r.error).length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {totalExecutionTime > 0 && (
+                <span className="badge artifact-badge-time" data-tone="neutral">
+                  {(totalExecutionTime / 1000).toFixed(1)}s
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        <Icon
-          name="chevronDown"
-          size={16}
-          className={`artifact-viewer-chevron ${isExpanded ? "expanded" : ""}`}
-        />
-      </button>
+          {/* Last child of the <summary>: Lyra rotates `summary > svg:last-child`
+              on `details[open]`. */}
+          <Icon name="chevronDown" size={16} />
+        </summary>
 
-      {isExpanded && (
+        {isExpanded && (
         <div className="artifact-viewer-content">
           {/* Console Output */}
           {results.map((result, resultIndex) => (
@@ -291,7 +294,8 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
             </div>
           )}
         </div>
-      )}
+        )}
+      </details>
 
       {/* Lightbox for image preview */}
       {selectedArtifact && isImageFile(selectedArtifact.filename) && (

@@ -49,51 +49,85 @@
 }
 
 /*
- * EVERY DISCLOSURE TOGGLE IN THIS FILE IS NOW A GHOST `.btn`.
+ * EVERY DISCLOSURE IN THIS FILE IS NOW BASECOAT'S `.accordion`, NOT A GHOST `.btn`.
  *
- * `.research-state-header`, `.research-section-toggle`,
- * `.research-activity-log-header`, `.research-step-output-toggle` and
- * `.artifact-viewer-header` were five hand-written copies of the same thing: a
- * transparent, border-less, full-width row that highlights on hover. That is Lyra's
- * `data-variant="ghost"` button, and they all wear it now — so the fill, the ink,
- * the hover, the transition, the font, the disabled state and (the part that was
- * missing) the FOCUS RING all come from `buttons.css` instead of being re-declared
- * five times.
+ * The previous slice made them `.btn[data-variant="ghost"]`. That is a real Basecoat
+ * component, but it is the WRONG one, and it renders as nothing: Lyra's ghost variant
+ * is a transparent, border-less box whose only paint is a hover fill. The rows read
+ * as bare text, which is what "the toggles are not Basecoat" was reporting.
  *
- * They also now render `aria-expanded`, which they never did — these are disclosure
- * buttons and a screen reader had no way to know whether the section was open.
- * Lyra's ghost variant keys `aria-expanded:bg-muted` off exactly that attribute, so
- * the OPEN state paints itself for free from the ARIA the component had to grow
- * anyway.
+ * A section that expands to reveal content is a DISCLOSURE, and Basecoat ships
+ * `.accordion` for exactly that. Read `basecoat-css/dist/components/accordion.css`:
+ * every selector is `.accordion > details > summary`, so NATIVE `<details>` /
+ * `<summary>` IS the semantics. The disclosure role, the expanded state, Enter and
+ * Space, and the open/close all come from the browser — the component no longer has
+ * to ship `aria-expanded` and then keep it truthful. The chevron rotation comes free
+ * too: Lyra rotates `summary > svg:last-child` on `details[open]`, which is why the
+ * three `.expanded` modifier classes and their three `transform: rotate(180deg)`
+ * rules are gone.
  *
- * THE EVIDENCE PANEL'S TWO TOGGLES ARE A DIFFERENT CASE, AND A WORSE ONE. They
- * carried NO class and NO rule — `.evidence-by-source-*` has no CSS anywhere in this
- * client — so with no Tailwind Preflight to reset them they rendered as RAW UA
- * BUTTONS. Measured in Chromium: `background-color: rgb(239,239,239)` in light and
- * `rgb(107,107,107)` in dark, `font-family: Arial`, and a 2px OUTSET bevel — a grey
- * 3D button sitting on the near-black research panel. That is the exact Preflight
- * leak `buttons.css` documents, on a component that never got a skin at all. `.btn`
- * is the whole fix.
+ * `accordion.js` is NOT loaded (no Basecoat JS is, anywhere in this app). The only
+ * thing it adds over the native element is single-open exclusivity. THAT IS NOT
+ * WANTED HERE, and this is the one behavioural call in the migration: the research
+ * panel's sections are a dashboard, not a FAQ — a reader compares the hypothesis
+ * against the discoveries against the plan, and closing one to open another would be
+ * a regression. `expandedSections` stays a multi-open record, exactly as it was, and
+ * drives `open` on each `<details>` (the standard controlled-<details> pattern:
+ * `preventDefault()` on the summary hands the browser's toggle back to Preact, and
+ * it catches the keyboard too because activating a `<summary>` dispatches a click).
  *
- * (The REST of that panel — its rows, bodies, `<pre>` blocks — is still unstyled.
- * Giving it a skin is a design task, not a migration, and it is not this slice's.)
+ * `.research-step-output-toggle` is the ONE toggle that stays a ghost `.btn`, and on
+ * purpose: it is not a disclosure. Its collapsed state is not empty — it shows the
+ * first 300 characters of the output — so there is no `<details>` whose closed state
+ * matches it. It is a "show more" button over content that is already on screen.
  *
- * What is left below is LAYOUT only — a `.btn` is `inline-flex` / `justify-center`
- * / fixed-height, and these are full-width rows that space their ends apart and
- * size to their content. The same two-line override `global.css` already applies to
- * the sidebar's nav buttons (`width: 100%; justify-content: flex-start`).
+ * What survives below is LAYOUT and the two things Lyra's accordion assumes but this
+ * app does not want:
+ *
+ *   - `items-start` on the summary. These rows are a glyph, a label and a chevron on
+ *     one optical line, not a stacked block.
+ *   - `hover:underline`. Fine on a marketing FAQ; wrong on a dense app row that
+ *     already has a chevron. The hover fill the ghost button had is kept instead.
+ *
+ * Lyra also kills the outline on every component it ships. The 2px `--ring` outline
+ * is the one every other focusable control in this app already wears.
  */
 .research-state-header,
 .research-section-toggle,
 .research-activity-log-header,
-.research-step-output-toggle,
 .artifact-viewer-header,
 .evidence-by-source-header,
 .evidence-by-source-row-header {
-  display: flex;
-  width: 100%;
-  height: auto;
-  justify-content: space-between;
+  align-items: center;
+}
+
+.research-state-header:hover,
+.research-section-toggle:hover,
+.research-activity-log-header:hover,
+.evidence-by-source-header:hover,
+.evidence-by-source-row-header:hover {
+  background-color: var(--muted);
+  text-decoration: none;
+}
+
+.research-state-header:focus-visible,
+.research-section-toggle:focus-visible,
+.research-activity-log-header:focus-visible,
+.artifact-viewer-header:focus-visible,
+.evidence-by-source-header:focus-visible,
+.evidence-by-source-row-header:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Lyra sizes the accordion chevron at `size-4` (16px) — the marketing scale. These
+   are 12–14px rows; the glyph tracks the label it belongs to. */
+.research-section-toggle > svg:last-child,
+.research-activity-log-header > svg:last-child,
+.evidence-by-source-header > svg:last-child,
+.evidence-by-source-row-header > svg:last-child {
+  width: 14px;
+  height: 14px;
 }
 
 .research-state-header {
@@ -104,12 +138,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.research-state-header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 /* THE SECTION AND CHIP GLYPHS ARE `<Icon>` NOW, NOT EMOJI.
@@ -145,17 +173,14 @@
   color: var(--text-primary);
 }
 
-.research-state-chevron {
-  color: var(--text-secondary);
-  transition: transform 0.2s ease;
-}
-
-.research-state-chevron.expanded {
-  transform: rotate(180deg);
-}
-
+/* `.accordion > details > :not(summary)` is `pt-0 pb-2.5 text-xs` in Lyra — the
+ * marketing accordion's answer box. The padding shorthand below beats those two
+ * longhands (unlayered), but `font-size` has to be answered explicitly or the whole
+ * research panel collapses to 12px. `inherit` restores exactly what it read before:
+ * the body face. Same reason on `.research-section-body` and the activity list. */
 .research-state-content {
   padding: 0 20px 20px;
+  font-size: inherit;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -210,17 +235,9 @@
   color: var(--text-primary);
 }
 
-.research-section-chevron {
-  color: var(--text-secondary);
-  transition: transform 0.2s ease;
-}
-
-.research-section-chevron.expanded {
-  transform: rotate(180deg);
-}
-
 .research-section-body {
   padding: 0 14px 14px;
+  font-size: inherit;
   animation: slideDown 0.2s ease-out;
 }
 
@@ -420,12 +437,20 @@
   line-height: 1.5;
 }
 
-/* The one toggle of the four that is CENTRED rather than spaced apart, and the one
-   that keeps a top rule (it caps the output block it belongs to). Its
-   `background: var(--hover-bg)` hover was dead anyway — no such token exists, so
-   the declaration was dropped by the parser and the hover only ever changed the
-   ink. Lyra's ghost hover is a real one. */
+/* THE ONE TOGGLE THAT IS NOT AN ACCORDION, and the only ghost `.btn` left in this
+   file. Its collapsed state is not empty — it shows the first 300 characters of the
+   output — so it is a "show more" control over content already on screen, not a
+   disclosure whose closed state is nothing. `<details>` has no closed state that
+   means "show a truncated preview". It keeps `aria-expanded`, which a button must
+   ship and an element cannot get from the browser.
+
+   It is CENTRED rather than spaced apart, and it keeps a top rule (it caps the
+   output block it belongs to). A `.btn` is `inline-flex` / fixed-height, so the
+   full-width row box is stated here. */
 .research-step-output-toggle {
+  display: flex;
+  width: 100%;
+  height: auto;
   justify-content: center;
   padding: 8px;
   border-top: 1px solid var(--border-color);
@@ -637,9 +662,10 @@
   gap: 0;
 }
 
-/* A ghost `.btn` (shared rule above) that keeps its own card-header fill and the
-   rule under it — it caps the artifact card, so unlike the other toggles it is a
-   BAR, not a transparent row. */
+/* An accordion `<summary>` (shared rules above) that keeps its own card-header fill
+   and the rule under it — it caps the artifact card, so unlike the other toggles it
+   is a BAR, not a transparent row, and its hover is a lift of that fill rather than
+   the shared `--muted` wash. */
 .artifact-viewer-header {
   padding: 14px 16px;
   background: var(--bg-tertiary);
@@ -649,6 +675,7 @@
 
 .artifact-viewer-header:hover {
   background: var(--bg-secondary);
+  text-decoration: none;
 }
 
 .artifact-viewer-header-left {
@@ -675,17 +702,9 @@
   font-family: var(--font-mono);
 }
 
-.artifact-viewer-chevron {
-  color: var(--text-secondary);
-  transition: transform 0.2s ease;
-}
-
-.artifact-viewer-chevron.expanded {
-  transform: rotate(180deg);
-}
-
 .artifact-viewer-content {
   padding: 12px;
+  font-size: inherit;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1016,11 +1035,10 @@
   padding: 0;
 }
 
-/* The header keeps only its box: it is a ghost `.btn` now, with the shared
-   full-width/space-between rule at the top of this file. Its ink used to read
-   `var(--text-color)` — a token that has never existed — and fell back to a
-   near-black grey that was unreadable on the dark panel; the `.btn` inherits the
-   panel's ink and the bug goes with the skin. */
+/* The header keeps only its box: it is an accordion `<summary>` now, with the shared
+   rules at the top of this file. Its ink used to read `var(--text-color)` — a token
+   that has never existed — and fell back to a near-black grey that was unreadable on
+   the dark panel; the summary inherits the panel's ink and the bug goes with it. */
 .research-activity-log-header {
   padding: 12px 14px;
   font-size: 12px;
@@ -1029,6 +1047,7 @@
 
 .research-activity-log-list {
   padding: 4px 14px 12px;
+  font-size: inherit;
   display: flex;
   flex-direction: column;
   gap: 4px;
