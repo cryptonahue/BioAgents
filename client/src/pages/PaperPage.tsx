@@ -262,7 +262,9 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                   <div className="paper-claims-mini-list">
                     {claims.slice(0, 4).map((claim) => (
                       <div key={claim.id} className="paper-claim-mini">
-                        <span>{claim.status}</span>
+                        <span className="badge paper-claim-status" data-tone="brand">
+                          {claim.status}
+                        </span>
                         <p>{claim.claim}</p>
                       </div>
                     ))}
@@ -310,7 +312,13 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                               return (
                                 <button
                                   key={key}
-                                  className={`paper-source-chip ${activeSource === key ? "active" : ""}`}
+                                  className="badge"
+                                  data-variant={
+                                    activeSource === key ? undefined : "outline"
+                                  }
+                                  data-tone={
+                                    activeSource === key ? "brand" : undefined
+                                  }
                                   onClick={() =>
                                     setActiveSource(
                                       activeSource === key ? null : key,

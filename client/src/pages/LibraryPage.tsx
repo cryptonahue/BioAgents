@@ -61,6 +61,15 @@ function trustLabel(tier?: string): string {
 }
 
 /**
+ * The trust tier is a SEMANTIC badge color: the two vetted tiers earn the
+ * success tone, everything else stays neutral. Basecoat has no `success`
+ * variant, so this maps onto the project `data-tone` — see `badges.css`.
+ */
+function trustTone(tier?: string): "success" | "neutral" {
+  return tier === "foundational" || tier === "curated" ? "success" : "neutral";
+}
+
+/**
  * Small, subtle destructive action shared by the card and the row. Confirms
  * before deleting (window.confirm), then removes the paper and its evidence
  * server-side and asks the parent to refresh the list on success. Errors are
@@ -182,20 +191,23 @@ function PaperCard({
               )}
               {typeof paper.bioprospectingFactCount === "number" &&
                 paper.bioprospectingFactCount > 0 && (
-                  <span className="paper-biofacts">
+                  <span className="badge" data-tone="violet">
                     {paper.bioprospectingFactCount} facts
                   </span>
                 )}
               {paper.trustTier && (
                 <span
-                  className={`paper-trust paper-trust--${paper.trustTier}`}
+                  className="badge paper-trust"
+              data-tone={trustTone(paper.trustTier)}
                   title={`Trust tier: ${trustLabel(paper.trustTier)}`}
                 >
                   {trustLabel(paper.trustTier)}
                 </span>
               )}
               {paper.type && (
-                <span className="paper-tag">{paper.type.toUpperCase()}</span>
+                <span className="badge paper-tag" data-tone="neutral">
+                  {paper.type.toUpperCase()}
+                </span>
               )}
               {paper.chunkCount != null && (
                 <span>{paper.chunkCount} fragments</span>
@@ -223,12 +235,16 @@ function PaperCard({
         {(paper.taxa?.length || paper.geography?.length) ? (
           <div className="paper-chips">
             {paper.taxa?.map((t) => (
-              <span key={`t-${t}`} className="paper-chip paper-chip--taxon">
+              <span
+                key={`t-${t}`}
+                className="badge paper-chip--taxon"
+                data-tone="brand"
+              >
                 {t}
               </span>
             ))}
             {paper.geography?.map((g) => (
-              <span key={`g-${g}`} className="paper-chip paper-chip--geo">
+              <span key={`g-${g}`} className="badge" data-tone="info">
                 <Icon name="mapPin" size={11} />
                 {g}
               </span>
@@ -316,13 +332,14 @@ function PaperRow({
           {paper.chunkCount != null && <span>{paper.chunkCount} frag.</span>}
           {typeof paper.bioprospectingFactCount === "number" &&
             paper.bioprospectingFactCount > 0 && (
-              <span className="paper-biofacts">
+              <span className="badge" data-tone="violet">
                 {paper.bioprospectingFactCount} facts
               </span>
             )}
           {paper.trustTier && (
             <span
-              className={`paper-trust paper-trust--${paper.trustTier}`}
+              className="badge paper-trust"
+              data-tone={trustTone(paper.trustTier)}
               title={`Trust tier: ${trustLabel(paper.trustTier)}`}
             >
               {trustLabel(paper.trustTier)}

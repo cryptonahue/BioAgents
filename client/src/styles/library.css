@@ -306,48 +306,18 @@
   font-weight: 500;
 }
 
-/* Tag reads as metadata, not an action: muted, no accent/button styling. */
+/* TYPOGRAPHY ONLY — the pill itself is `.badge[data-tone="neutral"]`. The type
+   code is set in caps by the call site, so it gets the tracking that caps need. */
 .paper-tag {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  font-size: 10px;
   letter-spacing: 0.04em;
 }
 
-/* Bioprospecting fact count: subtle violet pill (distinct from the teal
-   evidence pill so the two counts don't read as the same metric). */
-.paper-biofacts {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--violet-subtle);
-  border: 1px solid var(--violet-border);
-  color: var(--violet-subtle-foreground);
-}
-
-/* Trust-tier badge: neutral by default, greened for the highest tier. */
+/* TYPOGRAPHY ONLY — the pill is `.badge[data-tone={trustTone(tier)}]`, which
+   greens the two vetted tiers and leaves the rest neutral. The tier arrives from
+   the API as a lowercase slug and is title-cased here. */
 .paper-trust {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 10px;
   text-transform: capitalize;
   letter-spacing: 0.02em;
-}
-
-.paper-trust--foundational,
-.paper-trust--curated {
-  background: var(--success-subtle);
-  border-color: var(--success-border);
-  color: var(--success-subtle-foreground);
 }
 
 /* DOI link: reads as a link, never triggers card navigation. */
@@ -370,29 +340,11 @@
   gap: 6px;
 }
 
-.paper-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
+/* TYPOGRAPHY ONLY. A taxon is a scientific name, so it is set in italics — the
+   one thing `.badge` has no vocabulary for. Its BRAND tone (and the geography
+   chip's INFO tone) now come from `data-tone`. */
 .paper-chip--taxon {
   font-style: italic;
-  color: var(--accent-ink);
-  border-color: var(--accent-border);
-  background: var(--accent-light);
-}
-
-.paper-chip--geo {
-  color: var(--info-subtle-foreground);
-  border-color: var(--info-border);
-  background: var(--info-subtle);
 }
 
 /* ---- Abstract preview (lazy-loaded on hover) ---- */
@@ -702,21 +654,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.paper-source-chip {
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--accent-ink);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.paper-source-chip.active,
-.paper-source-chip:hover {
-  background: var(--accent-soft);
 }
 
 .paper-source-detail {
@@ -1035,16 +972,6 @@
   min-width: 220px;
 }
 
-.brain-plan-stats span,
-.brain-section-tags span,
-.brain-fact-fields span {
-  border-radius: 6px;
-  background: var(--accent-light);
-  color: var(--accent-ink);
-  padding: 4px 7px;
-  font-size: 12px;
-}
-
 .brain-caution {
   display: flex;
   align-items: flex-start;
@@ -1165,42 +1092,18 @@
   line-height: 1.25;
 }
 
+/* TYPOGRAPHY ONLY — the pill is `.badge[data-tone="neutral"]`. The confidence
+   label arrives lowercase and is set in caps. */
 .brain-strength-badge {
-  height: fit-content;
-  border-radius: 6px;
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  padding: 3px 7px;
-  font-size: 11px;
   text-transform: uppercase;
 }
 
+/* LAYOUT ONLY — the pill is `.badge[data-tone={reviewTone(status)}]`, which maps
+   verified/needs_review/incorrect/quarantined onto success/warning/danger/danger.
+   It is the only badge in the app that sits on its own line, so it keeps the
+   gutter under it. */
 .brain-review-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 6px;
-  padding: 4px 7px;
   margin-bottom: 10px;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.brain-review-status.review-verified {
-  background: var(--success-subtle);
-  color: var(--success-subtle-foreground);
-}
-
-.brain-review-status.review-needs_review {
-  background: var(--warning-subtle);
-  color: var(--warning-subtle-foreground);
-}
-
-.brain-review-status.review-incorrect,
-.brain-review-status.review-quarantined {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
 }
 
 .brain-review-note {
@@ -1556,13 +1459,10 @@
   margin-bottom: 8px;
 }
 
-.brain-claim-meta span,
-.paper-claim-mini span {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--accent-light);
-  color: var(--accent-ink);
-  font-size: 11px;
+/* TYPOGRAPHY ONLY — both are `.badge[data-tone="brand"]`. The claim's status,
+   confidence and trust tier arrive as lowercase slugs and are set in caps. */
+.brain-claim-chip,
+.paper-claim-status {
   text-transform: uppercase;
 }
 

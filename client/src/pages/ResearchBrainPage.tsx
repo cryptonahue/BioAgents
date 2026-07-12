@@ -90,6 +90,18 @@ function reviewLabel(status: string) {
   return "unreviewed";
 }
 
+/**
+ * The human-review state is a SEMANTIC badge color. Basecoat ships only
+ * `destructive`, so the four states map onto the project `data-tone` family —
+ * see `badges.css`.
+ */
+function reviewTone(status?: string): "success" | "warning" | "danger" | "neutral" {
+  if (status === "verified") return "success";
+  if (status === "needs_review") return "warning";
+  if (status === "incorrect" || status === "quarantined") return "danger";
+  return "neutral";
+}
+
 function correctionFieldLabel(field: string) {
   const match = ENTITY_FIELDS.find((entry) => entry.key === field);
   return match?.label || statusLabel(field);
@@ -537,10 +549,18 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     <p>{evidencePack.queryPlan.strategy}</p>
                   </div>
                   <div className="brain-plan-stats">
-                    <span>{facts.length} facts</span>
-                    <span>{directCount} direct</span>
-                    <span>{indirectCount} indirect</span>
-                    <span>{hypothesisCount} hypothesis</span>
+                    <span className="badge" data-tone="brand">
+                      {facts.length} facts
+                    </span>
+                    <span className="badge" data-tone="brand">
+                      {directCount} direct
+                    </span>
+                    <span className="badge" data-tone="brand">
+                      {indirectCount} indirect
+                    </span>
+                    <span className="badge" data-tone="brand">
+                      {hypothesisCount} hypothesis
+                    </span>
                   </div>
                 </div>
 
@@ -628,13 +648,14 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             </span>
                             <h3>{factTitle(fact)}</h3>
                           </div>
-                          <span className="brain-strength-badge">
+                          <span className="badge brain-strength-badge" data-tone="neutral">
                             {fact.confidence}
                           </span>
                         </div>
 
                         <div
-                          className={`brain-review-status review-${fact.reviewStatus || "unreviewed"}`}
+                          className="badge brain-review-status"
+                          data-tone={reviewTone(fact.reviewStatus)}
                         >
                           <Icon name="check" size={14} />
                           <span>
@@ -718,19 +739,37 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                                   variant="card"
                                 />
                               ) : (
-                                <span>{fact.compound}</span>
+                                <span className="badge" data-tone="brand">
+                                  {fact.compound}
+                                </span>
                               )}
                             </>
                           )}
                           {fact.compoundClass && (
-                            <span>{fact.compoundClass}</span>
+                            <span className="badge" data-tone="brand">
+                              {fact.compoundClass}
+                            </span>
                           )}
-                          {fact.bioactivity && <span>{fact.bioactivity}</span>}
+                          {fact.bioactivity && (
+                            <span className="badge" data-tone="brand">
+                              {fact.bioactivity}
+                            </span>
+                          )}
                           {fact.applicationArea && (
-                            <span>{fact.applicationArea}</span>
+                            <span className="badge" data-tone="brand">
+                              {fact.applicationArea}
+                            </span>
                           )}
-                          {fact.geography && <span>{fact.geography}</span>}
-                          {fact.ecosystem && <span>{fact.ecosystem}</span>}
+                          {fact.geography && (
+                            <span className="badge" data-tone="brand">
+                              {fact.geography}
+                            </span>
+                          )}
+                          {fact.ecosystem && (
+                            <span className="badge" data-tone="brand">
+                              {fact.ecosystem}
+                            </span>
+                          )}
                         </div>
 
                         {fact.resultSummary && <p>{fact.resultSummary}</p>}
@@ -900,7 +939,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     <h3>Suggested sections</h3>
                     <div className="brain-section-tags">
                       {evidencePack.queryPlan.answerSections.map((section) => (
-                        <span key={section}>{section}</span>
+                        <span key={section} className="badge" data-tone="brand">
+                          {section}
+                        </span>
                       ))}
                     </div>
 
@@ -1003,9 +1044,15 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                         {claims.map((claim) => (
                           <article key={claim.id} className="brain-claim-card">
                             <div className="brain-claim-meta">
-                              <span>{claim.status}</span>
-                              <span>{claim.confidence}</span>
-                              <span>{claim.trust_tier}</span>
+                              <span className="badge brain-claim-chip" data-tone="brand">
+                                {claim.status}
+                              </span>
+                              <span className="badge brain-claim-chip" data-tone="brand">
+                                {claim.confidence}
+                              </span>
+                              <span className="badge brain-claim-chip" data-tone="brand">
+                                {claim.trust_tier}
+                              </span>
                             </div>
                             <p>{claim.claim}</p>
                             {claim.chunk?.content && (
