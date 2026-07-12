@@ -119,28 +119,36 @@
   flex-direction: column;
   gap: 8px;
 }
+/* The list-view row is Basecoat's `.item[data-variant="outline"]` — icon,
+ * body, actions is that component's `> figure` / `> section` / `> aside`
+ * contract exactly, and Lyra supplies the flex row, the 1px border, the 12px
+ * box and the `text-xs` ramp. `.paper-row-icon` and `.paper-row-main` are gone
+ * with the skin: `> figure` is already `shrink-0 flex items-center` and
+ * `> section` is already `flex-1 flex-col`.
+ *
+ * Two things Lyra does not give it:
+ *
+ *   The FILL. `.item` is transparent, and these rows sit on `--background`.
+ *   That is invisible in light (where `--card` and `--background` are both
+ *   white) and visibly wrong in dark, where `--card` is a step lighter than the
+ *   page. So the row keeps its surface.
+ *
+ *   The HOVER. Lyra only hovers an `a.item`, and this is a `<div>` (the actions
+ *   inside it are the interactive parts). `--accent-color` is teal here, because
+ *   `theme.css` scopes the Library sub-brand to `.library-page` — the token, not
+ *   a literal, is what carries that through. */
 .paper-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  transition: border-color 0.15s, background 0.15s;
+  background: var(--card);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .paper-row:hover {
   border-color: var(--accent-color);
   background: var(--card-hover);
 }
 .paper-row-icon {
-  flex-shrink: 0;
-  display: flex;
   color: var(--accent-ink);
-}
-.paper-row-main {
-  flex: 1;
-  min-width: 0;
 }
 .paper-row-titleline {
   display: flex;
@@ -176,35 +184,31 @@
   gap: 8px;
 }
 @media (max-width: 640px) {
-  .paper-row {
-    flex-wrap: wrap;
-  }
   .paper-row-actions {
     width: 100%;
   }
 }
 
-.paper-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  text-align: left;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-.paper-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow-lg);
-}
-
+/* The grid-view card is Basecoat's `.card`. Lyra supplies the surface
+ * (`bg-card`), the 1px `ring-1` hairline, the square corners, the `py-4 gap-4`
+ * stack and the `> header` / `> section` / `> footer` boxes. Everything the
+ * hand-written skin declared is now the pack's, and NONE of it is repeated here.
+ *
+ * THE HOVER EDGE cannot be a `border-color` transition any more, because Lyra
+ * draws the card's edge with `ring-1` — a 1px-spread `box-shadow`, not a border.
+ * `data-hover="brand"` (see `surfaces.css`) re-declares the whole shadow and
+ * composes the elevation into it. It reads `--accent-border`, so the Library's
+ * teal sub-brand follows for free.
+ *
+ * NO CARD INSIDE THIS CARD. `.paper-card-icon` below is an `--accent-soft`
+ * square, not a second `.card`, and it stays that way deliberately — see the
+ * note at the top of `surfaces.css`.
+ *
+ * `.paper-card-top` is the `<header>`, and it overrides Lyra's `grid` with the
+ * flex row it always was. That is deliberate, not an accident of the unlayered
+ * cascade: Lyra's card header is a grid whose only off-axis slot is a
+ * RIGHT-aligned `[data-slot=card-action]`, and this card's icon is on the LEFT.
+ * A single-column grid would stack the icon above the title. */
 .paper-card-top {
   display: flex;
   align-items: center;
@@ -343,12 +347,22 @@
   -webkit-line-clamp: 8;
 }
 
-/* ---- Card footer actions (two explicit, labelled buttons) ---- */
+/* ---- Card footer actions (two explicit, labelled buttons) ----
+ *
+ * Lyra's `.card > footer` is already `flex items-center` with `border-t` and
+ * `p-4`, and `.card:has(>footer)` zeroes the card's own bottom padding so the
+ * two never double up. Only the gap between the three buttons is left.
+ *
+ * `margin-top: auto` PINS the footer to the bottom of the card. The cards are
+ * `1fr` grid items, so they all stretch to the tallest row, and the card is a
+ * flex COLUMN — without this the action row floats up under the last piece of
+ * content and leaves the dead space beneath it. That gap existed before this
+ * migration too, but it was invisible, because the actions had no rule above
+ * them. Now that Lyra draws one, an unpinned footer would rule off the middle
+ * of a short card. */
 .paper-card-actions {
-  display: flex;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
+  margin-top: auto;
 }
 
 /* The paper card's action row. All three buttons are Basecoat's `.btn` now:
@@ -755,18 +769,24 @@
   gap: 14px;
 }
 
-.brain-evidence-search,
-.brain-plan-panel,
-.brain-evidence-side {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-}
+/* ---------------------------------------------------------------------------
+ * THE RESEARCH BRAIN PANELS ARE ALL BASECOAT `.card`s.
+ *
+ * The surface, the 1px `ring-1` hairline and the square corners are Lyra's now,
+ * and the three-selector rule that used to declare them is gone.
+ *
+ * What each one still says is the SAME two things, and only those: it lays its
+ * own children out (Lyra's card is a plain flex column and these are grids and
+ * rows), and it opts out of the card's `py-4` / `gap-4`, because it supplies its
+ * own padding to its own layout. A `.card` is a SURFACE plus a `> header` /
+ * `> section` / `> footer` contract; a panel that does not use those slots gets
+ * the surface and declines the box.
+ * ------------------------------------------------------------------------- */
 
 .brain-evidence-search {
-  padding: 14px;
   display: grid;
   gap: 12px;
+  padding: 14px;
 }
 
 /* The evidence search bar is Basecoat's `.input-group`: a bordered box, a
@@ -831,12 +851,24 @@
   width: 100%;
 }
 
+/* `flex-direction: row` is LOAD-BEARING. Lyra's `.card` is `flex flex-col`, and
+ * overriding only `display` leaves the COLUMN direction behind — rendered, that
+ * dropped the four stat badges out of the panel's top-right corner and stacked
+ * them under the strategy line. Overriding `display: flex` on a `.card` is never
+ * enough; the direction has to come with it. */
 .brain-plan-panel {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   gap: 18px;
   padding: 16px;
 }
+
+/* TYPOGRAPHY ONLY. Lyra gives a `.card`'s heading `text-sm font-medium`; the
+   query planner's intent label is the panel's headline and keeps its size. This
+   rule is UNLAYERED and beats Lyra's `components` layer by construction — the
+   trap every slice of this migration has found, used deliberately here rather
+   than tripped over. */
 
 .brain-plan-kicker,
 .brain-fact-kicker {
@@ -882,9 +914,6 @@
 
 .brain-bulk-toolbar {
   align-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-secondary);
   display: grid;
   gap: 10px;
   grid-template-columns: auto minmax(180px, 1fr) auto;
@@ -938,12 +967,18 @@
   gap: 10px;
 }
 
+/* The fact card sits in `.brain-facts-list`, which is a bare grid and NOT a
+ * card, so this one is a real `.card` with no nesting hazard.
+ *
+ * The STRENGTH STRIPE has to stay a real `border-left`. Lyra draws the card's
+ * edge with `ring-1` — a box-shadow — which has no per-side spelling, so a
+ * shadow could not carry a 3px left rule in one colour and a 1px hairline in
+ * another. The border and the ring coexist: the ring is the hairline, the
+ * border-left is the stripe. */
 .brain-fact-card {
-  border: 1px solid var(--border-color);
   border-left: 3px solid var(--border-strong);
-  border-radius: 8px;
   padding: 14px;
-  background: var(--bg-secondary);
+  gap: 0;
 }
 
 .brain-fact-select {
@@ -1225,17 +1260,14 @@
   min-height: 520px;
 }
 
-.brain-source-list,
-.brain-claims-panel {
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
+/* The source column is a FLUSH LIST card — the rows run edge to edge and divide
+ * themselves — so it opts out of the padded stack the way the graph's search
+ * panel and the corpus sidebar do. `overflow: hidden` is Lyra's now. */
 .brain-source-list {
   display: flex;
   flex-direction: column;
+  padding-block: 0;
+  gap: 0;
 }
 
 .brain-source-item {
@@ -1276,6 +1308,7 @@
 .brain-claims-panel {
   padding: 16px;
   overflow: auto;
+  gap: 0;
 }
 
 .brain-claims-header {
@@ -1302,11 +1335,26 @@
   gap: 10px;
 }
 
+/* NO CARD INSIDE A CARD.
+ *
+ * `.brain-claim-card` is the ONE surface in this slice that is card-shaped and
+ * is deliberately NOT a `.card`. It lives inside `.brain-claims-panel`, which IS
+ * one — and the two used to paint the SAME `--bg-secondary` fill with the same
+ * border and the same radius, so a claim already read as a card sitting on a
+ * card of the identical colour, which is the nesting the top of `surfaces.css`
+ * rules out.
+ *
+ * The outer panel is the card, because it is the page-level surface. The claim
+ * becomes a SUNKEN sub-panel — the same resolution `.graph-fact` gets inside
+ * `.graph-detail-card` and `.admin-stats-tile` gets inside `.admin-stats-card`.
+ * It now sits visibly BELOW its container instead of alongside it, which is what
+ * a nested surface is supposed to look like, and the "card" in its class name is
+ * now a lie the comment has to carry. */
 .brain-claim-card {
-  border: 1px solid var(--border-color);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
-  background: var(--bg-secondary);
 }
 
 .brain-claim-meta {

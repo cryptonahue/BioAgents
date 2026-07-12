@@ -72,7 +72,7 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
   };
 
   return (
-    <div className="suggested-steps-container">
+    <div className="card suggested-steps-container">
       <div className="suggested-steps-header">
         <span className="suggested-steps-icon">🚀</span>
         <span className="suggested-steps-title">Suggested Next Steps</span>

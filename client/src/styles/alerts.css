@@ -42,27 +42,27 @@
  */
 
 /*
- * ALERT NORMALIZATION — the part of Preflight this app deliberately does not load.
+ * THE INK FLOOR.
  *
- * Lyra's `.alert` sets a font SIZE (`text-xs`) but never a font FAMILY: it
- * assumes Preflight already made every element `font-family: inherit`. That is
- * harmless on the `<div>`s most alerts are, and it is not harmless on the two
- * that are real `<button>`s, where the UA's `font: 400 13.333px Arial` leaks
- * straight through. Same leak slice 3 found on the form controls and slice 4
- * found on the badges.
+ * Lyra inks `.alert` with `text-card-foreground`, which is right for an alert
+ * sitting on `--card` and is not what every alert here sits on: these render
+ * inside parents that recolor their whole subtree (`.paper-chat-messages`, the
+ * research step cards, the admin dialog all set a muted ink on the wrapper).
+ * `--foreground` is the app's text token and does not move with the surface. It
+ * is the floor for an `.alert` carrying no tone at all; every tone below
+ * overrides it.
  *
- * `.alert` does NOT need a border reset. Lyra styles it with Tailwind's `border`
- * utility, which sets a WIDTH, and v4 registers `--tw-border-style: solid` as an
- * `@property` initial value, so the style arrives with it. Rendered in Chromium
- * the box computes to `1px solid` on its own. (`.empty` is the one that does
- * need the reset — it is styled with `border-dashed`, a style-only utility, and
- * lands on the UA's 3px `medium`. See `surfaces.css`.)
+ * NO BORDER RESET IS NEEDED HERE, and that is worth recording because `.empty`
+ * DOES need one. Lyra styles `.alert` with Tailwind's `border` utility, which
+ * sets a WIDTH — and v4 registers `--tw-border-style: solid` as an `@property`
+ * initial value, so the style arrives with it even without Preflight. Measured
+ * in Chromium: the box computes to `1px solid` on its own. `.empty` is styled
+ * with `border-dashed`, a style-ONLY utility, and lands on the UA's 3px
+ * `medium`. See the note in `surfaces.css`.
  *
- * THE INK IS `--foreground`, NOT `inherit`. Alerts render inside parents that
- * recolor their subtree — `.paper-chat-messages`, the research step cards and
- * the admin dialog all set a muted ink on the wrapper — so `inherit` would pick
- * up the parent's grey. Every tone below overrides this; it is the floor for an
- * `.alert` carrying no tone at all.
+ * No `font-family` reset either. Lyra's `.alert` never sets one (unlike `.badge`,
+ * which `@apply`s `font-sans` and so needed the fix slice 4 made), and every
+ * alert in the app is a `<div>`, which inherits its parent's face anyway.
  *
  * `base` LAYER, not unlayered, for the reason `buttons.css`, `badges.css` and
  * `forms.css` each give: Lyra's own variant rules live in `components` and must
@@ -70,22 +70,16 @@
  */
 @layer base {
   .alert {
-    font-family: inherit;
     color: var(--foreground);
   }
 }
 
 /*
- * FOCUS RING — for a dismissible alert, whose close control sits in Lyra's
- * absolutely-positioned `> footer` slot. Lyra kills the outline on everything it
- * ships; slices 1-6 each had to re-add this pair. `--ring` is the measured
- * opaque focus token.
+ * The focus ring for a dismissible alert lives in `surfaces.css`, next to the
+ * card's and the item's — same Lyra defect, same guard, same measured `--ring`.
+ * Nothing in the app is a focusable alert today; the Retry control inside the
+ * Library's failure alert is a `.btn`, which `buttons.css` already rings.
  */
-.alert:focus-visible,
-.alert > footer .btn:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
 
 /*
  * Lyra forces `[&>svg:not([class*='size-'])]:size-4` but never stops the icon

@@ -727,16 +727,18 @@ function StatsTab(props: { onSwitchTab?: (t: TabId) => void }) {
 
       {!isLoading && data && (
         <>
-          <div class="admin-stats-card">
+          <div class="card admin-stats-card">
             <StatsSection title="Today" window={data.today} />
             <StatsSection title="Last 7 days" window={data.last7d} />
-            <a
-              class="admin-stats-link"
-              onClick={switchToContras}
-              href="#contras"
-            >
-              View all activity →
-            </a>
+            <footer>
+              <a
+                class="admin-stats-link"
+                onClick={switchToContras}
+                href="#contras"
+              >
+                View all activity →
+              </a>
+            </footer>
           </div>
           <button
             class="btn" data-variant="outline"
@@ -754,7 +756,7 @@ function StatsTab(props: { onSwitchTab?: (t: TabId) => void }) {
 function StatsSection(props: { title: string; window: any }) {
   const w = props.window;
   return (
-    <div class="admin-stats-section">
+    <section class="admin-stats-section">
       <h3 class="admin-stats-section-title">{props.title}</h3>
       <div class="admin-stats-grid">
         <StatsTile label="Found" value={w.found} />
@@ -764,7 +766,7 @@ function StatsSection(props: { title: string; window: any }) {
         <StatsTile label="Merges" value={w.merges} />
         <StatsTile label="Unmerges" value={w.unmerges} />
       </div>
-    </div>
+    </section>
   );
 }
 

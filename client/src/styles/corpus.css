@@ -62,12 +62,13 @@
   margin-top: 24px;
 }
 
-/* Sidebar */
+/* Sidebar — Basecoat's `.card`. A FLUSH LIST panel, exactly like the graph's
+ * search column: the header and the run rows run edge to edge and divide
+ * themselves. So it opts out of the card's `py-4` / `gap-4` and keeps everything
+ * else Lyra gives it. */
 .corpus-sidebar {
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  overflow: hidden;
+  padding-block: 0;
+  gap: 0;
 }
 
 .corpus-sidebar-header {
@@ -164,12 +165,16 @@
   color: var(--muted-foreground);
 }
 
-/* Detail panel */
+/* Detail panel — Basecoat's `.card`. This one IS a padded content stack, so it
+ * keeps `py-4` and `gap-4`, and only asks for the horizontal inset: its children
+ * are plain `<div>`s (the header, the progress bar, the metrics strip, the file
+ * table), not the `> header` / `> section` / `> footer` slots Lyra pads, so
+ * nothing would inset them.
+ *
+ * NO CARD INSIDE THIS CARD. `.corpus-metrics-bar` stays a `--muted` strip. */
 .corpus-detail {
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  padding: 24px;
+  padding-inline: 16px;
+  gap: 0;
 }
 
 .corpus-detail-header {

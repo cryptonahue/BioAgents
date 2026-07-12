@@ -192,7 +192,7 @@ export function CorpusDashboardPage() {
             </div>}
 
         <div class="corpus-layout">
-          <aside class="corpus-sidebar">
+          <aside class="card corpus-sidebar">
             <div class="corpus-sidebar-header">
               <h2>Runs</h2>
               <select
@@ -238,7 +238,7 @@ export function CorpusDashboardPage() {
             </div>
           </aside>
 
-          <section class="corpus-detail">
+          <section class="card corpus-detail">
             {!selectedRun && (
               <div class="empty">
                 <header>

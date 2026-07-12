@@ -457,7 +457,7 @@ export function GraphExplorerPage(_props: Props) {
           </div>}
 
         <div class="graph-layout">
-          <aside class="graph-search-panel">
+          <aside class="card graph-search-panel">
             <div class="graph-kind-selector">
               {KIND_OPTIONS.map((opt) => (
                 <button
@@ -576,7 +576,7 @@ export function GraphExplorerPage(_props: Props) {
           </aside>
 
           <section class="graph-canvas-panel">
-            <div class="graph-canvas-wrap">
+            <div class="card graph-canvas-wrap">
               {expanding && (
                 <div class="graph-canvas-loading">Loading neighborhood…</div>
               )}
@@ -648,7 +648,7 @@ export function GraphExplorerPage(_props: Props) {
             )}
 
             {focusNode && (
-              <div class="graph-detail-card">
+              <div class="card graph-detail-card">
                 <DetailCard
                   focus={focusNode}
                   expansion={expansion}
@@ -682,7 +682,7 @@ function DetailCard({
   if (focus.type === "entity" && expansion) {
     return (
       <>
-        <div class="graph-detail-header">
+        <header class="graph-detail-header">
           <span class="graph-detail-kicker">{focus.kind}</span>
           <h2>{focus.display || focus.value}</h2>
           <div class="graph-detail-stats">
@@ -690,10 +690,10 @@ function DetailCard({
             <span>{expansion.facts.length} facts</span>
             <span>{expansion.sources.length} sources</span>
           </div>
-        </div>
+        </header>
 
         {expansion.facts.length > 0 && (
-          <div class="graph-detail-section">
+          <section class="graph-detail-section">
             <h3>Linked facts</h3>
             {expansion.facts.map((f) => (
               <article key={f.id} class="graph-fact">
@@ -720,11 +720,11 @@ function DetailCard({
                 </div>
               </article>
             ))}
-          </div>
+          </section>
         )}
 
         {expansion.sources.length > 0 && (
-          <div class="graph-detail-section">
+          <section class="graph-detail-section">
             <h3>Sources</h3>
             {expansion.sources.map((s) => (
               <div key={s.id} class="graph-source-row">
@@ -749,7 +749,7 @@ function DetailCard({
                 </span>
               </div>
             ))}
-          </div>
+          </section>
         )}
       </>
     );
@@ -758,17 +758,17 @@ function DetailCard({
   if (focus.type === "compound" && compound) {
     return (
       <>
-        <div class="graph-detail-header">
+        <header class="graph-detail-header">
           <span class="graph-detail-kicker">compound</span>
           <h2>{compound.compound.canonical_name}</h2>
           <div class="graph-detail-stats">
             <span>{compound.stats.fact_count} facts</span>
             <span>{compound.stats.source_count} sources</span>
           </div>
-        </div>
+        </header>
 
         {(compound.topCoOccurring?.length ?? 0) > 0 && (
-          <div class="graph-detail-section">
+          <section class="graph-detail-section">
             <h3>Co-occurring compounds</h3>
             {compound.topCoOccurring!.map((c) => (
               <div key={c.compound_id} class="graph-source-row">
@@ -776,11 +776,11 @@ function DetailCard({
                 <span class="graph-source-meta">{c.fact_count} facts</span>
               </div>
             ))}
-          </div>
+          </section>
         )}
 
         {(compound.topBioactivities?.length ?? 0) > 0 && (
-          <div class="graph-detail-section">
+          <section class="graph-detail-section">
             <h3>Bioactivities</h3>
             <div class="graph-tag-row">
               {compound.topBioactivities!.map((b) => (
@@ -789,11 +789,11 @@ function DetailCard({
                 </span>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {(compound.topGeographies?.length ?? 0) > 0 && (
-          <div class="graph-detail-section">
+          <section class="graph-detail-section">
             <h3>Geographies</h3>
             <div class="graph-tag-row">
               {compound.topGeographies!.map((g) => (
@@ -802,7 +802,7 @@ function DetailCard({
                 </span>
               ))}
             </div>
-          </div>
+          </section>
         )}
       </>
     );
@@ -811,7 +811,7 @@ function DetailCard({
   if (focus.type === "source" && source) {
     return (
       <>
-        <div class="graph-detail-header">
+        <header class="graph-detail-header">
           <span class="graph-detail-kicker">source</span>
           <h2>{source.title || "Source"}</h2>
           <div class="graph-detail-stats">
@@ -822,9 +822,9 @@ function DetailCard({
               </a>
             )}
           </div>
-        </div>
+        </header>
 
-        <div class="graph-detail-section">
+        <section class="graph-detail-section">
           <button
             type="button"
             class="btn graph-evidence-btn"
@@ -836,7 +836,7 @@ function DetailCard({
           >
             Open in evidence viewer
           </button>
-        </div>
+        </section>
       </>
     );
   }

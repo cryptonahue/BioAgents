@@ -43,14 +43,17 @@
   margin-top: 24px;
 }
 
-/* ---- Left search panel ---------------------------------------------------*/
+/* ---- Left search panel ---------------------------------------------------
+ *
+ * Basecoat's `.card`. It is a FLUSH LIST panel — the kind filter, the search bar
+ * and the result rows all run edge to edge and divide themselves with
+ * `border-bottom` — so it opts out of the card's `py-4` and `gap-4`, which are
+ * tuned for a padded content stack. Everything else (`bg-card`, the `ring-1`
+ * hairline, `overflow-hidden`, `flex-col`) is Lyra's, and the four declarations
+ * that used to say so are gone. */
 .graph-search-panel {
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  padding-block: 0;
+  gap: 0;
 }
 
 .graph-kind-selector {
@@ -150,13 +153,13 @@
   min-width: 0;
 }
 
+/* Basecoat's `.card` — a bare surface with nothing but a canvas in it, so it
+ * takes no header/section/footer and opts out of the padding the way the search
+ * panel does. The three empty states that render inside it are `.empty`. */
 .graph-canvas-wrap {
   position: relative;
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
   height: 520px;
-  overflow: hidden;
+  padding-block: 0;
 }
 
 .graph-canvas-svg {
@@ -241,18 +244,22 @@
   background: var(--border-strong);
 }
 
-/* ---- Detail card ---------------------------------------------------------*/
-.graph-detail-card {
-  background: var(--card);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  padding: 20px 24px;
-}
-
+/* ---- Detail card ---------------------------------------------------------
+ *
+ * Basecoat's `.card`, and the cleanest fit in the slice: the kicker + title +
+ * stats block is its `<header>` and each "Linked facts" / "Sources" block is a
+ * `<section>`. Lyra supplies the surface, the hairline, the square corners, the
+ * `py-4 gap-4` stack and the `px-4` insets.
+ *
+ * NO CARD INSIDE THIS CARD. `.graph-fact` below stays a `--surface-sunken` box.
+ *
+ * The header keeps its rule. Lyra draws one only when the author adds Tailwind's
+ * `.border-b` class (`[.border-b]:pb-4`), which would mean putting a utility
+ * class in the markup to get a border this panel has always had. `margin-bottom`
+ * is gone — the card's `gap-4` is the gap now. */
 .graph-detail-header {
   border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
-  margin-bottom: 12px;
 }
 
 .graph-detail-kicker {
@@ -262,11 +269,13 @@
   color: var(--info);
 }
 
+/* TYPOGRAPHY ONLY. The SIZE and WEIGHT are Lyra's now (`.card > header > h2` is
+   `text-sm font-medium`) — the bespoke 18px/600 headline goes, which is the same
+   trade every control in this migration has made. Only the gutters between the
+   kicker, the title and the stats row survive, and they have to: the header is a
+   grid with a `gap-1`, which is tighter than this three-line block wants. */
 .graph-detail-header h2 {
-  font-size: 18px;
-  font-weight: 600;
   margin: 4px 0 8px;
-  color: var(--foreground);
 }
 
 .graph-detail-stats {
@@ -276,9 +285,7 @@
   color: var(--muted-foreground);
 }
 
-.graph-detail-section {
-  margin-top: 16px;
-}
+/* The card's `gap-4` replaces the hand-counted `margin-top: 16px`. */
 
 .graph-detail-section h3 {
   font-size: 13px;

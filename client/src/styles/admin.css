@@ -257,22 +257,21 @@
   margin-top: 8px;
 }
 
-/* ----------------- Stats card ----------------- */
+/* ----------------- Stats card -----------------
+ *
+ * Basecoat's `.card`. The two windows (Today / Last 7 days) are its `> section`s
+ * and the "View all activity" link is its `> footer`, so the surface, the
+ * hairline, the 16px box and the footer's top rule all come from Lyra.
+ *
+ * NO CARD INSIDE THIS CARD. `.admin-stats-tile` below stays a `--surface-sunken`
+ * TILE, not a second `.card` — see the note at the top of `surfaces.css`. Six of
+ * them per section; carding them would nest twelve cards inside one.
+ *
+ * The `margin-bottom: 24px` between sections is gone: `.card` is a flex column
+ * with `gap-4`, which is the gap. */
 
 .admin-stats-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
   margin-top: 16px;
-}
-
-.admin-stats-section {
-  margin-bottom: 24px;
-}
-
-.admin-stats-section:last-child {
-  margin-bottom: 0;
 }
 
 .admin-stats-section-title {
@@ -329,9 +328,9 @@
   color: var(--warning-subtle-foreground);
 }
 
+/* Lives in the card's `<footer>` now, which supplies the rule above it and the
+   16px box — so the link's own `margin-top` is gone with them. */
 .admin-stats-link {
-  display: inline-block;
-  margin-top: 16px;
   color: var(--info);
   font-size: 13px;
   text-decoration: none;

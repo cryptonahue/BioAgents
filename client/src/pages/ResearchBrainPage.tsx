@@ -410,7 +410,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
           <TabPanel idPrefix={BRAIN_TABS_ID} value="evidence">
           <section className="brain-evidence-workspace">
             <form
-              className="brain-evidence-search"
+              className="card brain-evidence-search"
               onSubmit={handleEvidenceSearch}
             >
               <div className="input-group brain-search-main">
@@ -572,7 +572,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
 
             {evidencePack && !evidenceLoading && (
               <>
-                <div className="brain-plan-panel">
+                <div className="card brain-plan-panel">
                   <div>
                     <span className="brain-plan-kicker">Query planner</span>
                     <h2>{evidencePack.queryPlan.intentLabel}</h2>
@@ -601,7 +601,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   </div>
                 )}
 
-                <div className="brain-bulk-toolbar">
+                <div className="card brain-bulk-toolbar">
                   <label className="brain-select-all">
                     <input
                       type="checkbox"
@@ -674,7 +674,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     {facts.map((fact) => (
                       <article
                         key={fact.id}
-                        className={`brain-fact-card strength-${fact.evidenceStrength}`}
+                        className={`card brain-fact-card strength-${fact.evidenceStrength}`}
                       >
                         <label className="brain-fact-select">
                           <input
@@ -996,7 +996,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     ))}
                   </section>
 
-                  <aside className="brain-evidence-side">
+                  <aside className="card brain-evidence-side">
                     <h3>Suggested sections</h3>
                     <div className="brain-section-tags">
                       {evidencePack.queryPlan.answerSections.map((section) => (
@@ -1051,7 +1051,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
 
             {!isLoading && !error && (
               <div className="brain-layout">
-                <section className="brain-source-list">
+                <section className="card brain-source-list">
                   {sources.map((source) => (
                     <button
                       key={source.id}
@@ -1079,7 +1079,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   )}
                 </section>
 
-                <section className="brain-claims-panel">
+                <section className="card brain-claims-panel">
                   {selectedSource ? (
                     <>
                       <div className="brain-claims-header">

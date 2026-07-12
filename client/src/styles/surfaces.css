@@ -37,6 +37,30 @@
  *   `.corpus-metrics-bar` inside `.corpus-detail`        (a `--muted` strip)
  *   `.brain-correction-history` inside `.brain-fact-card` (an `--accent-light` tint)
  *   `.paper-card-icon`    inside `.paper-card`           (an `--accent-soft` square)
+ *   `.brain-claim-card`   inside `.brain-claims-panel`   (a `--surface-sunken` box)
+ *   `.suggested-step-card` inside `.suggested-steps-container` (a `--bg-tertiary` button)
+ *
+ * The last two are the interesting ones: both are NAMED "card", both looked like
+ * one, and both had the SAME fill as the surface they sit in — so a claim read as
+ * a card floating on a card of the identical colour. They are sunken now, and
+ * their class names are lies their own comments have to carry.
+ *
+ * ---------------------------------------------------------------------------
+ * `.card` IS `flex flex-col gap-4`. TWO TRAPS FALL OUT OF THAT, AND BOTH WERE
+ * FOUND BY RENDERING, NOT BY READING.
+ *
+ * 1. Overriding `display: flex` on a `.card` is NOT enough to make it a row.
+ *    Lyra's `flex-col` survives, because nothing in the override touches
+ *    `flex-direction`. That silently stacked the Research Brain query planner's
+ *    four stat badges UNDER the strategy line instead of pinning them to the
+ *    panel's top-right corner. Say `flex-direction: row` explicitly.
+ *
+ * 2. `gap-4` COMPOSES with whatever margins the children already carry, and the
+ *    spacing quietly doubles. Every card here does one or the other and never
+ *    both: either the child margins were deleted and Lyra's `gap-4` IS the
+ *    rhythm (the admin stats card, the graph detail card), or the margins stay
+ *    and the card takes `gap: 0` (the fact card, the claims panel, the corpus
+ *    detail panel, the suggested-steps container).
  * ------------------------------------------------------------------------ */
 
 /* ---------------------------------------------------------------------------
@@ -89,53 +113,35 @@
 }
 
 /* ---------------------------------------------------------------------------
- * FOCUS RINGS.
+ * FOCUS RING — A GUARD, AND HONESTLY NOT EXERCISED YET.
  *
  * Lyra kills the outline on everything interactive it ships and paints focus as
- * a Tailwind ring that never materializes in this build. Slices 1-6 each had to
- * re-add this exact pair; an interactive card is no different. `--ring` is the
- * app's opaque focus token, measured in PR 2 against every surface a ring lands
- * on (it clears the 3:1 WCAG 1.4.11 floor for a non-text indicator in both
- * themes).
+ * a Tailwind ring that never materializes in this build; slices 1-6 each had to
+ * re-add this exact pair. It is declared here for the same reason, and — unlike
+ * those slices — it is worth saying plainly that NOTHING TRIGGERS IT TODAY.
+ *
+ * Tab-walked in Chromium across every migrated page in both themes: not one
+ * `.card`, `.alert`, `.empty` or `.item` in this app is a tab stop. They are all
+ * non-interactive containers (`<div>`, `<article>`, `<section>`, `<aside>`). The
+ * interactive things INSIDE them — the paper card's Chat / Evidence / Delete
+ * buttons, the failure alert's Retry — are `.btn`s, and `buttons.css` already
+ * rings those.
+ *
+ * So this guards the day someone makes the whole paper card clickable or the
+ * alerts dismissible, which is the obvious next move for both and is exactly
+ * when Lyra's missing outline would ship as an accessibility regression.
+ * `--ring` is the app's opaque focus token, measured in PR 2 on every surface a
+ * ring lands on.
  *
  * Lyra puts `transition-all` on these components, so `outline-width` ANIMATES
  * 0 -> 2px. Sampling `getComputedStyle` straight after a Tab reads 0px and looks
- * like a missing ring, which it is not — let it settle first.
+ * like a missing ring, which it is not — let it settle before measuring.
  * ------------------------------------------------------------------------ */
 .card:focus-visible,
 .item:focus-visible,
-button.card:focus-visible,
-a.card:focus-visible {
+.alert:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-/* ---------------------------------------------------------------------------
- * `.card` NORMALIZATION — the part of Preflight this app does not load.
- *
- * Lyra's `.card` sets no font FAMILY and no INK of its own beyond
- * `text-card-foreground`; on a `<button class="card">` (the Library's clickable
- * paper card, the Research Brain's source rows) the UA's `font: 400 13.333px
- * Arial` and `buttonface` fill leak straight through, exactly as they did on the
- * badges in slice 4 and the buttons in slice 1.
- *
- * `text-align: start` because the UA centres a button's text.
- * ------------------------------------------------------------------------ */
-@layer base {
-  button.card,
-  a.card,
-  button.item,
-  a.item {
-    font-family: inherit;
-    font-size: inherit;
-    text-align: start;
-    cursor: pointer;
-  }
-
-  button.card,
-  button.item {
-    background-color: var(--card);
-  }
 }
 
 /* ---------------------------------------------------------------------------

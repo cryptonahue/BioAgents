@@ -228,7 +228,7 @@ export function ResearchStatePanel({
   const showLoadingState = isLoading && (!state || !state.currentObjective);
 
   return (
-    <div className={`research-state-panel ${isExpanded ? "expanded" : ""}`}>
+    <div className={`card research-state-panel ${isExpanded ? "expanded" : ""}`}>
       <button className="research-state-header" onClick={onToggle}>
         <div className="research-state-header-left">
           <span className="research-state-icon">🧬</span>

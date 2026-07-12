@@ -12,157 +12,35 @@
 }
 
 /* ============================================
-   Research Progress Bar
+   Research Progress Bar — DELETED, not migrated.
+
+   Fifteen classes (`.research-progress`, `-header`, `-info`, `-label`,
+   `-level`, `-stats`, `-count`, `-current`, `-spinner`, `-bar-container`,
+   `-bar`, `-bar-active`, `-steps`, `-step`, `-step-icon`) plus the
+   `progressPulse` keyframes. NOT ONE of them had a call site anywhere in the
+   client — no JSX, no TSX, no other stylesheet. There is no ResearchProgress
+   component; the deep-research UI reports progress through
+   `.research-activity-log` at the bottom of this file instead.
+
+   Found while inventorying the card-like surfaces for this slice: the panel
+   was a `--bg-secondary` bordered box, i.e. exactly the component being
+   migrated, and it turned out there was nothing to migrate it for.
    ============================================ */
-.research-progress {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px 20px;
-}
-
-.research-progress-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.research-progress-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.research-progress-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.research-progress-level {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent-color);
-  background: var(--accent-light);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.research-progress-stats {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.research-progress-count {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-family: "JetBrains Mono", monospace;
-}
-
-.research-progress-current {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  /* Not `--info`: the dark emphasis blue is only 3.50:1 on `--card`, which is
-     the surface this text sits on. The on-tint ink clears AA on every surface
-     a section label renders against (6.2:1 - 10.4:1). */
-  color: var(--info-subtle-foreground);
-  font-weight: 500;
-}
-
-.research-progress-spinner {
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--info);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.research-progress-bar-container {
-  height: 6px;
-  background: var(--bg-tertiary);
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}
-
-.research-progress-bar {
-  height: 100%;
-  /* DELIBERATE LITERAL: emerald-400 is the lighter terminus of the brand-green
-     gradient. Like `--accent-color` itself it is a brand FILL, frozen and
-     identical in both themes. */
-  background: linear-gradient(90deg, var(--accent-color), #34d399);
-  border-radius: 3px;
-  transition: width 0.5s ease;
-}
-
-.research-progress-bar-active {
-  position: absolute;
-  top: 0;
-  width: 40px;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, var(--info), transparent);
-  opacity: 0.5;
-  animation: progressPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes progressPulse {
-  0%, 100% {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  50% {
-    opacity: 1;
-    transform: translateX(20px);
-  }
-}
-
-.research-progress-steps {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.research-progress-step {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.research-progress-step.complete {
-  background: var(--accent-light);
-  border-color: var(--accent-border);
-}
-
-.research-progress-step.active {
-  background: var(--info-subtle);
-  border-color: var(--info-border);
-  animation: pulseStep 2s ease-in-out infinite;
-}
-
-.research-progress-step-icon {
-  font-size: 14px;
-}
 
 /* ============================================
    Research State Panel
    ============================================ */
+/* Basecoat's `.card`. Lyra gives it the surface, the `ring-1` hairline, the
+ * square corners and `overflow-hidden`; it declines the `py-4` / `gap-4` box
+ * because its two children are a full-bleed toggle header (which must reach the
+ * card's edges to be a full-width hit target) and a content stack that pads
+ * itself.
+ *
+ * NO CARD INSIDE THIS CARD. `.research-section` below stays a `--bg-tertiary`
+ * sub-panel — there are up to seven of them in an expanded panel. */
 .research-state-panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
+  padding-block: 0;
+  gap: 0;
   transition: all 0.3s ease;
 }
 
@@ -566,11 +444,16 @@
 /* ============================================
    Suggested Steps Component
    ============================================ */
+/* Basecoat's `.card`, padded by itself rather than by Lyra's `> section` slots.
+ *
+ * NO CARD INSIDE THIS CARD. `.suggested-step-card` is a `--bg-tertiary` BUTTON
+ * and stays one. It is the most card-shaped thing in this file and carding it
+ * would put three to five cards inside this one, each with the identical fill —
+ * the exact nesting the top of `surfaces.css` rules out. Its name is now a lie
+ * that this comment has to carry. */
 .suggested-steps-container {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
   padding: 20px;
+  gap: 0;
 }
 
 .suggested-steps-header {
@@ -699,12 +582,18 @@
 /* ============================================
    Artifact Viewer Component
    ============================================ */
+/* Basecoat's `.card` — a full-bleed toggle header over a content stack, the same
+ * shape as `.research-state-panel`, and it declines the padded box for the same
+ * reason.
+ *
+ * NO CARD INSIDE THIS CARD. `.artifact-output` and `.artifact-file-card` stay
+ * sub-panels. The stderr block inside it IS a Basecoat component now — an
+ * `.alert[data-tone="danger"]` — but an alert inside a card is the composition
+ * Basecoat intends, not a nested surface. */
 .artifact-viewer {
   margin-top: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: var(--bg-secondary);
-  overflow: hidden;
+  padding-block: 0;
+  gap: 0;
 }
 
 .artifact-viewer-header {

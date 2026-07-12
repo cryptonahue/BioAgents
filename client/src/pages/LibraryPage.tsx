@@ -164,135 +164,139 @@ function PaperCard({
   };
 
   return (
-    <div className="paper-card-wrap">
-      <div
-        className="paper-card"
-        onMouseEnter={loadAbstract}
-        onFocusCapture={loadAbstract}
-      >
-        <div className="paper-card-top">
-          <div className="paper-card-icon">
-            <Icon name="bookOpen" size={22} />
-          </div>
-          <div className="paper-card-body">
-            <h3 className="paper-card-title" title={title}>
-              {title}
-            </h3>
-            {sub && <div className="paper-card-subtitle">{sub}</div>}
-            <div className="paper-card-meta">
-              {typeof paper.evidenceCount === "number" && (
-                <span
-                  className={`paper-evidence${
-                    paper.evidenceCount === 0 ? " paper-evidence--empty" : ""
-                  }`}
-                >
-                  <Icon name="microscope" size={12} />
-                  {paper.evidenceCount === 0
-                    ? "No evidence"
-                    : `${paper.evidenceCount} evidence`}
+    <div
+      className="card paper-card"
+      data-hover="brand"
+      onMouseEnter={loadAbstract}
+      onFocusCapture={loadAbstract}
+    >
+      <header className="paper-card-top">
+        <div className="paper-card-icon">
+          <Icon name="bookOpen" size={22} />
+        </div>
+        <div className="paper-card-body">
+          <h3 className="paper-card-title" title={title}>
+            {title}
+          </h3>
+          {sub && <div className="paper-card-subtitle">{sub}</div>}
+          <div className="paper-card-meta">
+            {typeof paper.evidenceCount === "number" && (
+              <span
+                className={`paper-evidence${
+                  paper.evidenceCount === 0 ? " paper-evidence--empty" : ""
+                }`}
+              >
+                <Icon name="microscope" size={12} />
+                {paper.evidenceCount === 0
+                  ? "No evidence"
+                  : `${paper.evidenceCount} evidence`}
+              </span>
+            )}
+            {typeof paper.bioprospectingFactCount === "number" &&
+              paper.bioprospectingFactCount > 0 && (
+                <span className="badge" data-tone="violet">
+                  {paper.bioprospectingFactCount} facts
                 </span>
               )}
-              {typeof paper.bioprospectingFactCount === "number" &&
-                paper.bioprospectingFactCount > 0 && (
-                  <span className="badge" data-tone="violet">
-                    {paper.bioprospectingFactCount} facts
-                  </span>
-                )}
-              {paper.trustTier && (
-                <span
-                  className="badge paper-trust"
-              data-tone={trustTone(paper.trustTier)}
-                  title={`Trust tier: ${trustLabel(paper.trustTier)}`}
-                >
-                  {trustLabel(paper.trustTier)}
-                </span>
-              )}
-              {paper.type && (
-                <span className="badge paper-tag" data-tone="neutral">
-                  {paper.type.toUpperCase()}
-                </span>
-              )}
-              {paper.chunkCount != null && (
-                <span>{paper.chunkCount} fragments</span>
-              )}
-              {paper.size ? (
-                <span title={`${paper.size} bytes`}>
-                  {formatSize(paper.size)}
-                </span>
-              ) : null}
-              {paper.doiUrl && (
-                <a
-                  className="paper-doi-link"
-                  href={paper.doiUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  DOI
-                </a>
-              )}
-            </div>
+            {paper.trustTier && (
+              <span
+                className="badge paper-trust"
+                data-tone={trustTone(paper.trustTier)}
+                title={`Trust tier: ${trustLabel(paper.trustTier)}`}
+              >
+                {trustLabel(paper.trustTier)}
+              </span>
+            )}
+            {paper.type && (
+              <span className="badge paper-tag" data-tone="neutral">
+                {paper.type.toUpperCase()}
+              </span>
+            )}
+            {paper.chunkCount != null && (
+              <span>{paper.chunkCount} fragments</span>
+            )}
+            {paper.size ? (
+              <span title={`${paper.size} bytes`}>{formatSize(paper.size)}</span>
+            ) : null}
+            {paper.doiUrl && (
+              <a
+                className="paper-doi-link"
+                href={paper.doiUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                DOI
+              </a>
+            )}
           </div>
         </div>
+      </header>
 
-        {(paper.taxa?.length || paper.geography?.length) ? (
-          <div className="paper-chips">
-            {paper.taxa?.map((t) => (
-              <span
-                key={`t-${t}`}
-                className="badge paper-chip--taxon"
-                data-tone="brand"
-              >
-                {t}
-              </span>
-            ))}
-            {paper.geography?.map((g) => (
-              <span key={`g-${g}`} className="badge" data-tone="info">
-                <Icon name="mapPin" size={11} />
-                {g}
-              </span>
-            ))}
-          </div>
-        ) : null}
+      {(paper.taxa?.length || paper.geography?.length) ? (
+        <section className="paper-chips">
+          {paper.taxa?.map((t) => (
+            <span
+              key={`t-${t}`}
+              className="badge paper-chip--taxon"
+              data-tone="brand"
+            >
+              {t}
+            </span>
+          ))}
+          {paper.geography?.map((g) => (
+            <span key={`g-${g}`} className="badge" data-tone="info">
+              <Icon name="mapPin" size={11} />
+              {g}
+            </span>
+          ))}
+        </section>
+      ) : null}
 
-        {abstract && (
+      {abstract && (
+        <section>
           <p className="paper-card-abstract" title={abstract}>
             {abstract}
           </p>
-        )}
+        </section>
+      )}
 
-        {/*
-          Card footer with two explicit actions. Primary ("Chat with paper")
-          routes to the grounded RAG page. Secondary ("View evidence") routes
-          to the library viewer, which resolves the docId to its underlying
-          research source and shows the provenance viewer. Both navigate within
-          the SPA (same tab). Kept exactly as before.
-        */}
-        <div className="paper-card-actions">
-          <button
-            className="btn paper-action"
-            data-variant="primary"
-            onClick={() => route(`/library/${paper.docId}`)}
-          >
-            <Icon name="messageSquare" size={15} className={BUTTON_ICON_CLASS} />
-            <span>Chat with paper</span>
-          </button>
-          <button
-            className="btn paper-action"
-            data-variant="outline"
-            aria-label={`View evidence for ${paper.title || "paper"}`}
-            onClick={() => route(`/library/${paper.docId}/viewer`)}
-          >
-            <Icon name="microscope" size={15} className={BUTTON_ICON_CLASS} />
-            <span>View evidence</span>
-          </button>
-          <DeletePaperButton
-            paper={paper}
-            onDeleted={onDeleted}
-            onError={onError}
-          />
-        </div>
-      </div>
+      {/*
+        Card footer with two explicit actions. Primary ("Chat with paper")
+        routes to the grounded RAG page. Secondary ("View evidence") routes to
+        the library viewer, which resolves the docId to its underlying research
+        source and shows the provenance viewer. Both navigate within the SPA
+        (same tab).
+
+        This is Lyra's `.card > footer` — it already supplies the top rule and
+        the 16px box the hand-written `.paper-card-actions` declared, and
+        `.card:has(>footer)` drops the card's own bottom padding so the two do
+        not double up.
+      */}
+      <footer className="paper-card-actions">
+        <button
+          className="btn paper-action"
+          data-variant="primary"
+          onClick={() => route(`/library/${paper.docId}`)}
+        >
+          <Icon name="messageSquare" size={15} className={BUTTON_ICON_CLASS} />
+          <span>Chat with paper</span>
+        </button>
+        <button
+          className="btn paper-action"
+          data-variant="outline"
+          aria-label={`View evidence for ${paper.title || "paper"}`}
+          onClick={() => route(`/library/${paper.docId}/viewer`)}
+        >
+          <Icon name="microscope" size={15} className={BUTTON_ICON_CLASS} />
+          <span>View evidence</span>
+        </button>
+        <DeletePaperButton
+          paper={paper}
+          onDeleted={onDeleted}
+          onError={onError}
+        />
+      </footer>
     </div>
   );
 }
@@ -310,11 +314,11 @@ function PaperRow({
   const title = displayTitle(paper);
   const sub = subline(paper);
   return (
-    <div className="paper-row">
-      <div className="paper-row-icon">
+    <div className="item paper-row" data-variant="outline">
+      <figure className="paper-row-icon">
         <Icon name="bookOpen" size={18} />
-      </div>
-      <div className="paper-row-main">
+      </figure>
+      <section className="paper-row-main">
         <div className="paper-row-titleline">
           <span className="paper-row-title" title={title}>
             {title}
@@ -362,8 +366,8 @@ function PaperRow({
             </a>
           )}
         </div>
-      </div>
-      <div className="paper-row-actions">
+      </section>
+      <aside className="paper-row-actions">
         <button
           className="btn paper-action"
           data-variant="primary"
@@ -378,7 +382,6 @@ function PaperRow({
           data-variant="outline"
           aria-label={`View evidence for ${paper.title || "paper"}`}
           onClick={() => route(`/library/${paper.docId}/viewer`)}
-          title="View evidence"
         >
           <Icon name="microscope" size={15} className={BUTTON_ICON_CLASS} />
           <span>Evidence</span>
@@ -388,7 +391,7 @@ function PaperRow({
           onDeleted={onDeleted}
           onError={onError}
         />
-      </div>
+      </aside>
     </div>
   );
 }

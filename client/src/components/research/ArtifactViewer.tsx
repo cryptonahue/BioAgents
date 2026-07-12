@@ -163,7 +163,7 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
   );
 
   return (
-    <div className="artifact-viewer">
+    <div className="card artifact-viewer">
       <button
         className="artifact-viewer-header"
         onClick={() => setIsExpanded(!isExpanded)}
