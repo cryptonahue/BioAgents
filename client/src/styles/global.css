@@ -2303,10 +2303,16 @@ textarea:not(.textarea)::placeholder {
 
    Every link that leaves the app carries this glyph. It is the WCAG 3.2.5 warning
    that a new tab is about to open — an affordance the app had NOWHERE, including on
-   the links it already opened in a tab. The glyph is `aria-hidden`; the words go in
-   the anchor's `aria-label` instead, because `.sr-only` is NOT usable in this build:
-   with no Tailwind Preflight, the utility compiles to a lone `width: auto` and
-   hides nothing.
+   the links it already opened in a tab. The glyph is `aria-hidden` and the words go
+   in the anchor's `aria-label`, because on a link the label belongs to the link, not
+   to a floating text node inside it — a screen reader announces the accessible name
+   once, and an `.sr-only` span would just be a second thing to compose it from.
+
+   (An earlier version of this comment claimed `.sr-only` was BROKEN here — that
+   Tailwind's utility degrades without Preflight. That is false. It compiles
+   correctly: `position:absolute; clip-path:inset(50%); width:1px; height:1px;
+   overflow:hidden; …`. `.sr-only` works in this build. It is simply not the right
+   tool for naming a link.)
 
    `inline-flex` keeps the SVG off the text baseline (an inline SVG sits ON it and
    hangs a couple of pixels low), and the icon takes `currentColor`, so a DOI link,
