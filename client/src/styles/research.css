@@ -257,27 +257,46 @@
   text-shadow: 0 0 8px var(--accent-glow);
 }
 
-/* Discoveries Section */
-.research-discoveries-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.research-discovery-item {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  padding: 10px 12px;
-  background: var(--bg-secondary);
-  border-radius: 6px;
-  border-left: 3px solid var(--accent-color);
-}
-
-/* Insights Section */
+/*
+ * THE DISCOVERY, INSIGHT AND DATASET ROWS ARE BASECOAT'S `.item` TOO.
+ *
+ * The activity log below was migrated first and these three were left behind,
+ * which was an oversight rather than a constraint: they are the same shape the
+ * Library's list, the sidebar's chat history and the activity log already wear —
+ * a bordered list row — so they wear the same component, `data-variant="outline"`,
+ * matching that contract exactly.
+ *
+ * `data-size="sm"` was not a guess. Lyra's `sm` step computes to
+ * `padding-inline: 12px` / `padding-block: 10px` (`--spacing` * 3 and * 2.5),
+ * which is the `padding: 10px 12px` all three of these rows had hand-written.
+ * The box is therefore byte-for-byte the one they already had, minus the
+ * declarations Lyra now owns: `display`, `gap`, `border`, `border-radius` and
+ * the font ramp.
+ *
+ * TWO THINGS LYRA DOES NOT GIVE THEM:
+ *
+ *   The ACCENT EDGE. The green left rule is the semantic these rows have always
+ *   carried, and — exactly as `.research-activity-log-item.done` records — it is
+ *   a THICKENED `border-inline-start` on Lyra's real border, not a second border
+ *   grafted onto a border-less box.
+ *
+ *   The INK. Lyra's `.item` inherits `--foreground`; a discovery and an insight
+ *   are body copy under a section heading, so they step back one to
+ *   `--text-secondary`, the same call the activity log's step type records.
+ *
+ * The FILL IS GONE ON PURPOSE. `data-variant="outline"` is a hairline on a
+ * transparent box, and that is the whole point of the variant: the row is told
+ * apart from the panel by its border, not by a second fill. Keeping
+ * `--bg-secondary` here would have forced the border to be recoloured with it
+ * (the grey-ring-around-a-filled-row bug the sidebar hit), for a look no other
+ * `.item` in the app has.
+ *
+ * The prose does NOT go in a `<p>`. `.item p` is `line-clamp-2` — right for the
+ * activity log, where the objective is a description under a title, and WRONG
+ * here, where the discovery IS the content and would be silently truncated at two
+ * lines. The text is a direct child of `<section>`, which Lyra leaves unclamped.
+ */
+.research-discoveries-list,
 .research-insights-list {
   list-style: none;
   padding: 0;
@@ -287,14 +306,10 @@
   gap: 8px;
 }
 
+.research-discovery-item,
 .research-insight-item {
-  font-size: 13px;
-  line-height: 1.5;
   color: var(--text-secondary);
-  padding: 10px 12px;
-  background: var(--bg-secondary);
-  border-radius: 6px;
-  border-left: 3px solid var(--accent-color);
+  border-inline-start: 3px solid var(--accent-color);
 }
 
 /* Methodology Section */
@@ -312,26 +327,10 @@
   gap: 8px;
 }
 
-.research-dataset-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-secondary);
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-}
-
-.research-dataset-item svg {
+/* Lyra centers `> figure` on a row with no `<p>`, and inks it `--foreground`.
+   The file glyph is the row's accent and keeps its hue. */
+.research-dataset-item > figure {
   color: var(--accent-color);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.research-dataset-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .research-dataset-name {

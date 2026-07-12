@@ -299,10 +299,19 @@ export function ResearchStatePanel({
                       ...(state.researchBrainEvidence.contradictions || []),
                       ...(state.researchBrainEvidence.openQuestions || []),
                     ].slice(0, 6).map((claim, i) => (
-                      <li key={i} className="research-insight-item">
-                        <strong>{claim.status || "evidence"}:</strong>{" "}
-                        {claim.claim}
-                        {claim.sourceTitle ? ` (${claim.sourceTitle})` : ""}
+                      <li
+                        key={i}
+                        className="item research-insight-item"
+                        data-variant="outline"
+                        data-size="sm"
+                      >
+                        <section>
+                          <span>
+                            <strong>{claim.status || "evidence"}:</strong>{" "}
+                            {claim.claim}
+                            {claim.sourceTitle ? ` (${claim.sourceTitle})` : ""}
+                          </span>
+                        </section>
                       </li>
                     ))}
                   </ul>
@@ -377,8 +386,15 @@ export function ResearchStatePanel({
                 <div className="research-section-body">
                   <ul className="research-discoveries-list">
                     {state.discoveries.map((discovery, i) => (
-                      <li key={i} className="research-discovery-item">
-                        {renderCitationText(discovery)}
+                      <li
+                        key={i}
+                        className="item research-discovery-item"
+                        data-variant="outline"
+                        data-size="sm"
+                      >
+                        <section>
+                          <span>{renderCitationText(discovery)}</span>
+                        </section>
                       </li>
                     ))}
                   </ul>
@@ -409,8 +425,15 @@ export function ResearchStatePanel({
                 <div className="research-section-body">
                   <ul className="research-insights-list">
                     {state.keyInsights.map((insight, i) => (
-                      <li key={i} className="research-insight-item">
-                        {renderCitationText(insight)}
+                      <li
+                        key={i}
+                        className="item research-insight-item"
+                        data-variant="outline"
+                        data-size="sm"
+                      >
+                        <section>
+                          <span>{renderCitationText(insight)}</span>
+                        </section>
                       </li>
                     ))}
                   </ul>
@@ -469,16 +492,23 @@ export function ResearchStatePanel({
                 <div className="research-section-body">
                   <div className="research-datasets-list">
                     {state.uploadedDatasets.map((dataset) => (
-                      <div key={dataset.id} className="research-dataset-item">
-                        <Icon name="file" size={14} />
-                        <div className="research-dataset-info">
+                      <div
+                        key={dataset.id}
+                        className="item research-dataset-item"
+                        data-variant="outline"
+                        data-size="sm"
+                      >
+                        <figure>
+                          <Icon name="file" size={14} />
+                        </figure>
+                        <section>
                           <span className="research-dataset-name">
                             {dataset.filename}
                           </span>
                           <span className="research-dataset-description">
                             {dataset.description}
                           </span>
-                        </div>
+                        </section>
                       </div>
                     ))}
                   </div>
