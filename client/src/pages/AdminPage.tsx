@@ -312,7 +312,8 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
       )}
 
       {!isLoading && rows.length > 0 && (
-        <table class="admin-table">
+        <div class="table-container">
+        <table class="table">
           <thead>
             <tr>
               <th style={{ width: 32 }}>
@@ -350,6 +351,7 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {selectedIds.size > 0 && (
@@ -467,7 +469,8 @@ function DedupTab() {
       )}
 
       {!isLoading && events.length > 0 && (
-        <table class="admin-table">
+        <div class="table-container">
+        <table class="table">
           <thead>
             <tr>
               <th>Fact</th>
@@ -517,6 +520,7 @@ function DedupTab() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       <div class="admin-pagination">

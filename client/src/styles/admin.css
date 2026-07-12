@@ -139,43 +139,13 @@
   border-color: var(--primary-ink);
 }
 
-/* ----------------- Tables ----------------- */
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--card);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.admin-table thead th {
-  text-align: left;
-  padding: 10px 12px;
-  background: var(--surface-sunken);
-  color: var(--muted-foreground);
-  font-weight: 500;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
-}
-
-.admin-table tbody td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--foreground);
-  vertical-align: middle;
-}
-
-.admin-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.admin-table tbody tr:hover {
-  background: var(--bg-hover);
-}
+/* ----------------- Tables -----------------
+ *
+ * Gone. Both admin tables are Basecoat's `.table` inside a `.table-container`
+ * now — see `tables.css`, which carries the shared skin (the sunken small-caps
+ * header, the opaque row hover, and the `border-collapse` / `border-color`
+ * normalization Basecoat expects Preflight to provide).
+ */
 
 /* TYPOGRAPHY ONLY — the pill is `.badge[data-tone={statusTone(status)}]`. The
    status arrives from the API as a lowercase slug and is set in caps. */
@@ -392,17 +362,11 @@
 
 /* ----------------- Mobile ----------------- */
 
+/* The table's mobile step-down (`font-size: 12px`, `padding: 6px 8px`) is gone
+   with the skin: Lyra's `.table` is already 12px with 8px cells, which is tighter
+   than the old desktop table was, and it scrolls inside `.table-container`. */
 @media (max-width: 768px) {
   .admin-stats-grid {
     grid-template-columns: repeat(3, 1fr);
-  }
-
-  .admin-table {
-    font-size: 12px;
-  }
-
-  .admin-table thead th,
-  .admin-table tbody td {
-    padding: 6px 8px;
   }
 }

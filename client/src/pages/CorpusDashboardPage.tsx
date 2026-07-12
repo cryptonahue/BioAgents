@@ -88,7 +88,8 @@ function FileList({ files }: { files: IngestionFileStatus[] }) {
           <option value="failed">Failed</option>
         </select>
       </div>
-      <table class="corpus-file-table">
+      <div class="table-container">
+      <table class="table">
         <thead>
           <tr>
             <th>File</th>
@@ -115,6 +116,7 @@ function FileList({ files }: { files: IngestionFileStatus[] }) {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

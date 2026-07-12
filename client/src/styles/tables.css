@@ -1,0 +1,169 @@
+/**
+ * Basecoat table overrides.
+ *
+ * The three data tables in the client — the admin contradiction queue, the admin
+ * dedup audit log and the corpus file list — now render Basecoat's `.table` inside
+ * a `.table-container`, so the app's `.admin-table*` and `.corpus-file-table*`
+ * skins are gone. Nothing else referenced them.
+ *
+ * NOT MIGRATED, on purpose: `.message-content table` in `global.css`. Those tables
+ * are produced by the markdown renderer from assistant output, so there is no call
+ * site to put a `.table` class on. They keep their hand-written skin until the
+ * renderer grows a class hook.
+ *
+ * As in `buttons.css`, the base layer carries the normalization Basecoat assumes
+ * Preflight provides, and everything below it is unlayered.
+ */
+
+/*
+ * TABLE NORMALIZATION — the part of Preflight this app deliberately does not load,
+ * and the one component where its absence does REAL damage rather than cosmetic.
+ *
+ * Lyra's `.table` never declares `border-collapse` or a border COLOR. It does not
+ * have to: it is written against Preflight, which ships
+ *
+ *   table { text-indent: 0; border-color: inherit; border-collapse: collapse }
+ *
+ * Read straight out of the built bundle, Lyra's row separator compiles to exactly
+ * this and nothing more:
+ *
+ *   .table tr { border-bottom-style: var(--tw-border-style); border-bottom-width: 1px }
+ *
+ * No color. So without Preflight, two things break at once:
+ *
+ *   border-collapse  falls back to the UA's `separate`, plus the UA's 2px
+ *                    `border-spacing` — every cell drifts apart and each row's
+ *                    1px rule is drawn TWICE with a gap between the copies.
+ *   border-color     falls back to its CSS initial, `currentColor` — so the row
+ *                    separators are painted in the TEXT color (near-black on the
+ *                    light theme) instead of the subtle `--border`. The table
+ *                    reads as a heavy ruled grid rather than a quiet list.
+ *
+ * `--tw-border-style` needs no help: it is a registered `@property` with
+ * `initial-value: solid`, so the style resolves even with Preflight absent.
+ *
+ * This sits in the `base` LAYER. `border-color` in particular must stay beatable:
+ * Lyra's `components` rules do not set it today, but a future variant might, and
+ * an unlayered rule here would silently outrank it.
+ */
+@layer base {
+  .table {
+    border-collapse: collapse;
+    text-indent: 0;
+  }
+
+  .table tr,
+  .table thead tr,
+  .table tfoot {
+    border-color: var(--border);
+  }
+}
+
+/*
+ * CELL PADDING — restoring the geometry `* { padding: 0 }` takes away.
+ *
+ * `global.css`'s universal reset is UNLAYERED, so it beats Lyra's `px-2` on `<th>`
+ * and `p-2` on `<td>` (both `@layer components`) despite its (0,0,0) specificity.
+ * Measured in Chromium against the built bundle: every cell computed `padding:
+ * 0px`, and the row content ran edge to edge into the table's border.
+ *
+ * The reset cannot be layered or deleted (see its header in global.css), and
+ * `@layer base` loses to it as well. The only rule that can win is an UNLAYERED
+ * one above (0,0,0) — any class selector. These restate LYRA's own values (8px,
+ * Tailwind's `*-2` at a 4px unit), so this re-asserts Basecoat's geometry rather
+ * than inventing new spacing. See the same note in `tabs.css`; `.btn` and `.badge`
+ * are affected by this too, app-wide, and are reported separately.
+ */
+.table th {
+  padding-inline: 8px;
+}
+
+.table td {
+  padding: 8px;
+}
+
+/*
+ * CELL INK.
+ *
+ * Lyra paints `<th>` (`color: var(--color-foreground)`) but says nothing about
+ * `<td>`, which therefore inherits — and both tables sit inside pages whose own
+ * chrome sets a muted ink on the wrapper. The body of a data table is its content
+ * and must be the primary ink, so state it. `var(--foreground)`, never `inherit`.
+ */
+.table td {
+  color: var(--foreground);
+}
+
+/*
+ * THE COLUMN HEADER.
+ *
+ * Lyra's `<th>` is `--foreground` at the same 12px as the body — i.e. it reads as
+ * loud as the data under it. Both outgoing skins had already settled on the same
+ * answer as each other: the header is a LABEL, not data, so it steps back to
+ * `--muted-foreground`. The admin table additionally set it in small caps, which
+ * is what tells the eye "header" once the ink is quiet. Keep both.
+ *
+ * `--muted-foreground` is a documented AA-passing ink on `--background` and on
+ * `--muted` in both themes (theme.css), and the header sits on `--card`/
+ * `--background` here, so the step down does not cost legibility.
+ */
+.table th {
+  background: var(--surface-sunken);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/*
+ * THE CHECKBOX IN A CELL.
+ *
+ * The contras table's select-all / select-row controls are bare
+ * `<input type="checkbox">` elements. `forms.css` deliberately scopes its focus
+ * ring to Basecoat's form CLASSES (`.input`, `.textarea`, `select.select`) and to
+ * `.field > input`, and a checkbox in a table cell is neither — so it was left on
+ * the UA's `auto 1px` ring, which is exactly the inconsistency slice 5 flagged for
+ * the tabs. Observed in Chromium by tab-walking the real table: `outline: auto 1px`
+ * against the 2px `--ring` every other focusable control in this app paints.
+ *
+ * A checkbox is a small target and its own box is the indicator, so the ring goes
+ * OUTSIDE it (`offset: 2px`) rather than inset as on the tabs.
+ */
+.table input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
+ * ROW HOVER.
+ *
+ * Lyra's is `hover:bg-muted/50` — `--muted` at 50% alpha, composited over whatever
+ * is behind the row. The pattern `buttons.css` documents for the primary hover
+ * applies here for the same reason: an alpha fill moves toward the SURFACE, and
+ * these tables sit on `--card`, not on the page, so the tint lands somewhere
+ * between the two and is barely a signal in either theme.
+ *
+ * `--bg-hover` is this app's opaque hover step and is what `.admin-table tbody
+ * tr:hover` already used. Being opaque, it is surface-independent, so the row
+ * highlight is the same strength on `--card` as it would be on the page.
+ */
+.table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+/*
+ * THE CONTAINER.
+ *
+ * `.table-container` is Lyra's horizontal-scroll wrapper and is intentionally
+ * unstyled beyond that (`relative w-full overflow-x-auto`). The card the tables
+ * used to draw themselves — `background: var(--card)`, a rounded clip — belongs on
+ * the wrapper now that the table itself is Basecoat's: the fill is the SURFACE the
+ * table sits on, not part of the table.
+ *
+ * `--radius` is deliberately not read here. Lyra is a square style pack and the
+ * square look is the chosen one; the outgoing 8px radius goes with the skin.
+ */
+.table-container {
+  background: var(--card);
+  border: 1px solid var(--border);
+}

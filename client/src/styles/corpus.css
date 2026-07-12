@@ -297,25 +297,9 @@
   flex: 1;
 }
 
-.corpus-file-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.corpus-file-table th {
-  text-align: left;
-  padding: 8px 12px;
-  color: var(--muted-foreground);
-  font-weight: 500;
-  border-bottom: 1px solid var(--border);
-}
-
-.corpus-file-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  color: var(--foreground);
-}
+/* The file list is Basecoat's `.table` inside a `.table-container` now — see
+ * `tables.css`. Only the two CELL modifiers stay: they are content rules (how a
+ * path and an error string behave when they are too long), not table skin. */
 
 .corpus-file-path {
   max-width: 300px;
