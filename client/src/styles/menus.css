@@ -1,0 +1,137 @@
+/**
+ * Basecoat dropdown-menu overrides.
+ *
+ * `components/ui/Menu.tsx` renders Basecoat's dropdown contract — `.dropdown-menu`,
+ * `[data-popover]`, `aria-hidden`, `[role=menu]`, `[role=menuitem]` — and the two
+ * hand-written menu skins this app used to carry (`.sidebar-user-menu*` and
+ * `.upload-menu*`) are migrated onto it.
+ *
+ * Basecoat's `dropdown-menu.js` is deliberately NOT loaded (it writes
+ * `aria-expanded`, `aria-hidden` and an `.active` class into DOM that Preact
+ * owns); the open/close and keyboard behaviour it provides is reimplemented in
+ * `Menu.tsx`. Lyra's dropdown CSS keys entirely off those roles and attributes,
+ * which Preact now renders, so the skin applies with no script. See the header of
+ * `Menu.tsx`.
+ *
+ * As in `buttons.css` and `tabs.css`, the base layer carries the normalization
+ * Basecoat assumes Preflight provides, and everything below it is unlayered so it
+ * beats Lyra's `components` layer by construction rather than by specificity
+ * accident.
+ */
+
+/*
+ * MENU-ITEM NORMALIZATION — the part of Preflight this app deliberately does not
+ * load.
+ *
+ * A `[role=menuitem]` here is a real <button>, and Preflight is what would have
+ * reset it. Without Preflight it keeps three UA defaults, and all three are
+ * visible:
+ *
+ *   background-color: buttonface  — a grey chip behind every item. Lyra never
+ *     paints a resting fill on a menu item (only `:hover` / `:focus` do), so the
+ *     UA's fill is what shows through.
+ *   color: buttontext             — Lyra never paints resting ink either; the item
+ *     is meant to INHERIT `text-popover-foreground` from `[data-popover]`. The UA's
+ *     `buttontext` is not inherited, it is declared, so it wins over inheritance
+ *     and the menu renders black-on-dark in the dark theme.
+ *   font-family: <system 13.33px> — not IBM Plex.
+ *
+ * `cursor` is deliberately NOT set: Basecoat applies `cursor: default` to menu
+ * items on purpose (native menus do not use a pointer), and that rule is in the
+ * `components` layer, so it wins over anything declared here anyway.
+ *
+ * Scoped INSIDE `.dropdown-menu`, so no unmigrated control is touched. In the
+ * `base` layer, so Lyra's own `components` rules — `[data-variant=destructive]`'s
+ * `text-destructive` above all — still beat it.
+ */
+@layer base {
+  .dropdown-menu [role="menuitem"] {
+    background-color: transparent;
+    color: inherit;
+    font-family: inherit;
+  }
+}
+
+/*
+ * FOCUS — the highlight AND the ring, both keyed off `:focus`, not `:focus-visible`.
+ *
+ * This is the one place the house has to depart from Lyra, and the reason is
+ * mechanical. Lyra highlights the current item with
+ * `focus-visible:bg-accent focus-visible:text-accent-foreground`, because
+ * `dropdown-menu.js` never moves DOM focus at all — it parks focus on the trigger
+ * and tracks the highlight with `aria-activedescendant` plus an `.active` class,
+ * which Lyra styles separately.
+ *
+ * `Menu.tsx` moves REAL focus into the menu instead (the ARIA APG menu-button
+ * pattern — see its header). It does so by calling `.focus()` from a key handler,
+ * and `:focus-visible` after a programmatic `.focus()` is a browser HEURISTIC, not
+ * a guarantee: Chromium only arms it if it decides the last interaction was a
+ * keyboard one. Betting the only visible indication of "which item am I on" on a
+ * heuristic is not acceptable for the sole keyboard affordance of the menu. `:focus`
+ * is not a heuristic — it matches whenever the element holds focus, which for a
+ * `tabIndex={-1}` item inside a popup can only ever have happened deliberately.
+ *
+ * The destructive item is carved out of the fill rule so Lyra's `text-destructive`
+ * survives being focused; it gets the same tinted wash Lyra gives it, expressed
+ * against `--destructive` directly (Lyra writes it `bg-destructive/10`, which is
+ * a Tailwind opacity modifier we cannot use from hand-written CSS).
+ *
+ * The ring is the app's standard 2px `--ring` at a 2px offset, INSET — the popover
+ * is `p-1` (4px) and an outset ring on the first or last item would be clipped by
+ * it. `--ring` was measured in PR 2 at 4.81:1 on `--background` in light and 6.90:1
+ * in dark, both clear of the 3:1 WCAG 1.4.11 floor for a non-text indicator; it
+ * lands on `--accent` here, which is measured in the slice-8 report.
+ */
+.dropdown-menu [role="menuitem"]:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.dropdown-menu [role="menuitem"]:not([data-variant="destructive"]):focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/*
+ * THE DESTRUCTIVE ITEM (Log out), and why it does not simply take Lyra's rules.
+ *
+ * TWO problems, both measured in Chromium against the built bundle.
+ *
+ * 1. HOVER WOULD ERASE THE RED. Lyra ships a hover highlight guarded by
+ *    `.dropdown-menu:not([data-dropdown-menu-initialized])` — i.e. it applies
+ *    only when the JS has NOT run, because when it has, `dropdown-menu.js` tracks
+ *    the mouse itself and paints `.active` instead. This app never loads that JS,
+ *    so the guard is permanently true and the hover rule is permanently on. It
+ *    paints `bg-accent text-accent-foreground`, which is a plain grey wash and
+ *    WHITE ink — it out-specifies Lyra's own `[data-variant=destructive]` colour
+ *    (0,4,0 vs 0,2,0) and turns Log out from red to white the moment the pointer
+ *    touches it. So hover is handled here, not left to Lyra. These rules are
+ *    unlayered, which beats Lyra's `components` layer outright, specificity
+ *    notwithstanding.
+ *
+ * 2. THE INK FAILS WCAG IN LIGHT — ON ITS OWN HIGHLIGHT. `--destructive` in light
+ *    is 4.77:1 on `--popover`: it passes at rest by 0.27. Any tint under it sinks
+ *    it. Measured over a `--destructive` wash on `--popover` in light:
+ *
+ *        wash:      0%     4%     6%     8%    10%    12%    16%    20%
+ *        as-is:   4.77   4.45   4.30   4.15   3.97   3.84   3.57   3.31
+ *
+ *    There is NO usable wash strength at which the stock ink clears 4.5:1 — Lyra's
+ *    own `bg-destructive/10` lands on 3.97. The fill is not the problem; the ink
+ *    is. Deepening it 20% toward black takes the same 12% wash to 6.18:1.
+ *
+ *    In DARK the situation inverts — the fill and ink swap there (see theme.css),
+ *    `--destructive` is already 5.13:1 on the same wash, and deepening it would
+ *    BREAK it (3.96:1). So the deepening is light-only, and dark takes the token
+ *    straight. This is the same asymmetry PR 2 found for `--primary`; do not
+ *    "simplify" the two rules into one.
+ */
+.dropdown-menu [role="menuitem"][data-variant="destructive"]:is(:hover, :focus) {
+  background-color: color-mix(in oklab, var(--destructive) 12%, transparent);
+  color: color-mix(in oklab, var(--destructive) 80%, black);
+}
+
+.dark .dropdown-menu [role="menuitem"][data-variant="destructive"]:is(:hover, :focus) {
+  color: var(--destructive);
+}
+
