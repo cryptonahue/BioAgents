@@ -73,34 +73,15 @@
   font-size: 14px;
 }
 
-/* ----------------- Tabs ----------------- */
+/* ----------------- Tabs -----------------
+ *
+ * The skin is Basecoat's `.tabs` now — see `tabs.css` and `components/ui/Tabs.tsx`.
+ * Only the LAYOUT stays: the page's spacing around the tab strip, which is a
+ * property of this page and not of the tab component.
+ */
 
 .admin-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
   margin: 24px 0 16px;
-}
-
-.admin-tab {
-  background: none;
-  border: none;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
-  transition: color 120ms ease, border-color 120ms ease;
-}
-
-.admin-tab:hover {
-  color: var(--foreground);
-}
-
-.admin-tab.active {
-  color: var(--foreground);
-  border-bottom-color: var(--primary-ink);
 }
 
 .admin-error {

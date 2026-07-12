@@ -209,20 +209,45 @@ describe("AdminPage — tab switching contract", () => {
     expect(source).toContain('"stats"');
   });
 
-  it("renders the three tab buttons in the page tree", () => {
+  it("declares the three tab buttons with their labels", () => {
     // The Preact render harness in this test environment is not
     // compatible with the deep DOM diff the AdminPage tree
     // produces. We assert the contract by checking the page
-    // source includes the labels for all three tabs.
+    // source declares all three tabs with their labels.
+    //
+    // The tabs used to be three hand-written <button class="admin-tab">
+    // elements, so this used to match `>Contras<`. They are Basecoat
+    // tabs now (`ui/Tabs.tsx`), driven by an `ADMIN_TABS` config, so the
+    // label lives in the array rather than between two angle brackets.
+    // The KEYBOARD and ARIA behavior of that component is covered
+    // directly in `components/ui/__tests__/Tabs.test.tsx`.
     const fs = require("fs");
     const path = require("path");
     const source = fs.readFileSync(
       path.resolve(__dirname, "../AdminPage.tsx"),
       "utf8",
     );
-    expect(source).toMatch(/>\s*Contras\s*</);
-    expect(source).toMatch(/>\s*Dedup\s*</);
-    expect(source).toMatch(/>\s*Stats\s*</);
+    expect(source).toMatch(/value:\s*"contras",\s*label:\s*"Contras"/);
+    expect(source).toMatch(/value:\s*"dedup",\s*label:\s*"Dedup"/);
+    expect(source).toMatch(/value:\s*"stats",\s*label:\s*"Stats"/);
+  });
+
+  it("wires each tab to a panel that is only rendered when selected", () => {
+    // The panels are conditionally rendered (`{tab === "dedup" && …}`),
+    // which is what keeps three admin tables from mounting and firing
+    // their fetches at once. Each one must still be wrapped in a
+    // <TabPanel> so the selected tab's `aria-controls` resolves.
+    const fs = require("fs");
+    const path = require("path");
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../AdminPage.tsx"),
+      "utf8",
+    );
+    for (const id of ["contras", "dedup", "stats"]) {
+      expect(source).toContain(
+        `<TabPanel idPrefix={ADMIN_TABS_ID} value="${id}">`,
+      );
+    }
   });
 });
 

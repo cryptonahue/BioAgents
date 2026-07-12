@@ -743,34 +743,16 @@
   gap: 18px;
 }
 
+/* The skin is Basecoat's `.tabs` now — see `tabs.css` and `components/ui/Tabs.tsx`.
+ * Only the LAYOUT stays.
+ *
+ * The four `.brain-tabs button` rules that used to live here are exactly the trap
+ * every slice of this migration has hit: unlayered `.parent button` at (0,1,1),
+ * beating Lyra's `[role=tab]` rules in the `components` layer no matter what their
+ * specificity is. They had to go WITH the migration, not after it. */
+
 .brain-tabs {
-  display: inline-flex;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  overflow: hidden;
   margin-bottom: 18px;
-}
-
-.brain-tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  border-right: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-secondary);
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.brain-tabs button:last-child {
-  border-right: 0;
-}
-
-.brain-tabs button.active,
-.brain-tabs button:hover {
-  color: var(--text-primary);
-  background: var(--accent-light);
 }
 
 .brain-evidence-workspace {

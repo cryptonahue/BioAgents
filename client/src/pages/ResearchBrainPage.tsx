@@ -2,6 +2,7 @@ import { route } from "preact-router";
 import { useState } from "preact/hooks";
 import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
+import { TabList, TabPanel, Tabs, type TabItem } from "../components/ui/Tabs";
 import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import { CompoundAuthorityBadge } from "../components/CompoundAuthorityBadge";
 import { openProvenanceLightbox } from "../utils/provenanceTrigger";
@@ -25,6 +26,30 @@ interface Props {
 }
 
 type BrainTab = "evidence" | "sources";
+
+/** Namespaces the generated `id`s that wire each tab to its panel. */
+const BRAIN_TABS_ID = "brain";
+
+const BRAIN_TABS: TabItem<BrainTab>[] = [
+  {
+    value: "evidence",
+    label: (
+      <>
+        <Icon name="search" size={15} />
+        <span>Evidence</span>
+      </>
+    ),
+  },
+  {
+    value: "sources",
+    label: (
+      <>
+        <Icon name="folder" size={15} />
+        <span>Sources</span>
+      </>
+    ),
+  },
+];
 
 const ENTITY_FIELDS: Array<{
   key: keyof ResearchBrainFactEntityPatch;
@@ -363,24 +388,18 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
         {uploadError && <div className="brain-error">{uploadError}</div>}
         {reviewError && <div className="brain-error">{reviewError}</div>}
 
-        <div className="brain-tabs" role="tablist" aria-label="Research Brain">
-          <button
-            className={activeTab === "evidence" ? "active" : ""}
-            onClick={() => setActiveTab("evidence")}
-          >
-            <Icon name="search" size={15} />
-            <span>Evidence</span>
-          </button>
-          <button
-            className={activeTab === "sources" ? "active" : ""}
-            onClick={() => setActiveTab("sources")}
-          >
-            <Icon name="folder" size={15} />
-            <span>Sources</span>
-          </button>
-        </div>
+        <Tabs className="brain-tabs">
+          <TabList
+            idPrefix={BRAIN_TABS_ID}
+            label="Research Brain"
+            tabs={BRAIN_TABS}
+            value={activeTab}
+            // See AdminPage: the arrow keeps `T` pinned to `BrainTab`.
+            onChange={(value) => setActiveTab(value)}
+          />
 
         {activeTab === "evidence" && (
+          <TabPanel idPrefix={BRAIN_TABS_ID} value="evidence">
           <section className="brain-evidence-workspace">
             <form
               className="brain-evidence-search"
@@ -1002,10 +1021,11 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               </>
             )}
           </section>
+          </TabPanel>
         )}
 
         {activeTab === "sources" && (
-          <>
+          <TabPanel idPrefix={BRAIN_TABS_ID} value="sources">
             {isLoading && (
               <div className="library-state">Loading Research Brain…</div>
             )}
@@ -1105,8 +1125,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 </section>
               </div>
             )}
-          </>
+          </TabPanel>
         )}
+        </Tabs>
       </main>
     </div>
   );

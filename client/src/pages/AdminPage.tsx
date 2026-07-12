@@ -1,6 +1,7 @@
 import { route } from "preact-router";
 import { useEffect, useState } from "preact/hooks";
 import { Modal } from "../components/ui/Modal";
+import { TabList, TabPanel, Tabs, type TabItem } from "../components/ui/Tabs";
 import {
   isContradictionOpen,
   useAdmin,
@@ -18,6 +19,15 @@ import {
 } from "../hooks";
 
 type TabId = "contras" | "dedup" | "stats";
+
+/** Namespaces the generated `id`s that wire each tab to its panel. */
+const ADMIN_TABS_ID = "admin";
+
+const ADMIN_TABS: TabItem<TabId>[] = [
+  { value: "contras", label: "Contras" },
+  { value: "dedup", label: "Dedup" },
+  { value: "stats", label: "Stats" },
+];
 
 // ---------------------------------------------------------------------------
 // Top-level page
@@ -69,30 +79,34 @@ export function AdminPage() {
           </p>
         </div>
 
-        <div class="admin-tabs">
-          <button
-            class={`admin-tab ${tab === "contras" ? "active" : ""}`}
-            onClick={() => setTab("contras")}
-          >
-            Contras
-          </button>
-          <button
-            class={`admin-tab ${tab === "dedup" ? "active" : ""}`}
-            onClick={() => setTab("dedup")}
-          >
-            Dedup
-          </button>
-          <button
-            class={`admin-tab ${tab === "stats" ? "active" : ""}`}
-            onClick={() => setTab("stats")}
-          >
-            Stats
-          </button>
-        </div>
+        <Tabs className="admin-tabs">
+          <TabList
+            idPrefix={ADMIN_TABS_ID}
+            label="Bioprospecting review"
+            tabs={ADMIN_TABS}
+            value={tab}
+            // Not `onChange={setTab}`: Preact's `StateUpdater<TabId>` also accepts
+            // the `(prev) => next` form, and inferring `T` from that overload
+            // widens it to `string`. The arrow pins `T` to `TabId`.
+            onChange={(value) => setTab(value)}
+          />
 
-        {tab === "contras" && <ContrasTab onSwitchTab={setTab} />}
-        {tab === "dedup" && <DedupTab />}
-        {tab === "stats" && <StatsTab onSwitchTab={setTab} />}
+          {tab === "contras" && (
+            <TabPanel idPrefix={ADMIN_TABS_ID} value="contras">
+              <ContrasTab onSwitchTab={setTab} />
+            </TabPanel>
+          )}
+          {tab === "dedup" && (
+            <TabPanel idPrefix={ADMIN_TABS_ID} value="dedup">
+              <DedupTab />
+            </TabPanel>
+          )}
+          {tab === "stats" && (
+            <TabPanel idPrefix={ADMIN_TABS_ID} value="stats">
+              <StatsTab onSwitchTab={setTab} />
+            </TabPanel>
+          )}
+        </Tabs>
       </main>
     </div>
   );

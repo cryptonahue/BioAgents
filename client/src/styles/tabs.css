@@ -1,0 +1,113 @@
+/**
+ * Basecoat tab overrides.
+ *
+ * `components/ui/Tabs.tsx` renders Basecoat's tab contract — `.tabs`,
+ * `[role=tablist]`, `[role=tab]`, `aria-selected` — so the app's own `.admin-tabs`
+ * / `.admin-tab` and `.brain-tabs` skins are gone. Nothing else referenced them.
+ *
+ * Basecoat's `tabs.js` is deliberately NOT loaded (it writes `aria-*` and
+ * `hidden` into DOM that Preact owns); the keyboard behavior it provides is
+ * reimplemented in `Tabs.tsx`. Lyra's tab CSS keys entirely off `[role=tab]` and
+ * `aria-selected`, which Preact now renders, so the skin applies with no script.
+ * See the header of `Tabs.tsx`.
+ *
+ * As in `buttons.css`, the base layer carries the normalization Basecoat assumes
+ * Preflight provides, and everything below it is unlayered so it beats Lyra's
+ * `components` layer by construction rather than by specificity accident.
+ */
+
+/*
+ * TAB NORMALIZATION — the part of Preflight this app deliberately does not load.
+ *
+ * A `[role=tab]` here is a real <button>, and Preflight is what would have reset
+ * it (`background-color: transparent; font: inherit`). Without Preflight it keeps
+ * the UA's `buttonface` fill and — the visible one — the UA's 13.33px system font
+ * rather than IBM Plex, which is what the outgoing `.admin-tab` set by hand.
+ *
+ * `color` is NOT reset here, and does not need to be: unlike Lyra's ghost/link
+ * buttons, EVERY Lyra tab state paints its own ink (`text-foreground/60` at rest,
+ * `text-foreground` when selected), so there is no state in which the UA's
+ * `buttontext` can show through.
+ *
+ * `cursor` is not a Preflight rule — Tailwind v4 dropped `cursor: pointer` on
+ * buttons — but Lyra never sets it either, and the UA default for <button> is
+ * `default`. The outgoing skins both set `pointer`; keep it.
+ *
+ * Scoped to `[role=tab]` INSIDE `.tabs`, so no unmigrated control is touched.
+ * In the `base` layer, so Lyra's `hover:text-foreground` and its `aria-selected`
+ * rules (both `components`) still beat it.
+ */
+@layer base {
+  .tabs > [role="tablist"] > [role="tab"] {
+    background-color: transparent;
+    font-family: inherit;
+    cursor: pointer;
+  }
+}
+
+/*
+ * PADDING — restoring the geometry `* { padding: 0 }` takes away.
+ *
+ * THIS IS THE UNLAYERED TRAP, in its purest form yet. Every previous slice hit it
+ * as a `.parent button` / `.parent span` descendant selector. Here it is the
+ * UNIVERSAL selector: `global.css` opens with
+ *
+ *   * { margin: 0; padding: 0; box-sizing: border-box }
+ *
+ * which is UNLAYERED and therefore beats every `@layer` rule no matter what its
+ * specificity is — even `*`'s (0,0,0). Lyra declares the tab geometry in
+ * `@layer components` (`p-[3px]` on the tablist, `px-1.5 py-0.5` on the tab), so
+ * ALL OF IT IS ZEROED. Measured in Chromium against the built bundle: the tablist
+ * and every tab computed `padding: 0px`, and the three admin tabs rendered as one
+ * unbroken run of words.
+ *
+ * That reset cannot be layered or deleted — it is the only thing neutralising
+ * Basecoat's `.sidebar:not([data-side]) + *` margin rule (see its header in
+ * global.css). And it cannot be answered from `@layer base` either, because base
+ * loses to unlayered too. The only rule that can win is an UNLAYERED one with a
+ * specificity above (0,0,0) — which is any class selector at all.
+ *
+ * So these restate Lyra's own values rather than invent new ones: the geometry is
+ * Basecoat's, it is just being re-asserted somewhere the reset cannot reach.
+ * `px-1.5 py-0.5` = 6px/2px, `p-[3px]` = 3px, at Tailwind's 4px spacing unit.
+ *
+ * NOTE FOR THE NEXT SLICE: this is NOT specific to tabs. `.btn`, `.badge` and the
+ * form controls migrated in slices 3-5 are all computing `padding: 0px` for the
+ * same reason, and are visibly cramped on the admin page today. That is a
+ * pre-existing, app-wide defect with a blast radius well beyond this slice, so it
+ * is reported rather than silently fixed here.
+ */
+.tabs > [role="tablist"] {
+  padding: 3px;
+}
+
+.tabs > [role="tablist"] > [role="tab"] {
+  padding: 2px 6px;
+}
+
+/*
+ * FOCUS RING.
+ *
+ * Lyra sets `outline-style: none` on `[role=tab]` and paints focus as
+ * `focus-visible:outline-1` plus a `ring-[3px]` halo — a ONE-pixel outline, where
+ * every other focusable control in this app announces focus with a 2px `--ring`
+ * outline at a 2px offset (`.btn`, `.input`, `.textarea`, `.select`).
+ *
+ * Slice 5 flagged the gap the other way round: it migrated the app's buttons and
+ * left these tabs behind, at which point they were the only controls still on the
+ * UA's `auto 1px` ring. Taking Lyra's 1px outline would swap one inconsistency for
+ * a smaller one. So the tabs get the ring the app already standardized on.
+ *
+ * `--ring` was measured in PR 2 on every surface a ring can land on: 4.81:1 on
+ * `--background` and 4.32:1 on `--muted` in light, 6.90:1 / 5.17:1 in dark — all
+ * clear of the 3:1 WCAG 1.4.11 floor for a non-text indicator. `--muted` is the
+ * surface that matters here: it is the default tablist trough the ring lands on.
+ *
+ * The offset is INSET on purpose. A 2px outline at a +2px offset would be clipped
+ * by the tablist's own 3px padding (`p-[3px]`) on the first and last tab; drawing
+ * it inside the tab keeps all four edges of the indicator visible.
+ */
+.tabs > [role="tablist"] > [role="tab"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
