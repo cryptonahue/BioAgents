@@ -240,14 +240,14 @@ export function CorpusDashboardPage() {
                   </div>
                   <div class="corpus-detail-actions">
                     <button
-                      class="corpus-btn corpus-btn-danger"
+                      class="btn" data-variant="destructive"
                       disabled={isCancelling || selectedRun.status !== "running"}
                       onClick={handleCancel}
                     >
                       {isCancelling ? "Cancelling..." : "Cancel run"}
                     </button>
                     <button
-                      class="corpus-btn corpus-btn-secondary"
+                      class="btn" data-variant="outline"
                       disabled={isRetrying || selectedRun.failedFiles === 0}
                       onClick={handleRetry}
                     >

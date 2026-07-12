@@ -52,21 +52,6 @@
   gap: 8px;
 }
 
-.admin-link-btn {
-  background: none;
-  border: none;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.admin-link-btn:hover {
-  color: var(--foreground);
-  background: var(--muted);
-}
-
 .admin-main {
   flex: 1;
   padding: 24px;
@@ -218,59 +203,20 @@
   letter-spacing: 0.05em;
 }
 
-/* ----------------- Action buttons ----------------- */
-
-.admin-btn {
-  background: var(--muted);
-  color: var(--foreground);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.admin-btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--primary-ink);
-}
-
-.admin-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.admin-btn-primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.admin-btn-primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
-
-.admin-btn-danger {
-  background: var(--destructive-subtle);
-  border-color: var(--destructive-border);
-  color: var(--destructive-subtle-foreground);
-}
-
-.admin-btn-danger:hover:not(:disabled) {
-  background: var(--destructive-border);
-}
-
-.admin-btn-success {
-  background: var(--success-subtle);
-  border-color: var(--success-border);
-  color: var(--success-subtle-foreground);
-}
-
-.admin-btn-success:hover:not(:disabled) {
-  background: var(--success-border);
-}
+/* ----------------- Action buttons -----------------
+ *
+ * Gone. Every `.admin-btn*` is Basecoat's `.btn` now:
+ *
+ *   .admin-btn          -> data-variant="outline"      (the neutral bordered box
+ *                          this skin already was)
+ *   .admin-btn-danger   -> data-variant="destructive"  (buttons.css already
+ *                          defines the measured tinted-red button)
+ *   .admin-btn-success  -> data-tone="success"         (Basecoat has no success
+ *                          variant; see the TONES block in buttons.css)
+ *
+ * `.admin-btn-primary` and `.admin-link-btn` are deleted outright: neither had a
+ * single call site anywhere in the client.
+ */
 
 /* ----------------- Footer action bar (bulk) ----------------- */
 

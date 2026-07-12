@@ -125,3 +125,69 @@
 .btn[data-variant="destructive"]:hover:not(:disabled) {
     border-color: var(--destructive);
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * TONES — the same project escape hatch `badges.css` established in slice 4,
+ * now that slice 5 has migrated the page-level buttons and hit the same wall.
+ *
+ * Basecoat ships exactly ONE status color: `destructive`. Its button variants
+ * (`primary` / `secondary` / `outline` / `ghost` / `link` / `destructive`) are a
+ * CHROME vocabulary. A handful of this app's buttons are SEMANTIC — the admin
+ * "Resolve" action is green because it RESOLVES, the graph evidence button is
+ * blue because blue is this app's evidence color — and Basecoat has no word for
+ * either. Rather than invent a third pattern, these reuse `data-tone`:
+ *
+ *   - a NEW attribute, so it can never collide with a `data-variant` value
+ *     Basecoat 1.x might ship later;
+ *   - COLOR only, composing on top of whatever `data-variant` supplies the
+ *     geometry and the border box;
+ *   - UNLAYERED, so it beats Lyra's `components`-layer variant rules by
+ *     construction rather than by specificity accident;
+ *   - reading the SAME four-slot tokens as the badge tones, so a button and a
+ *     badge that mean the same thing cannot drift apart.
+ *
+ * ALWAYS PAIR A TONE WITH AN EXPLICIT `data-variant`. Lyra's default rule is
+ * `.btn:not([data-variant])` -> the PRIMARY fill, and the opaque primary hover
+ * above is keyed to the same selector at a higher specificity than any tone
+ * hover. A toned button with no variant therefore looks right at rest and turns
+ * TEAL on hover. `data-variant="outline"` is the neutral geometry these tones
+ * want; the tone then repaints the fill, the ink and the border on top of it.
+ *
+ * Only the three tones the buttons actually need are defined. Do not add more
+ * speculatively — `badges.css` carries the full nine.
+ * ---------------------------------------------------------------------------
+ */
+
+/* The BRAND tint — the green "this one is selected" accent (the library view
+   toggle). `--accent-ink`, not `--accent-color`: the emphasis green is 2.54:1 on
+   white and fails AA as text. Follows the teal sub-brand inside `.library-page`
+   for free, because theme.css scopes `--accent-*` there. */
+.btn[data-tone="brand"] {
+    background-color: var(--accent-light);
+    color: var(--accent-ink);
+    border-color: var(--accent-border);
+}
+
+/* Resolve / verify / approve. */
+.btn[data-tone="success"] {
+    background-color: var(--success-subtle);
+    color: var(--success-subtle-foreground);
+    border-color: var(--success-border);
+}
+
+.btn[data-tone="success"]:hover:not(:disabled) {
+    border-color: var(--success);
+}
+
+/* This app's EVIDENCE color — the blue that the provenance bbox, the evidence
+   badge and the graph's evidence affordance all already share. */
+.btn[data-tone="info"] {
+    background-color: var(--info-subtle);
+    color: var(--info-subtle-foreground);
+    border-color: var(--info-border);
+}
+
+.btn[data-tone="info"]:hover:not(:disabled) {
+    border-color: var(--info);
+}

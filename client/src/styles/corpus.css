@@ -32,21 +32,6 @@
   gap: 8px;
 }
 
-.corpus-link-btn {
-  background: none;
-  border: none;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.corpus-link-btn:hover {
-  color: var(--foreground);
-  background: var(--muted);
-}
-
 .corpus-main {
   padding: 24px;
   max-width: 1400px;
@@ -217,39 +202,13 @@
   gap: 8px;
 }
 
-.corpus-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.corpus-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.corpus-btn-danger {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-}
-
-.corpus-btn-danger:hover:not(:disabled) {
-  background: var(--destructive-border);
-}
-
-.corpus-btn-secondary {
-  background: var(--muted);
-  color: var(--foreground);
-  border: 1px solid var(--border-strong);
-}
-
-.corpus-btn-secondary:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
+/* The `.corpus-btn*` skins are gone — these are Basecoat's `.btn` now:
+ *
+ *   .corpus-btn-secondary -> data-variant="outline"
+ *   .corpus-btn-danger    -> data-variant="destructive"
+ *
+ * `.corpus-link-btn` is deleted outright: it had no call site in the client.
+ */
 
 /* Progress bar
  *

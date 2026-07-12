@@ -168,12 +168,12 @@ export function ContradictionRow({
         {isContradictionOpen(row) ? (
           <>
             <button
-              class="admin-btn admin-btn-success"
+              class="btn" data-variant="outline" data-tone="success"
               onClick={() => onAct("resolved")}
             >
               Resolve
             </button>{" "}
-            <button class="admin-btn" onClick={() => onAct("dismissed")}>
+            <button class="btn" data-variant="outline" onClick={() => onAct("dismissed")}>
               Dismiss
             </button>
           </>
@@ -344,21 +344,21 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
             {selectedIds.size} selected
           </span>
           <button
-            class="admin-btn admin-btn-success"
+            class="btn" data-variant="outline" data-tone="success"
             disabled={bulkLoading}
             onClick={() => handleBulk("resolved")}
           >
             Resolve selected ({selectedIds.size})
           </button>
           <button
-            class="admin-btn"
+            class="btn" data-variant="outline"
             disabled={bulkLoading}
             onClick={() => handleBulk("dismissed")}
           >
             Dismiss selected ({selectedIds.size})
           </button>
           <button
-            class="admin-btn"
+            class="btn" data-variant="outline"
             onClick={() => setSelectedIds(new Set())}
           >
             Clear selection
@@ -368,7 +368,7 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
 
       <div class="admin-pagination">
         <button
-          class="admin-btn"
+          class="btn" data-variant="outline"
           disabled={page === 0}
           onClick={() => setPage(Math.max(0, page - 1))}
         >
@@ -378,7 +378,7 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
           Page {page + 1} of {totalPages} ({total} total)
         </span>
         <button
-          class="admin-btn"
+          class="btn" data-variant="outline"
           disabled={page + 1 >= totalPages}
           onClick={() => setPage(page + 1)}
         >
@@ -488,7 +488,7 @@ function DedupTab() {
                 <td>
                   {event.isActive ? (
                     <button
-                      class="admin-btn admin-btn-danger"
+                      class="btn" data-variant="destructive"
                       onClick={() =>
                         setDialogState({ open: true, factId: event.factId })
                       }
@@ -507,7 +507,7 @@ function DedupTab() {
 
       <div class="admin-pagination">
         <button
-          class="admin-btn"
+          class="btn" data-variant="outline"
           disabled={page === 0}
           onClick={() => setPage(Math.max(0, page - 1))}
         >
@@ -515,7 +515,7 @@ function DedupTab() {
         </button>
         <span>Page {page + 1}</span>
         <button
-          class="admin-btn"
+          class="btn" data-variant="outline"
           disabled={events.length < 50}
           onClick={() => setPage(page + 1)}
         >
@@ -642,7 +642,7 @@ function UnmergeDialog(props: {
         <div class="admin-dialog-actions">
           <button
             type="button"
-            class="admin-btn"
+            class="btn" data-variant="outline"
             onClick={() => props.onCancel()}
             disabled={props.isLoading}
           >
@@ -650,7 +650,7 @@ function UnmergeDialog(props: {
           </button>
           <button
             type="submit"
-            class="admin-btn admin-btn-danger"
+            class="btn" data-variant="destructive"
             disabled={!reasonCode || props.isLoading}
           >
             {props.isLoading ? "Unmerging..." : "Unmerge"}
@@ -693,7 +693,7 @@ function StatsTab(props: { onSwitchTab?: (t: TabId) => void }) {
             </a>
           </div>
           <button
-            class="admin-btn"
+            class="btn" data-variant="outline"
             onClick={() => refetch()}
             style={{ marginTop: 12 }}
           >
