@@ -130,8 +130,31 @@
   height: 14px;
 }
 
+/* HORIZONTAL PADDING IS NOT OPTIONAL HERE, and Lyra will not give it to you.
+   `.accordion > details > summary` is `py-2.5 px-0` — vertical only. That is
+   correct for the surface Lyra designed it against: a marketing FAQ, where the
+   `.card` wrapping the accordion supplies the horizontal rhythm. These panels have
+   no such card, so an un-padded summary sits flush against the panel's edge while
+   every body under it is inset 14px. Four of the six summaries here shipped that
+   way and it read, correctly, as "the toggles are missing side padding".
+
+   14px is the horizontal rhythm the bodies already use (see
+   `.research-activity-log-list`). Every summary states its own padding; none of
+   them may rely on Lyra's. */
 .research-state-header {
   padding: 16px 20px;
+}
+
+.research-activity-log-header,
+.artifact-viewer-header,
+.evidence-by-source-header {
+  padding: 12px 14px;
+}
+
+/* One level deeper than the panel header it lives under: same gutter, tighter
+   vertical, so a list of sources reads as rows rather than as stacked panels. */
+.evidence-by-source-row-header {
+  padding: 10px 14px;
 }
 
 .research-state-header-left {
