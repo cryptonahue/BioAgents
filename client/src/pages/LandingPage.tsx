@@ -172,7 +172,12 @@ export function LandingPage() {
           </span>
         </a>
         <div className="landing-nav-actions">
-          <button type="button" className="btn-ghost" onClick={() => setWaitlistOpen(true)}>
+          <button
+            type="button"
+            className="btn btn-marketing"
+            data-variant="outline"
+            onClick={() => setWaitlistOpen(true)}
+          >
             Join Waitlist
           </button>
         </div>
@@ -205,13 +210,19 @@ export function LandingPage() {
           <div className="landing-hero-actions">
             <button
               type="button"
-              className="btn-coral"
+              className="btn btn-marketing"
+              data-variant="outline"
+              data-tone="coral"
+              data-size="lg"
               onClick={handleTestAgent}
               disabled={testingAgent}
             >
               {testingAgent ? 'Connecting...' : 'Test Agent'}
             </button>
-            <span className="landing-badge landing-badge--sm">
+            {/* `data-tone` MUST carry an explicit `data-variant`: Lyra's default
+                is `.btn:not([data-variant])` -> the teal primary fill, at a
+                specificity the tone's own hover cannot beat. See buttons.css. */}
+            <span className="badge" data-tone="teal">
               Powered by $CRLAI
             </span>
           </div>
@@ -264,16 +275,18 @@ export function LandingPage() {
         <h2 className="landing-section-title">How It Works</h2>
         <div className="landing-steps">
           {STEPS.map((step) => (
-            <div key={step.num} className="landing-step">
-              <div className="landing-step-num">{step.num}</div>
-              <div className="landing-step-title">{step.title}</div>
-              <div className="landing-step-body">{step.body}</div>
+            <div key={step.num} className="card landing-card">
+              <section>
+                <div className="landing-step-num">{step.num}</div>
+                <h3 className="landing-step-title">{step.title}</h3>
+                <p className="landing-step-body">{step.body}</p>
+              </section>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="landing-section">
+      <section className="landing-section landing-section--band">
         <h2 className="landing-section-title">How the evidence works</h2>
         <p className="landing-section-lead">
           Built for a scientific audience — here is what stands behind every
@@ -281,9 +294,11 @@ export function LandingPage() {
         </p>
         <div className="landing-trust">
           {TRUST.map((item) => (
-            <div key={item.title} className="landing-trust-card">
-              <div className="landing-trust-title">{item.title}</div>
-              <div className="landing-trust-body">{item.body}</div>
+            <div key={item.title} className="card landing-card">
+              <section>
+                <h3 className="landing-trust-title">{item.title}</h3>
+                <p className="landing-trust-body">{item.body}</p>
+              </section>
             </div>
           ))}
         </div>
@@ -302,7 +317,9 @@ export function LandingPage() {
               href="https://bioagents.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-teal-link"
+              className="btn btn-marketing"
+              data-variant="outline"
+              data-tone="teal"
             >
               Learn about $CRLAI
             </a>
@@ -310,7 +327,8 @@ export function LandingPage() {
               href="https://bioagents.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-ghost"
+              className="btn btn-marketing"
+              data-variant="outline"
             >
               View on BioAgents
             </a>
@@ -320,21 +338,46 @@ export function LandingPage() {
 
       <section className="landing-section landing-section--band">
         <h2 className="landing-section-title">FAQ</h2>
-        <div className="landing-faq">
+        {/*
+          Basecoat's `.accordion`, which is written against native <details> /
+          <summary> — so the disclosure role, the expanded state, Enter/Space and
+          the open/close all come from the browser rather than from ARIA this app
+          would have to keep honest. The markup this replaces was a <button> with
+          no `aria-expanded` and no `aria-controls`: it announced nothing.
+
+          `accordion.js` is not loaded (no Basecoat JS is). The only thing it adds
+          over the native element is single-open exclusivity, and Preact already
+          owns that: `openFaq` drives `open`, and `preventDefault()` on the summary
+          hands the browser's default toggle back to us. Activating a <summary>
+          dispatches a click, so this catches the keyboard too.
+
+          The chevron must be the LAST child of the <summary>: Lyra selects it as
+          `summary > svg:last-child` and rotates it on `details[open]`.
+        */}
+        <div className="accordion landing-faq">
           {FAQ.map((item, index) => (
-            <div key={item.q} className="landing-faq-item">
-              <button
-                type="button"
-                className="landing-faq-question"
-                onClick={() => setOpenFaq(openFaq === index ? null : index)}
+            <details key={item.q} open={openFaq === index}>
+              <summary
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenFaq(openFaq === index ? null : index);
+                }}
               >
                 {item.q}
-                <span>{openFaq === index ? '−' : '+'}</span>
-              </button>
-              {openFaq === index && (
-                <div className="landing-faq-answer">{item.a}</div>
-              )}
-            </div>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </summary>
+              <div className="landing-faq-answer">{item.a}</div>
+            </details>
           ))}
         </div>
       </section>

@@ -45,10 +45,21 @@ export function AccessPendingPage() {
         </p>
 
         <div className="access-pending-actions">
-          <button type="button" className="btn-coral" onClick={() => setWaitlistOpen(true)}>
+          <button
+            type="button"
+            className="btn btn-marketing"
+            data-variant="outline"
+            data-tone="coral"
+            onClick={() => setWaitlistOpen(true)}
+          >
             Join Waitlist
           </button>
-          <button type="button" className="btn-ghost" onClick={() => route('/', true)}>
+          <button
+            type="button"
+            className="btn btn-marketing"
+            data-variant="outline"
+            onClick={() => route('/', true)}
+          >
             Back to Home
           </button>
         </div>

@@ -81,7 +81,13 @@ export function WaitlistModal({ isOpen, onClose, onTestAgent }: WaitlistModalPro
             users can Test Agent today.
           </p>
           {onTestAgent && (
-            <button type="button" className="btn-coral" onClick={onTestAgent}>
+            <button
+              type="button"
+              className="btn btn-marketing"
+              data-variant="outline"
+              data-tone="coral"
+              onClick={onTestAgent}
+            >
               Test Agent
             </button>
           )}
@@ -194,7 +200,14 @@ export function WaitlistModal({ isOpen, onClose, onTestAgent }: WaitlistModalPro
             <span>I agree to receive updates about CoralGPT and $CRLAI</span>
           </label>
 
-          <button type="submit" className="btn-coral" disabled={loading} style={{ width: '100%' }}>
+          <button
+            type="submit"
+            className="btn btn-marketing"
+            data-variant="outline"
+            data-tone="coral"
+            disabled={loading}
+            style={{ width: '100%' }}
+          >
             {loading ? 'Submitting...' : 'Join Waitlist'}
           </button>
         </form>

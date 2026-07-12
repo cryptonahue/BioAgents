@@ -224,7 +224,7 @@ body.coralgpt-scroll {
    3:1 against an arbitrary image — the coral fill drops to 2.2:1 over a specular
    highlight — so the button carries a dark 1px ring of its own, which does. The
    drop shadow lifts it off the reef. */
-.landing-hero-actions .btn-coral {
+.landing-hero-actions .btn {
   box-shadow:
     0 0 0 1px rgba(2, 8, 12, 0.55),
     0 8px 24px rgba(2, 8, 12, 0.45);
@@ -361,17 +361,23 @@ body.coralgpt-scroll {
  * Card rows
  * ------------------------------------------------------------------------- */
 
+/* The trust cards and the step cards are Basecoat `.card`s. They are GENUINE
+   cards, and the test is not "does it look like a box" — it is whether the fill
+   they paint differs from the fill they sit on. In LIGHT, `--card` and
+   `--background` are the SAME white, so a card row on a plain section would be a
+   white box on a white page held together by a 10% ring: the card-in-card hazard,
+   just with the layers swapped. That is why both of these rows sit inside
+   `.landing-section--band`, on `--surface-sunken`. Card-on-band reads as a card
+   in both themes; card-on-background would not.
+
+   `.landing-token-card` further down is deliberately NOT a `.card` for the same
+   test, applied honestly: it is a single quiet outro panel on a plain section,
+   painting `--muted`. It is a sub-panel, not a card, and forcing the class on it
+   would only have bought a ring it does not want. */
 .landing-trust {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 20px;
-}
-
-.landing-trust-card {
-  padding: 24px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--bg-secondary);
 }
 
 .landing-trust-title {
@@ -391,13 +397,6 @@ body.coralgpt-scroll {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
-}
-
-.landing-step {
-  padding: 24px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--bg-secondary);
 }
 
 .landing-step-num {
@@ -492,32 +491,55 @@ body.coralgpt-scroll {
  * FAQ
  * ------------------------------------------------------------------------- */
 
+/*
+ * Basecoat's `.accordion`, at the marketing type scale.
+ *
+ * `.landing-faq-item` / `-question` / `-answer` were a hand-rolled disclosure: a
+ * <button>, a Preact `openFaq` index, a `+` / `−` glyph, and NO `aria-expanded`,
+ * NO `aria-controls` and no region for a screen reader to land in. It announced
+ * nothing.
+ *
+ * Basecoat's `.accordion` is written against native `<details>` / `<summary>` —
+ * read `basecoat-css/dist/components/accordion.css`, every selector is
+ * `.accordion > details > summary`. So the markup IS the semantics: open/close,
+ * Enter and Space, the disclosure role and the expanded state all come from the
+ * browser, and the app ships no ARIA it then has to keep truthful.
+ *
+ * `accordion.js` is NOT loaded (no Basecoat JS is, anywhere in this app — see
+ * `ui/Tabs.tsx`). Reading it, all it adds on top of the native element is
+ * single-open exclusivity: close the other `<details>` when one opens, unless the
+ * root carries `data-multiple`. Preact already owns that state, so `LandingPage`
+ * keeps its `openFaq` index, drives `open` from it, and calls `preventDefault()`
+ * on the summary — the standard controlled-<details> pattern, which also catches
+ * the keyboard because activating a <summary> dispatches a click.
+ *
+ * What is left here is SIZE. Lyra sets the accordion at a 12px face with tight
+ * vertical padding — an app-dense disclosure, not a public FAQ. Unlayered, so
+ * these beat Lyra's equally-specific `components`-layer rules by construction.
+ */
 .landing-faq {
   max-width: 720px;
   margin: 0 auto;
 }
 
-.landing-faq-item {
-  border-bottom: 1px solid var(--border-color);
-}
-
-.landing-faq-question {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.landing-faq > details > summary {
   padding: 20px 0;
-  background: none;
-  border: none;
-  color: var(--text-primary);
   font-size: 16px;
   font-weight: 500;
-  cursor: pointer;
-  text-align: left;
+  color: var(--text-primary);
+}
+
+/* Lyra kills the outline on every interactive component it ships (it zeroes the
+   outline and paints focus as a 1px ring plus a border color change, which a
+   <summary> has no border to show). This is the ring every other focusable
+   control in this app already uses. */
+.landing-faq > details > summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .landing-faq-answer {
-  padding: 0 0 20px;
+  padding-bottom: 20px;
   color: var(--text-secondary);
   line-height: 1.7;
   font-size: 15px;
@@ -545,86 +567,50 @@ body.coralgpt-scroll {
 }
 
 /* ---------------------------------------------------------------------------
- * Buttons
+ * THE MARKETING TYPE SCALE.
+ *
+ * `.btn-coral`, `.btn-ghost` and `.btn-teal-link` are GONE. All three were
+ * complete hand-written button skins — fill, ink, border, radius, padding, font —
+ * and they are now Basecoat's `.btn` contract: `data-variant` for the geometry,
+ * `data-tone` for the brand color (`buttons.css`), and the two classes below for
+ * the SIZE.
+ *
+ * The size is the part Basecoat genuinely cannot supply. Lyra is an APP style
+ * pack: its largest button is 36px tall with a 12px label, and its accordion is
+ * 12px throughout. Those are correct in a dense product UI and far too small
+ * on a public landing page, where the CTA is the single most important object on
+ * the screen. Overriding the SIZE while keeping Basecoat's fill, ink, border,
+ * focus ring and disabled handling is the honest split — it is not a reason to
+ * keep three bespoke buttons.
+ *
+ * Unlayered, so a plain class beats Lyra's higher-specificity
+ * `.btn[data-size='lg']` in `@layer components` by construction rather than by a
+ * specificity accident. Height is `min-height` + `height: auto` so a label that
+ * wraps on a narrow viewport grows the button instead of overflowing it.
  * ------------------------------------------------------------------------- */
 
-.btn-coral {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 28px;
-  background: var(--coral);
-  color: var(--coral-foreground);
-  border: none;
-  border-radius: 8px;
+.btn-marketing {
+  height: auto;
+  min-height: 40px;
+  padding-inline: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-marketing[data-size="lg"] {
+  min-height: 46px;
+  padding-inline: 30px;
   font-size: 15px;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.btn-coral:hover {
-  background: var(--coral-hover);
+/* Basecoat's `.card`, at marketing padding. Lyra's box is a 16px app-dense one. */
+.landing-card {
+  padding-block: 24px;
 }
 
-.btn-coral:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 20px;
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
-}
-
-.btn-ghost:hover {
-  border-color: var(--coral-ink);
-  color: var(--coral-ink);
-}
-
-.btn-teal-link {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 20px;
-  background: transparent;
-  color: var(--teal-ink);
-  border: 1px solid var(--teal-border);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.2s;
-}
-
-.btn-teal-link:hover {
-  background: var(--teal-subtle);
-}
-
-.landing-badge {
-  display: inline-block;
-  padding: 6px 14px;
-  border: 1px solid var(--teal-border);
-  border-radius: 999px;
-  color: var(--teal-ink);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.landing-badge--sm {
-  padding: 4px 11px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+.landing-card > section {
+  padding-inline: 24px;
 }
 
 /* ---------------------------------------------------------------------------

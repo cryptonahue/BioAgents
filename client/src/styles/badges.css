@@ -196,6 +196,20 @@
   border-color: var(--info-border);
 }
 
+/* The CORALGPT BRAND teal — the `Powered by $CRLAI` chip on the marketing hero.
+   Not `data-tone="brand"`: that tone reads the `--accent-*` family, which
+   `coralgpt.css` re-points at the brand CORAL, and this chip is the TEAL half of
+   the brand. Not `data-variant="outline"` either — that would leave the chip
+   transparent, and this one sits on a PHOTOGRAPH, where a transparent chip means
+   its ink is measured against whatever pixel lands under it. `theme.css` gives
+   `--teal-subtle` a nearly opaque value inside `.landing-hero` for exactly that
+   reason, so the badge brings its own substrate and reads 8.3:1 on it. */
+.badge[data-tone="teal"] {
+  background-color: var(--teal-subtle);
+  color: var(--teal-ink);
+  border-color: var(--teal-border);
+}
+
 /* The deep-research TASK type — LITERATURE, ANALYSIS, HYPOTHESIS, REFLECTION,
    PLANNING, CODE_EXEC. Seven hues, so it is driven by two custom properties the
    call site sets (`--step-color` / `--step-bg`, already fed from the `--task-*`

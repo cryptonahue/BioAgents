@@ -205,3 +205,46 @@
 .btn[data-tone="info"]:hover:not(:disabled) {
     border-color: var(--info);
 }
+
+/*
+ * The CORALGPT BRAND tones — the marketing surfaces (`coralgpt.css`).
+ *
+ * `coral` is the only tone in this file that paints an OPAQUE fill rather than a
+ * tint. It is not a status, it is a brand CTA: "Test Agent" and "Join Waitlist"
+ * are the two things the landing page exists to make you press, and a tinted
+ * button does not carry that weight. `--coral-foreground` is BLACK, because
+ * white on `#ff6b6b` measures 2.78:1 and the CTA had been failing AA outright;
+ * black on the same fill is 7.57:1. The text follows the FILL, not the theme —
+ * the idiom `theme.css` already uses for `--accent-color-foreground` and
+ * `--destructive-foreground`.
+ *
+ * `teal` is the ordinary tinted shape the tones above use. Its border carries the
+ * 3:1 WCAG 1.4.11 floor rather than a text floor, because it is a real button
+ * boundary; the `rgba(45, 212, 191, 0.35)` it replaces was 1.26:1 on white.
+ *
+ * PAIR BOTH WITH `data-variant="outline"`, as the note above insists. Lyra's
+ * default is `.btn:not([data-variant])` -> the primary fill, and this file's
+ * opaque primary hover is keyed to the same selector at the same specificity as
+ * any tone hover — a toned button with no variant looks right at rest and turns
+ * TEAL on hover.
+ */
+.btn[data-tone="coral"] {
+    background-color: var(--coral);
+    color: var(--coral-foreground);
+    border-color: var(--coral);
+}
+
+.btn[data-tone="coral"]:hover:not(:disabled) {
+    background-color: var(--coral-hover);
+    border-color: var(--coral-hover);
+}
+
+.btn[data-tone="teal"] {
+    background-color: var(--teal-subtle);
+    color: var(--teal-ink);
+    border-color: var(--teal-border);
+}
+
+.btn[data-tone="teal"]:hover:not(:disabled) {
+    border-color: var(--teal-ink);
+}
