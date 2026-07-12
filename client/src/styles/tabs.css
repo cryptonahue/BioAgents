@@ -46,44 +46,22 @@
 }
 
 /*
- * PADDING — restoring the geometry `* { padding: 0 }` takes away.
+ * NO PADDING RULE HERE, AND THAT IS THE POINT.
  *
- * THIS IS THE UNLAYERED TRAP, in its purest form yet. Every previous slice hit it
- * as a `.parent button` / `.parent span` descendant selector. Here it is the
- * UNIVERSAL selector: `global.css` opens with
+ * This file used to re-assert Lyra's own tab geometry (`padding: 3px` on the
+ * tablist, `padding: 2px 6px` on the tab) from UNLAYERED rules, because the
+ * universal reset in global.css was unlayered and its `padding: 0` beat Lyra's
+ * `@layer components` values no matter what.
  *
- *   * { margin: 0; padding: 0; box-sizing: border-box }
+ * That reset now lives in `@layer base`, so Lyra's `p-[3px]` / `px-1.5 py-0.5`
+ * apply on their own and the workaround is gone. Measured in Chromium against the
+ * built bundle before and after removing it: the tablist computes 3px and the tab
+ * 2px 6px either way — identical, which is exactly what proves the re-assertion
+ * was redundant rather than load-bearing.
  *
- * which is UNLAYERED and therefore beats every `@layer` rule no matter what its
- * specificity is — even `*`'s (0,0,0). Lyra declares the tab geometry in
- * `@layer components` (`p-[3px]` on the tablist, `px-1.5 py-0.5` on the tab), so
- * ALL OF IT IS ZEROED. Measured in Chromium against the built bundle: the tablist
- * and every tab computed `padding: 0px`, and the three admin tabs rendered as one
- * unbroken run of words.
- *
- * That reset cannot be layered or deleted — it is the only thing neutralising
- * Basecoat's `.sidebar:not([data-side]) + *` margin rule (see its header in
- * global.css). And it cannot be answered from `@layer base` either, because base
- * loses to unlayered too. The only rule that can win is an UNLAYERED one with a
- * specificity above (0,0,0) — which is any class selector at all.
- *
- * So these restate Lyra's own values rather than invent new ones: the geometry is
- * Basecoat's, it is just being re-asserted somewhere the reset cannot reach.
- * `px-1.5 py-0.5` = 6px/2px, `p-[3px]` = 3px, at Tailwind's 4px spacing unit.
- *
- * NOTE FOR THE NEXT SLICE: this is NOT specific to tabs. `.btn`, `.badge` and the
- * form controls migrated in slices 3-5 are all computing `padding: 0px` for the
- * same reason, and are visibly cramped on the admin page today. That is a
- * pre-existing, app-wide defect with a blast radius well beyond this slice, so it
- * is reported rather than silently fixed here.
+ * If tab padding ever collapses to 0px again, the reset has escaped its layer.
+ * Fix that, not this file.
  */
-.tabs > [role="tablist"] {
-  padding: 3px;
-}
-
-.tabs > [role="tablist"] > [role="tab"] {
-  padding: 2px 6px;
-}
 
 /*
  * FOCUS RING.

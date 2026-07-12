@@ -60,27 +60,21 @@
 }
 
 /*
- * CELL PADDING — restoring the geometry `* { padding: 0 }` takes away.
+ * NO CELL-PADDING RULE HERE, AND THAT IS THE POINT.
  *
- * `global.css`'s universal reset is UNLAYERED, so it beats Lyra's `px-2` on `<th>`
- * and `p-2` on `<td>` (both `@layer components`) despite its (0,0,0) specificity.
- * Measured in Chromium against the built bundle: every cell computed `padding:
- * 0px`, and the row content ran edge to edge into the table's border.
+ * This file used to re-assert Lyra's own cell geometry (`padding-inline: 8px` on
+ * `<th>`, `padding: 8px` on `<td>`) from UNLAYERED rules, because the universal
+ * reset in global.css was unlayered and its `padding: 0` beat Lyra's `px-2` /
+ * `p-2` (both `@layer components`) no matter what.
  *
- * The reset cannot be layered or deleted (see its header in global.css), and
- * `@layer base` loses to it as well. The only rule that can win is an UNLAYERED
- * one above (0,0,0) — any class selector. These restate LYRA's own values (8px,
- * Tailwind's `*-2` at a 4px unit), so this re-asserts Basecoat's geometry rather
- * than inventing new spacing. See the same note in `tabs.css`; `.btn` and `.badge`
- * are affected by this too, app-wide, and are reported separately.
+ * That reset now lives in `@layer base`, so Lyra's values apply on their own.
+ * Measured in Chromium against the built bundle before and after removing the
+ * workaround: `<th>` computes `0px 8px` and `<td>` `8px` either way — identical,
+ * which is what proves the re-assertion was redundant rather than load-bearing.
+ *
+ * If cell padding ever collapses to 0px again, the reset has escaped its layer.
+ * Fix that, not this file.
  */
-.table th {
-  padding-inline: 8px;
-}
-
-.table td {
-  padding: 8px;
-}
 
 /*
  * CELL INK.
