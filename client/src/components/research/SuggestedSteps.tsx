@@ -118,7 +118,12 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
       </div>
 
       {onCustomInput && (
-        <button className="suggested-steps-custom" onClick={onCustomInput} disabled={disabled}>
+        <button
+          className="btn suggested-steps-custom"
+          data-variant="outline"
+          onClick={onCustomInput}
+          disabled={disabled}
+        >
           <Icon name="plus" size={14} />
           <span>Or type your own instruction...</span>
         </button>

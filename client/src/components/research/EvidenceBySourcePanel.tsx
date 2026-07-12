@@ -105,8 +105,16 @@ export function EvidenceBySourcePanel({
 
   return (
     <div className="evidence-by-source">
+      {/* A ghost `.btn`, like every other disclosure toggle in the research panel.
+          Before this it wore NO class and NO rule — `.evidence-by-source-*` has no
+          CSS anywhere in the client — so without Tailwind's Preflight it rendered as
+          a raw UA button: `background: buttonface`, `font-family: Arial`, and a 2px
+          OUTSET bevel. Measured in Chromium: `rgb(239,239,239)` in light and
+          `rgb(107,107,107)` in dark, i.e. a grey 3D button on a near-black panel. */}
       <button
-        className="evidence-by-source-header"
+        className="btn evidence-by-source-header"
+        data-variant="ghost"
+        aria-expanded={isPanelOpen}
         onClick={() => setIsPanelOpen((prev) => !prev)}
       >
         <span className="evidence-by-source-icon">🔬</span>
@@ -143,7 +151,9 @@ export function EvidenceBySourcePanel({
                 className={`evidence-by-source-row evidence-by-source-${source.status}`}
               >
                 <button
-                  className="evidence-by-source-row-header"
+                  className="btn evidence-by-source-row-header"
+                  data-variant="ghost"
+                  aria-expanded={isSourceOpen}
                   onClick={toggleSource}
                 >
                   <span

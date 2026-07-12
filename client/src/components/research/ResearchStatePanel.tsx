@@ -229,7 +229,12 @@ export function ResearchStatePanel({
 
   return (
     <div className={`card research-state-panel ${isExpanded ? "expanded" : ""}`}>
-      <button className="research-state-header" onClick={onToggle}>
+      <button
+        className="btn research-state-header"
+        data-variant="ghost"
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+      >
         <div className="research-state-header-left">
           <span className="research-state-icon">🧬</span>
           <span className="research-state-title">Research State</span>
@@ -271,7 +276,8 @@ export function ResearchStatePanel({
           {state?.researchBrainEvidence && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("brain")}
               >
                 <div className="research-section-toggle-left">
@@ -309,7 +315,8 @@ export function ResearchStatePanel({
           {state?.currentHypothesis && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("hypothesis")}
               >
                 <div className="research-section-toggle-left">
@@ -352,7 +359,8 @@ export function ResearchStatePanel({
           {state?.discoveries && state.discoveries.length > 0 && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("discoveries")}
               >
                 <div className="research-section-toggle-left">
@@ -383,7 +391,8 @@ export function ResearchStatePanel({
           {state?.keyInsights && state.keyInsights.length > 0 && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("insights")}
               >
                 <div className="research-section-toggle-left">
@@ -414,7 +423,8 @@ export function ResearchStatePanel({
           {state?.methodology && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("methodology")}
               >
                 <div className="research-section-toggle-left">
@@ -441,7 +451,8 @@ export function ResearchStatePanel({
           {state?.uploadedDatasets && state.uploadedDatasets.length > 0 && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("datasets")}
               >
                 <div className="research-section-toggle-left">
@@ -480,7 +491,8 @@ export function ResearchStatePanel({
           {completedSteps.length > 0 && (
             <div className="research-section">
               <button
-                className="research-section-toggle"
+                className="btn research-section-toggle"
+                data-variant="ghost"
                 onClick={() => toggleSection("plan")}
               >
                 <div className="research-section-toggle-left">
@@ -588,7 +600,10 @@ export function ResearchStatePanel({
                               </pre>
                               {needsTruncation && (
                                 <button
-                                  className="research-step-output-toggle"
+                                  className="btn research-step-output-toggle"
+                                  data-variant="ghost"
+                                  data-size="sm"
+                                  aria-expanded={isOutputExpanded}
                                   onClick={() => toggleStepOutput(i)}
                                 >
                                   {isOutputExpanded ? (
@@ -633,7 +648,9 @@ export function ResearchStatePanel({
           {state?.plan && state.plan.length > 0 && (
             <div className="research-section research-activity-log">
               <button
-                className="research-activity-log-header"
+                className="btn research-activity-log-header"
+                data-variant="ghost"
+                aria-expanded={!!expandedSections.activityLog}
                 onClick={() => toggleSection("activityLog")}
               >
                 <span className="research-section-label">
@@ -653,26 +670,39 @@ export function ResearchStatePanel({
                     const isCurrent = currentStep === step;
                     const isDone = !!step.end;
                     const duration = computeDuration(step.start, step.end, isCurrent);
+                    // Basecoat's `.item` — the same row component the Library's
+                    // list and the sidebar's chat history wear, in its full
+                    // `figure` / `section` / `aside` shape. The step type is the
+                    // row's heading and the objective is its description, which is
+                    // what Lyra's `<h4>` (`line-clamp-1`) and `<p>`
+                    // (`text-muted-foreground line-clamp-2`) already mean.
+                    //
+                    // The objective is no longer sliced to 80 characters in JS: the
+                    // `<p>` clamps it to two lines in CSS, which is the component's
+                    // job and does not hard-code a guess at the column width.
                     return (
                       <div
                         key={idx}
-                        className={`research-activity-log-item ${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}
+                        className={`item research-activity-log-item ${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}
+                        data-variant="outline"
+                        data-size="xs"
                       >
-                        <span className="research-activity-log-icon">
+                        <figure className="research-activity-log-icon">
                           {isCurrent ? "⏳" : isDone ? "✓" : stepInfo.icon}
-                        </span>
-                        <span className="research-activity-log-type">
-                          {stepInfo.label}
-                        </span>
+                        </figure>
+                        <section>
+                          <h4 className="research-activity-log-type">
+                            {stepInfo.label}
+                          </h4>
+                          <p className="research-activity-log-objective">
+                            {step.objective}
+                          </p>
+                        </section>
                         {duration && (
-                          <span className="research-activity-log-duration">
+                          <aside className="research-activity-log-duration">
                             {duration}
-                          </span>
+                          </aside>
                         )}
-                        <span className="research-activity-log-objective">
-                          {step.objective?.slice(0, 80)}
-                          {step.objective && step.objective.length > 80 ? "…" : ""}
-                        </span>
                       </div>
                     );
                   })}

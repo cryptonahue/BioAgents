@@ -48,21 +48,56 @@
   border-color: var(--violet-border);
 }
 
-.research-state-header {
+/*
+ * EVERY DISCLOSURE TOGGLE IN THIS FILE IS NOW A GHOST `.btn`.
+ *
+ * `.research-state-header`, `.research-section-toggle`,
+ * `.research-activity-log-header`, `.research-step-output-toggle` and
+ * `.artifact-viewer-header` were five hand-written copies of the same thing: a
+ * transparent, border-less, full-width row that highlights on hover. That is Lyra's
+ * `data-variant="ghost"` button, and they all wear it now — so the fill, the ink,
+ * the hover, the transition, the font, the disabled state and (the part that was
+ * missing) the FOCUS RING all come from `buttons.css` instead of being re-declared
+ * five times.
+ *
+ * They also now render `aria-expanded`, which they never did — these are disclosure
+ * buttons and a screen reader had no way to know whether the section was open.
+ * Lyra's ghost variant keys `aria-expanded:bg-muted` off exactly that attribute, so
+ * the OPEN state paints itself for free from the ARIA the component had to grow
+ * anyway.
+ *
+ * THE EVIDENCE PANEL'S TWO TOGGLES ARE A DIFFERENT CASE, AND A WORSE ONE. They
+ * carried NO class and NO rule — `.evidence-by-source-*` has no CSS anywhere in this
+ * client — so with no Tailwind Preflight to reset them they rendered as RAW UA
+ * BUTTONS. Measured in Chromium: `background-color: rgb(239,239,239)` in light and
+ * `rgb(107,107,107)` in dark, `font-family: Arial`, and a 2px OUTSET bevel — a grey
+ * 3D button sitting on the near-black research panel. That is the exact Preflight
+ * leak `buttons.css` documents, on a component that never got a skin at all. `.btn`
+ * is the whole fix.
+ *
+ * (The REST of that panel — its rows, bodies, `<pre>` blocks — is still unstyled.
+ * Giving it a skin is a design task, not a migration, and it is not this slice's.)
+ *
+ * What is left below is LAYOUT only — a `.btn` is `inline-flex` / `justify-center`
+ * / fixed-height, and these are full-width rows that space their ends apart and
+ * size to their content. The same two-line override `global.css` already applies to
+ * the sidebar's nav buttons (`width: 100%; justify-content: flex-start`).
+ */
+.research-state-header,
+.research-section-toggle,
+.research-activity-log-header,
+.research-step-output-toggle,
+.artifact-viewer-header,
+.evidence-by-source-header,
+.evidence-by-source-row-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   width: 100%;
-  padding: 16px 20px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-family: inherit;
+  height: auto;
+  justify-content: space-between;
 }
 
-.research-state-header:hover {
-  background: var(--bg-tertiary);
+.research-state-header {
+  padding: 16px 20px;
 }
 
 .research-state-header-left {
@@ -144,20 +179,7 @@
 }
 
 .research-section-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
   padding: 12px 14px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-family: inherit;
-}
-
-.research-section-toggle:hover {
-  background: var(--bg-hover);
 }
 
 .research-section-toggle-left {
@@ -205,8 +227,27 @@
   margin: 8px 0;
 }
 
+/*
+ * THE CITATION LINK STAYS A PLAIN `<a>`, AND THAT IS A MEASURED DECISION.
+ *
+ * It is not a chip and it is not a button — it is a WORD inside a sentence, in the
+ * middle of the hypothesis and insight paragraphs. The only Lyra component that
+ * could claim it is `.btn[data-variant="link"]`, and a `.btn` is
+ * `inline-flex h-8 px-2.5 whitespace-nowrap`: dropping a 32px-tall, horizontally
+ * padded, non-wrapping flex box into flowing prose breaks the line box, pushes the
+ * leading apart around any line that happens to contain a citation, and refuses to
+ * wrap a long source title. That is demonstrably worse than the `<a>` it replaces,
+ * so it keeps the element and takes the TOKENS instead — the house move.
+ *
+ * The ink is the fix. `--accent-color` is the brand FILL token and this rule was
+ * using it as TEXT: measured on the research panel's own surface it is 2.28:1 in
+ * light — a live WCAG AA failure on every DOI the agent cites. `--accent-ink` is the
+ * measured text step. `--accent-hover` (`#059669`, 3.68:1) is no better, so hover
+ * cannot recolor either and says what it has to with the underline. Exactly the
+ * substitution `global.css` makes for the same bug in `.message-content a`.
+ */
 .research-citation-link {
-  color: var(--accent-color);
+  color: var(--accent-ink);
   text-decoration: none;
   transition: all 0.2s;
 }
@@ -365,26 +406,16 @@
   line-height: 1.5;
 }
 
+/* The one toggle of the four that is CENTRED rather than spaced apart, and the one
+   that keeps a top rule (it caps the output block it belongs to). Its
+   `background: var(--hover-bg)` hover was dead anyway — no such token exists, so
+   the declaration was dropped by the parser and the hover only ever changed the
+   ink. Lyra's ghost hover is a real one. */
 .research-step-output-toggle {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 100%;
   padding: 8px;
-  background: var(--bg-tertiary);
-  border: none;
   border-top: 1px solid var(--border-color);
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.research-step-output-toggle:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
 }
 
 .research-step-output-toggle svg {
@@ -550,33 +581,37 @@
   color: var(--text-secondary);
 }
 
+/*
+ * The "or type your own" row is Lyra's OUTLINE `.btn`. What it keeps is the DASHED
+ * border, which is the whole affordance — it is the same "there is nothing here
+ * yet, add something" grammar Lyra spells `border-dashed` on `.empty`, and a solid
+ * outline button would read as a peer of the concrete suggestions above it rather
+ * than as the escape hatch beside them.
+ *
+ * Full width, taller than Lyra's fixed height, and transparent rather than
+ * `bg-background` (it sits on the suggestions card, not on the page). The `disabled`
+ * state is DELETED: Lyra ships `disabled:opacity-50` + `disabled:pointer-events-none`
+ * and the hand-written `opacity: 0.5` was a second spelling of the first half of it.
+ */
 .suggested-steps-custom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   width: 100%;
+  height: auto;
   padding: 12px;
   margin-top: 12px;
   background: transparent;
   border: 1px dashed var(--border-color);
-  border-radius: 8px;
   color: var(--text-tertiary);
   font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
+/* `--accent-ink`, not `--accent-color`: the brand green as TEXT on its own
+   `--accent-light` tint is 2.4:1 and fails AA. The same substitution the citation
+   link above and `.message-content a` in `global.css` both needed. */
 .suggested-steps-custom:hover:not(:disabled) {
   border-color: var(--accent-color);
-  color: var(--accent-color);
+  color: var(--accent-ink);
   background: var(--accent-light);
-}
-
-.suggested-steps-custom:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* ============================================
@@ -596,17 +631,13 @@
   gap: 0;
 }
 
+/* A ghost `.btn` (shared rule above) that keeps its own card-header fill and the
+   rule under it — it caps the artifact card, so unlike the other toggles it is a
+   BAR, not a transparent row. */
 .artifact-viewer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
   padding: 14px 16px;
   background: var(--bg-tertiary);
-  border: none;
   border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: background 0.2s;
   font-family: inherit;
 }
 
@@ -980,29 +1011,15 @@
   padding: 0;
 }
 
+/* The header keeps only its box: it is a ghost `.btn` now, with the shared
+   full-width/space-between rule at the top of this file. Its ink used to read
+   `var(--text-color)` — a token that has never existed — and fell back to a
+   near-black grey that was unreadable on the dark panel; the `.btn` inherits the
+   panel's ink and the bug goes with the skin. */
 .research-activity-log-header {
-  width: 100%;
-  background: transparent;
-  border: 0;
   padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  /* `--text-color` was never defined, so this fell back to a near-black grey
-     and rendered as unreadable dark-on-dark text. The header sits on the
-     research panel surface, so it takes the primary text token. */
-  color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
-}
-
-.research-activity-log-header:hover {
-  background: var(--bg-hover);
-}
-
-.research-activity-log-icon {
-  margin-right: 6px;
 }
 
 .research-activity-log-list {
@@ -1012,26 +1029,36 @@
   gap: 4px;
 }
 
-.research-activity-log-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  background: var(--muted);
-  border-left: 2px solid transparent;
-  transition: background 120ms;
-}
-
+/*
+ * THE ACTIVITY ROW IS BASECOAT'S `.item`, `data-variant="outline"`, `data-size="xs"`
+ * — the same row component the Library's list and the sidebar's chat history wear,
+ * and it is used in its full `figure` / `section` / `aside` shape rather than as a
+ * bare flex box: the step type is the row's `<h4>` and the objective is its `<p>`.
+ * Lyra supplies the box, the border, the gap, the padding, the 12px type, the
+ * `line-clamp` on both, and the muted ink on the description. The 80-character JS
+ * slice the objective used to need is gone with it.
+ *
+ * WHAT IS LEFT IS THE STATE COLOUR, AND ONE RULE OF IT MATTERS:
+ *
+ *   AN ACTIVE ROW MUST RECOLOUR ITS BORDER ALONG WITH ITS FILL. `data-variant=
+ *   "outline"` paints `border-border` on all four sides. Give the current row a
+ *   fill and leave the border alone and Lyra draws a grey RING around a blue row —
+ *   the row reads as selected and outlined at the same time, which is the bug the
+ *   sidebar's history rows hit first and recorded. `--info-border` is the boundary
+ *   that belongs to `--info-subtle`; they are a measured pair.
+ *
+ * The left edge carries the semantic the log has always used — green means the step
+ * finished, blue means it is running — and it is now a THICKENED border-inline-start
+ * on Lyra's real border rather than a second border grafted onto a border-less box.
+ */
 .research-activity-log-item.done {
-  opacity: 0.85;
-  border-left-color: var(--accent-color);
+  border-inline-start: 2px solid var(--accent-color);
 }
 
 .research-activity-log-item.current {
-  background: var(--info-subtle);
-  border-left-color: var(--info);
+  background-color: var(--info-subtle);
+  border-color: var(--info-border);
+  border-inline-start: 2px solid var(--info);
 }
 
 .research-activity-log-item.current .research-step-spinner {
@@ -1044,26 +1071,33 @@
   animation: spin 0.6s linear infinite;
 }
 
+/* The status glyph. Lyra sizes `> figure` for an ICON; this one is an emoji/check
+   in a text node, so it needs its own width to keep the rows' text left-aligned. */
+.research-activity-log-icon {
+  width: 14px;
+  justify-content: center;
+}
+
+/* Lyra's `.item :is(h2,h3,h4)` is `--foreground`; the step TYPE is a label above the
+   objective, not a title, so it steps back one — the same reasoning `tables.css`
+   records for the column header. */
 .research-activity-log-type {
-  font-weight: 500;
-  min-width: 110px;
   color: var(--text-secondary);
 }
 
+/* Lyra's `.item p` already supplies the muted ink and the two-line clamp. */
+.research-activity-log-objective {
+  margin: 0;
+}
+
+/* `.item > aside` is `flex items-center`; the duration is trailing metadata and is
+   read as a column, so it stays monospaced, right-aligned and reserves its width. */
 .research-activity-log-duration {
   color: var(--text-tertiary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 10px;
   min-width: 38px;
-  text-align: right;
-}
-
-.research-activity-log-objective {
-  flex: 1;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  justify-content: flex-end;
 }
 
 .research-step-elapsed {
