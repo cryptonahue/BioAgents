@@ -485,15 +485,15 @@
 
 /* `.viewer-page__sidebar-empty` is gone — Basecoat's `.empty`. */
 
-/* Claims list — textual Research Brain evidence (no bbox jump in v1). */
-.viewer-page__claims {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* Claims list — textual Research Brain evidence (no bbox jump in v1).
+ *
+ * The list itself needs no rule. `.viewer-page__claims` is only ever rendered
+ * inside `.viewer-page__sidebar` (ViewerPage.tsx), and `.viewer-page__sidebar ul`
+ * — one specificity step higher — already declares the same reset, the same
+ * column flex and a `gap`. The old rule's `gap: 8px` therefore NEVER applied:
+ * measured in Chromium, the list computes the sidebar's 4px both with the rule
+ * and without it. If the claims list ever wants its own gap, it has to out-rank
+ * `.viewer-page__sidebar ul` to get it. */
 .viewer-page__claim {
   display: flex;
   flex-direction: column;

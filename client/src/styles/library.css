@@ -375,11 +375,13 @@
    it never competes with Chat / Evidence, and only turns red when you reach for
    it — an intent the always-tinted destructive variant would erase. The hover
    step uses the same measured tokens that variant does. Unlayered, so it beats
-   Lyra's layered outline hover. */
-.paper-action-delete {
-  flex: 0 0 auto;
-}
+   Lyra's layered outline hover.
 
+   No `flex: 0 0 auto` here any more: this button never carries `.paper-action`
+   (it is `btn paper-action-delete`), so the `flex: 1` above never reached it.
+   `flex-grow: 0` and `flex-basis: auto` are the initial values, and Lyra's
+   `.btn` already declares `flex-shrink: 0` — the rule restated all three.
+   Removed with the computed flex triple unchanged in Chromium. */
 .paper-action-delete:hover:not(:disabled) {
   background: var(--destructive-subtle);
   border-color: var(--destructive-border);
@@ -813,11 +815,19 @@
 }
 
 /* The controls are `.input` / `select.select` now. Only the two INHERITANCE
- * RESETS survive, and they have to: the `<label>` wrapping each control is the
- * uppercase micro-label above, and `text-transform` / `letter-spacing` both
- * INHERIT — so without these the filter values would render "ALL" in uppercase
- * with 0.04em tracking. The old rule carried the same two declarations for the
- * same reason; they are not a leftover skin.
+ * RESETS survive: the `<label>` wrapping each control is the uppercase
+ * micro-label above, and `text-transform` / `letter-spacing` both INHERIT.
+ *
+ * KEPT AS A CROSS-ENGINE GUARD, NOT BECAUSE CHROMIUM NEEDS IT. Slice 9 measured
+ * this: delete these two declarations and the filter values still compute
+ * `text-transform: none` / `letter-spacing: normal`. Chromium's UA stylesheet
+ * declares both ON the form control itself, and a UA declaration that MATCHES an
+ * element outranks a value the element would otherwise INHERIT — so the label's
+ * uppercase never reaches the input here. (Confirmed on a bare page with no app
+ * CSS: a `<span>` in the same label renders uppercase; the `<input>` does not.)
+ * That is a UA-stylesheet detail, and only Chromium was available to measure, so
+ * the rule stays. Do not "clean it up" on the strength of a Chromium reading
+ * alone — check Firefox and WebKit first.
  *
  * `select option { background: var(--bg-secondary) }` is gone with the skin.
  * Basecoat's `native-select.css` gives every `<option>` the `Canvas` /
@@ -1143,7 +1153,9 @@
 }
 
 /* `.input` now. Same two inheritance resets as `.brain-filter-row` — the wrapping
- * `<label>` is uppercase and tracked, and both properties inherit into the box. */
+ * `<label>` is uppercase and tracked, and both properties inherit into the box.
+ * Same measurement, same verdict: redundant in Chromium (the UA declares all
+ * three on the control), kept as a cross-engine guard. See the note above. */
 .brain-entity-grid input {
   min-width: 0;
   letter-spacing: 0;

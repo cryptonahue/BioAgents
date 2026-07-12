@@ -359,10 +359,6 @@ body {
   background: var(--accent-light);
   color: var(--accent-ink);
 }
-.app-sidebar .sidebar-library-btn.active svg,
-.app-sidebar .sidebar-admin-btn.active svg {
-  color: var(--accent-ink);
-}
 
 /* The inline session-search input (it replaces the button when open) is
  * Basecoat's `.input-group` now, and needs no CSS of its own.
@@ -1677,11 +1673,6 @@ textarea:not(.textarea)::placeholder {
 .input-send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.input-action-btn svg,
-.input-send-btn svg {
-  flex-shrink: 0;
 }
 
 .file-preview-inline {
