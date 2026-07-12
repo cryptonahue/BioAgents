@@ -819,26 +819,16 @@
   overflow-y: auto;
 }
 
-/* Error Output */
-.artifact-error {
-  background: var(--destructive-subtle);
-  border: 1px solid var(--destructive-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.artifact-error-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--destructive-subtle);
-  border-bottom: 1px solid var(--destructive-border);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--destructive-subtle-foreground);
-}
-
+/* Error Output — the code-execution stderr block.
+ *
+ * `.artifact-error` is `.alert[data-tone="danger"]` now. It was already the
+ * measured red four-slot triple with an icon and a title, which is that
+ * component exactly; `.artifact-error-header` is deleted outright, because
+ * Lyra's `.alert` lays the icon and the `<strong>` out itself. The stderr body
+ * moves into `.alert > section`, whose `color: inherit` (see `alerts.css`) is
+ * what keeps the trace red rather than dropping it to the muted grey Lyra gives
+ * an untoned alert's body.
+ */
 .artifact-error-content {
   padding: 14px;
   margin: 0;

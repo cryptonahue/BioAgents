@@ -385,8 +385,16 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
           </label>
         </div>
 
-        {uploadError && <div className="brain-error">{uploadError}</div>}
-        {reviewError && <div className="brain-error">{reviewError}</div>}
+        {uploadError && (
+          <div className="alert" data-tone="danger" role="alert">
+            <strong>{uploadError}</strong>
+          </div>
+        )}
+        {reviewError && (
+          <div className="alert" data-tone="danger" role="alert">
+            <strong>{reviewError}</strong>
+          </div>
+        )}
 
         <Tabs className="brain-tabs">
           <TabList
@@ -557,8 +565,8 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               <div className="library-state">Searching evidence…</div>
             )}
             {evidenceError && !evidenceLoading && (
-              <div className="library-state library-state-error">
-                {evidenceError}
+              <div className="alert" data-tone="danger" role="alert">
+                <strong>{evidenceError}</strong>
               </div>
             )}
 
@@ -587,9 +595,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 </div>
 
                 {evidencePack.queryPlan.cautions.length > 0 && (
-                  <div className="brain-caution">
+                  <div className="alert brain-caution" data-tone="warning">
                     <Icon name="alertTriangle" size={16} />
-                    <span>{evidencePack.queryPlan.cautions.join(" ")}</span>
+                    <strong>{evidencePack.queryPlan.cautions.join(" ")}</strong>
                   </div>
                 )}
 
@@ -1036,7 +1044,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               <div className="library-state">Loading Research Brain…</div>
             )}
             {error && !isLoading && (
-              <div className="library-state library-state-error">{error}</div>
+              <div className="alert" data-tone="danger" role="alert">
+                <strong>{error}</strong>
+              </div>
             )}
 
             {!isLoading && !error && (

@@ -68,8 +68,8 @@ export function LoginScreen({ onLogin }) {
           </div>
 
           {error && (
-            <div className="login-error">
-              {error}
+            <div className="alert login-error" data-tone="danger" role="alert">
+              <strong>{error}</strong>
             </div>
           )}
 

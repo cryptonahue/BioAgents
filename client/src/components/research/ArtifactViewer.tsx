@@ -216,12 +216,12 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
               )}
 
               {result.error && (
-                <div className="artifact-error">
-                  <div className="artifact-error-header">
-                    <Icon name="alertTriangle" size={14} />
-                    <span>Error</span>
-                  </div>
-                  <pre className="artifact-error-content">{result.error}</pre>
+                <div className="alert artifact-error" data-tone="danger" role="alert">
+                  <Icon name="alertTriangle" size={14} />
+                  <strong>Error</strong>
+                  <section>
+                    <pre className="artifact-error-content">{result.error}</pre>
+                  </section>
                 </div>
               )}
             </div>

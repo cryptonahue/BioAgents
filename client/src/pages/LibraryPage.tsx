@@ -459,7 +459,11 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
               }
             />
           </label>
-          {uploadError && <span className="brain-error">{uploadError}</span>}
+          {uploadError && (
+            <div className="alert" data-tone="danger" role="alert">
+              <strong>{uploadError}</strong>
+            </div>
+          )}
           <div className="library-view-toggle">
             <button
               className="btn library-view-btn"
@@ -489,24 +493,27 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
         </div>
 
         {deleteError && (
-          <div className="library-state library-state-error">
-            <p>{deleteError}</p>
+          <div className="alert" data-tone="danger" role="alert">
+            <strong>{deleteError}</strong>
           </div>
         )}
 
         {isLoading && <div className="library-state">Loading papers…</div>}
 
         {error && !isLoading && (
-          <div className="library-state library-state-error">
-            <p>{error}</p>
-            <button
-              className="btn library-link-btn"
-              data-variant="outline"
-              onClick={() => refetch()}
-            >
-              <Icon name="refresh" size={16} className={BUTTON_ICON_CLASS} />
-              <span>Retry</span>
-            </button>
+          <div className="alert" data-tone="danger" role="alert">
+            <strong>{error}</strong>
+            <footer>
+              <button
+                className="btn"
+                data-variant="outline"
+                data-size="sm"
+                onClick={() => refetch()}
+              >
+                <Icon name="refresh" size={16} className={BUTTON_ICON_CLASS} />
+                <span>Retry</span>
+              </button>
+            </footer>
           </div>
         )}
 

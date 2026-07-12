@@ -452,7 +452,9 @@ export function GraphExplorerPage(_props: Props) {
           </p>
         </div>
 
-        {error && <div class="graph-error">{error}</div>}
+        {error && <div class="alert" data-tone="danger" role="alert">
+            <strong>{error}</strong>
+          </div>}
 
         <div class="graph-layout">
           <aside class="graph-search-panel">

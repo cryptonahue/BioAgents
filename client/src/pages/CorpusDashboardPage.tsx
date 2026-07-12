@@ -187,7 +187,9 @@ export function CorpusDashboardPage() {
           <p>Document corpus monitoring — progress, errors, and costs in real time</p>
         </div>
 
-        {actionError && <div class="corpus-error">{actionError}</div>}
+        {actionError && <div class="alert" data-tone="danger" role="alert">
+              <strong>{actionError}</strong>
+            </div>}
 
         <div class="corpus-layout">
           <aside class="corpus-sidebar">
@@ -208,7 +210,9 @@ export function CorpusDashboardPage() {
             </div>
 
             {isLoading && <div class="corpus-loading">Loading runs...</div>}
-            {error && <div class="corpus-error">{error}</div>}
+            {error && <div class="alert" data-tone="danger" role="alert">
+              <strong>{error}</strong>
+            </div>}
 
             <div class="corpus-run-list">
               {runs.map((r) => (

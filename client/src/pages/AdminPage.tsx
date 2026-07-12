@@ -62,7 +62,9 @@ export function AdminPage() {
     return (
       <div class="admin-page">
         <main class="admin-main">
-          <div class="admin-error">Admin role required to view this page.</div>
+          <div class="alert" data-tone="danger" role="alert">
+            <strong>Admin role required to view this page.</strong>
+          </div>
         </main>
       </div>
     );
@@ -284,10 +286,18 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
 
   return (
     <div>
-      {error && <div class="admin-error">{error}</div>}
-      {resolveError && <div class="admin-error">{resolveError}</div>}
-      {bulkError && <div class="admin-error">{bulkError}</div>}
-      {actionMessage && <div class="admin-info">{actionMessage}</div>}
+      {error && <div class="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>}
+      {resolveError && <div class="alert" data-tone="danger" role="alert">
+          <strong>{resolveError}</strong>
+        </div>}
+      {bulkError && <div class="alert" data-tone="danger" role="alert">
+          <strong>{bulkError}</strong>
+        </div>}
+      {actionMessage && <div class="alert" data-tone="info" role="status">
+          <strong>{actionMessage}</strong>
+        </div>}
 
       <div class="admin-toolbar">
         {CONTRAS_STATUSES.map((s) => (
@@ -449,9 +459,15 @@ function DedupTab() {
 
   return (
     <div>
-      {error && <div class="admin-error">{error}</div>}
-      {unmergeError && <div class="admin-error">{unmergeError}</div>}
-      {actionMessage && <div class="admin-info">{actionMessage}</div>}
+      {error && <div class="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>}
+      {unmergeError && <div class="alert" data-tone="danger" role="alert">
+          <strong>{unmergeError}</strong>
+        </div>}
+      {actionMessage && <div class="alert" data-tone="info" role="status">
+          <strong>{actionMessage}</strong>
+        </div>}
 
       <div class="admin-toolbar">
         {DEDUP_WINDOWS.map((w) => (
@@ -663,7 +679,9 @@ function UnmergeDialog(props: {
           <p class="admin-dialog-helper">Detail is optional</p>
         </div>
 
-        {error && <div class="admin-dialog-error">{error}</div>}
+        {error && <div class="alert admin-dialog-error" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>}
 
         <div class="admin-dialog-actions">
           <button
@@ -701,7 +719,9 @@ function StatsTab(props: { onSwitchTab?: (t: TabId) => void }) {
 
   return (
     <div>
-      {error && <div class="admin-error">{error}</div>}
+      {error && <div class="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>}
 
       {isLoading && <div class="admin-loading">Loading stats...</div>}
 

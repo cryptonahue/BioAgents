@@ -34,14 +34,7 @@
   font-size: 14px;
 }
 
-.graph-error {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin: 16px 0 0;
-  font-size: 14px;
-}
+/* The search failure is `.alert[data-tone="danger"]` now — see `alerts.css`. */
 
 .graph-layout {
   display: grid;

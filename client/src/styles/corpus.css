@@ -51,14 +51,9 @@
   font-size: 14px;
 }
 
-.corpus-error {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
+/* Both load/action failures are `.alert[data-tone="danger"]` now — see the
+ * header of `alerts.css`.
+ */
 
 .corpus-layout {
   display: grid;

@@ -1,0 +1,143 @@
+/**
+ * Basecoat alert overrides — the project TONE layer, again.
+ *
+ * Every inline callout in the app (the admin error and info banners, the corpus
+ * and graph load failures, the Research Brain's query-planner caution, the
+ * paper-chat truncation notice, the login failure, the code-execution stderr
+ * block) now wears Basecoat's `.alert`. The hand-written skins they replaced
+ * (`.admin-error`, `.admin-info`, `.corpus-error`, `.graph-error`,
+ * `.brain-caution`, `.paper-notice`, `.artifact-error`, `.login-error`, …) are
+ * gone. Where one of those selectors survives it carries LAYOUT or TYPOGRAPHY
+ * only.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY `data-tone` AND NOT `data-variant` — AND WHY IT MATTERS MORE HERE
+ *
+ * `badges.css` makes the general argument; the alerts are the sharpest case of
+ * it. Lyra ships `.alert` with exactly TWO looks: the default, and
+ * `data-variant="destructive"`. There is no success alert, no warning alert and
+ * no info alert anywhere in Basecoat. But a callout is the one component in this
+ * app whose colour is ALWAYS the message — amber means "read this before you
+ * trust the numbers", blue means "here is a fact about the queue", red means
+ * "this failed". Three of the app's four alert colours simply have no Basecoat
+ * spelling.
+ *
+ * So `data-tone` carries all four, exactly as it carries the badge colours, and
+ * for the same reason: it is a NEW attribute, it is additive, and it cannot
+ * collide with a `data-variant` value Basecoat may ship later.
+ *
+ * Lyra's own `destructive` variant is NOT used, even for the red ones. It is
+ * `text-destructive` on `bg-card` — the raw emphasis hue used as an ink on the
+ * card surface, which is not a pairing this project ever measured. Every red
+ * callout in this app already used the measured `--destructive-subtle` /
+ * `--destructive-subtle-foreground` pair, and it keeps it. Identical call to the
+ * one `badges.css` records for `data-tone="danger"`.
+ *
+ * These tone rules are UNLAYERED, so they beat Lyra's `components`-layer rules by
+ * construction rather than by specificity accident, and they declare COLOUR only
+ * — Lyra keeps supplying the geometry (the `grid`, the `px-2.5 py-2` box, the
+ * 1px border, `text-xs`, the `has-[>svg]:grid-cols-[auto_1fr]` icon column, the
+ * absolutely-positioned `> footer` action slot).
+ * ---------------------------------------------------------------------------
+ */
+
+/*
+ * ALERT NORMALIZATION — the part of Preflight this app deliberately does not load.
+ *
+ * Lyra's `.alert` sets a font SIZE (`text-xs`) but never a font FAMILY: it
+ * assumes Preflight already made every element `font-family: inherit`. That is
+ * harmless on the `<div>`s most alerts are, and it is not harmless on the two
+ * that are real `<button>`s, where the UA's `font: 400 13.333px Arial` leaks
+ * straight through. Same leak slice 3 found on the form controls and slice 4
+ * found on the badges.
+ *
+ * `.alert` does NOT need a border reset. Lyra styles it with Tailwind's `border`
+ * utility, which sets a WIDTH, and v4 registers `--tw-border-style: solid` as an
+ * `@property` initial value, so the style arrives with it. Rendered in Chromium
+ * the box computes to `1px solid` on its own. (`.empty` is the one that does
+ * need the reset — it is styled with `border-dashed`, a style-only utility, and
+ * lands on the UA's 3px `medium`. See `surfaces.css`.)
+ *
+ * THE INK IS `--foreground`, NOT `inherit`. Alerts render inside parents that
+ * recolor their subtree — `.paper-chat-messages`, the research step cards and
+ * the admin dialog all set a muted ink on the wrapper — so `inherit` would pick
+ * up the parent's grey. Every tone below overrides this; it is the floor for an
+ * `.alert` carrying no tone at all.
+ *
+ * `base` LAYER, not unlayered, for the reason `buttons.css`, `badges.css` and
+ * `forms.css` each give: Lyra's own variant rules live in `components` and must
+ * still beat this. Unlayered, it would flatten them.
+ */
+@layer base {
+  .alert {
+    font-family: inherit;
+    color: var(--foreground);
+  }
+}
+
+/*
+ * FOCUS RING — for a dismissible alert, whose close control sits in Lyra's
+ * absolutely-positioned `> footer` slot. Lyra kills the outline on everything it
+ * ships; slices 1-6 each had to re-add this pair. `--ring` is the measured
+ * opaque focus token.
+ */
+.alert:focus-visible,
+.alert > footer .btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Lyra forces `[&>svg:not([class*='size-'])]:size-4` but never stops the icon
+ * from being squeezed by a long message beside it in the grid row.
+ */
+.alert > svg {
+  flex-shrink: 0;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * TONES.
+ *
+ * The same four-slot shape PR 2 established and `badges.css` already reads: a
+ * subtle background TINT, an on-tint INK, and a border. The ink is measured ON
+ * ITS OWN TINT — the surface it actually renders against — never on the page.
+ *
+ * `> section` has to be re-inked in every tone. Lyra hard-sets
+ * `.alert > section { text-muted-foreground }` so that a neutral alert's body
+ * text reads as secondary to its title. On a TONED alert that is wrong twice
+ * over: it throws away the tone the author asked for, and it drops a grey onto a
+ * coloured tint that no one measured. `inherit` is correct HERE, and only here,
+ * precisely because the parent it inherits from IS the toned alert — this is the
+ * one case the "never `inherit`" rule in `badges.css` is not warning about.
+ * ---------------------------------------------------------------------------
+ */
+
+.alert[data-tone="danger"] {
+  background-color: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
+  border-color: var(--destructive-border);
+}
+
+.alert[data-tone="warning"] {
+  background-color: var(--warning-subtle);
+  color: var(--warning-subtle-foreground);
+  border-color: var(--warning-border);
+}
+
+.alert[data-tone="info"] {
+  background-color: var(--info-subtle);
+  color: var(--info-subtle-foreground);
+  border-color: var(--info-border);
+}
+
+.alert[data-tone="success"] {
+  background-color: var(--success-subtle);
+  color: var(--success-subtle-foreground);
+  border-color: var(--success-border);
+}
+
+.alert[data-tone] > section,
+.alert[data-tone] > section :where(p, ul, ol, code) {
+  color: inherit;
+}

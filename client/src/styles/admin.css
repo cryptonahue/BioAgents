@@ -84,23 +84,12 @@
   margin: 24px 0 16px;
 }
 
-.admin-error {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.admin-info {
-  background: var(--info-subtle);
-  color: var(--info-subtle-foreground);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
+/* The page's error and info banners are Basecoat's `.alert` now, carrying
+ * `data-tone="danger"` / `data-tone="info"` — the same measured four-slot pairs
+ * they already painted. Basecoat models ONE status colour and it is not `info`,
+ * so the tone attribute is the only way to say this; see the header of
+ * `alerts.css`. The 16px gutter under them is Lyra's `.tabs` panel gap now.
+ */
 
 .admin-loading {
   color: var(--muted-foreground);
@@ -262,12 +251,9 @@
   margin-top: 16px;
 }
 
+/* The unmerge dialog's failure is `.alert[data-tone="danger"]`; only the gap
+   from the field above it survives. */
 .admin-dialog-error {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
   margin-top: 8px;
 }
 

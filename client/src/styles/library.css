@@ -83,9 +83,12 @@
   text-align: center;
 }
 
-.library-state-error {
-  color: var(--destructive);
-}
+/* `.library-state-error` is gone. Every place it was used — the Library list
+ * failure, the paper-load failure, the Research Brain's evidence and source
+ * failures — is `.alert[data-tone="danger"]` now, which upgrades them from bare
+ * red text to a real callout with the measured tint/ink/border triple. What is
+ * left of `.library-state` is the LOADING line, which is not an alert.
+ */
 
 .library-grid {
   display: grid;
@@ -547,13 +550,10 @@
   overflow-x: auto;
 }
 
+/* The "answered with RAG, not full context" notice is
+   `.alert[data-tone="warning"]` — it was already that exact four-slot amber
+   triple. Only the gutter to the answer below it survives. */
 .paper-notice {
-  font-size: 12px;
-  color: var(--warning-subtle-foreground);
-  background: var(--warning-subtle);
-  border: 1px solid var(--warning-border);
-  border-radius: 8px;
-  padding: 8px 10px;
   margin-bottom: 8px;
 }
 
@@ -594,10 +594,10 @@
   margin-bottom: 4px;
 }
 
+/* `.alert[data-tone="danger"]` now; only the composer's own gutter survives —
+   the alert sits between the transcript and the input, and both are inset 16px. */
 .paper-chat-error {
-  color: var(--destructive);
-  font-size: 13px;
-  padding: 0 16px 8px;
+  margin: 0 16px 8px;
 }
 
 .paper-chat-input {
@@ -725,10 +725,7 @@
   cursor: pointer;
 }
 
-.brain-error {
-  color: var(--destructive);
-  font-size: 13px;
-}
+/* `.brain-error` is gone — `.alert[data-tone="danger"]`. */
 
 .brain-main {
   gap: 18px;
@@ -876,18 +873,12 @@
   min-width: 220px;
 }
 
-.brain-caution {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  border: 1px solid var(--warning-border);
-  border-radius: 8px;
-  background: var(--warning-subtle);
-  color: var(--warning-subtle-foreground);
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.45;
-}
+/* The query planner's caution is the single clearest `.alert` in the app: an
+   icon, a line of amber text, and a warning that the numbers below need reading
+   carefully. It is `.alert[data-tone="warning"]` now — Lyra lays the icon out
+   itself (`has-[>svg]:grid-cols-[auto_1fr]`), so the flex row is gone with the
+   skin, and NO CSS of its own is left. The class survives as a call-site
+   marker. */
 
 .brain-bulk-toolbar {
   align-items: center;

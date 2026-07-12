@@ -17,6 +17,7 @@
 @import "./buttons.css";
 @import "./forms.css";
 @import "./badges.css";
+@import "./alerts.css";
 @import "./surfaces.css";
 @import "./tabs.css";
 @import "./tables.css";
@@ -1566,13 +1567,10 @@ body {
  * which is the same trade every other control in this slice made: one form
  * vocabulary beats a hero size on the dev-only password gate. */
 
+/* The login failure is `.alert[data-tone="danger"]` — the same four-slot red it
+   already painted. Only the gutter to the submit button and the entrance
+   animation survive. */
 .login-error {
-  padding: 12px 16px;
-  background: var(--destructive-subtle);
-  border: 1px solid var(--destructive-border);
-  border-radius: 8px;
-  color: var(--destructive-subtle-foreground);
-  font-size: 14px;
   margin-bottom: 20px;
   animation: fadeIn 0.3s ease-out;
 }
@@ -2173,27 +2171,10 @@ textarea:not(.textarea)::placeholder {
   }
 }
 
-/* Legacy error-message class for backwards compatibility */
-.error-message {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-secondary);
-  border: 1px solid var(--destructive-border);
-  color: var(--destructive-subtle-foreground);
-  padding: 14px 24px;
-  border-radius: 10px;
-  font-size: 13px;
-  box-shadow: var(--shadow);
-  z-index: 1000;
-  display: none;
-  animation: toastSlideDown 0.3s ease-out;
-}
-
-.error-message.show {
-  display: block;
-}
+/* `.error-message` is DELETED, not migrated. It described itself as "legacy …
+   for backwards compatibility" and had ZERO call sites anywhere in the client —
+   no JSX, no TSX, no other stylesheet referenced it. It was a fixed-position
+   toast that nothing could ever show. */
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {

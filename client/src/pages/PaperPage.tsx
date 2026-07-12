@@ -147,7 +147,9 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
       </header>
 
       {error && (
-        <div className="library-state library-state-error">{error}</div>
+        <div className="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>
       )}
 
       {!error && (
@@ -299,9 +301,11 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                   {turn.role === "assistant" ? (
                     <>
                       {turn.tooLarge && (
-                        <div className="paper-notice">
-                          The paper is too large for full-context; it was
-                          answered with fragment search (RAG).
+                        <div className="alert paper-notice" data-tone="warning">
+                          <strong>
+                            The paper is too large for full-context; it was
+                            answered with fragment search (RAG).
+                          </strong>
                         </div>
                       )}
                       <div
@@ -370,7 +374,11 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
               )}
             </div>
 
-            {askError && <div className="paper-chat-error">{askError}</div>}
+            {askError && (
+              <div className="alert paper-chat-error" data-tone="danger" role="alert">
+                <strong>{askError}</strong>
+              </div>
+            )}
 
             <form className="paper-chat-input" onSubmit={handleSubmit}>
               <div className="paper-context-toggle">
