@@ -193,7 +193,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             ) : (
               <Button
                 variant="ghost"
+                size="lg"
                 icon="search"
+                iconSize={18}
                 title="Search chats"
                 onClick={openSearch}
                 className="sidebar-search-btn"
@@ -204,7 +206,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             )}
             <Button
               variant="secondary"
+              size="lg"
               icon="plus"
+              iconSize={18}
               onClick={onNewSession}
               className="new-session-btn"
             >
@@ -212,7 +216,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </Button>
             <Button
               variant="ghost"
+              size="lg"
               icon="messageSquare"
+              iconSize={16}
               onClick={() => route('/chat')}
               className={`sidebar-library-btn${navActive('/chat')}`}
             >
@@ -220,7 +226,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </Button>
             <Button
               variant="ghost"
+              size="lg"
               icon="bookOpen"
+              iconSize={16}
               onClick={() => route('/library')}
               className={`sidebar-library-btn${navActive('/library')}`}
             >
@@ -228,7 +236,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </Button>
             <Button
               variant="ghost"
+              size="lg"
               icon="brainCircuit"
+              iconSize={16}
               onClick={() => route('/brain')}
               className={`sidebar-library-btn${navActive('/brain')}`}
             >
@@ -236,7 +246,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             </Button>
             <Button
               variant="ghost"
+              size="lg"
               icon="share"
+              iconSize={16}
               onClick={() => route('/graph')}
               className={`sidebar-library-btn${navActive('/graph')}`}
             >
@@ -245,7 +257,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             {isAdmin && (
               <Button
                 variant="ghost"
+                size="lg"
                 icon="settings"
+                iconSize={16}
                 onClick={() => route('/admin')}
                 className={`sidebar-admin-btn${navActive('/admin')}`}
               >
@@ -255,7 +269,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             {isAdmin && !coralGptMode && (
               <Button
                 variant="ghost"
+                size="lg"
                 icon="folder"
+                iconSize={16}
                 onClick={() => route('/corpus')}
                 className={`sidebar-admin-btn${navActive('/corpus')}`}
               >

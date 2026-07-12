@@ -10,6 +10,7 @@ import { ResearchStatePanel } from "../components/research";
 import { Sidebar } from "../components/Sidebar";
 import { ToastContainer } from "../components/Toast";
 import { TypingIndicator } from "../components/TypingIndicator";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { WelcomeScreen } from "../components/WelcomeScreen";
 import { ConversationProvider } from "../providers/ConversationProvider";
@@ -858,11 +859,14 @@ export function ChatPage({
         <div className="main-content">
           {/* Mobile menu button */}
           <button
-            className="mobile-menu-btn"
+            className="btn mobile-menu-btn"
+            data-variant="outline"
             onClick={() => setIsMobileSidebarOpen(true)}
             aria-label="Open menu"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {/* BUTTON_ICON_CLASS opts this out of Lyra's `size-4` clamp, which
+                would otherwise shrink the 24px glyph to 16px. */}
+            <svg className={BUTTON_ICON_CLASS} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="12" x2="21" y2="12"></line>
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="18" x2="21" y2="18"></line>

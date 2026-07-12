@@ -1,6 +1,7 @@
 import { route } from "preact-router";
 import { useAuth } from "../hooks";
 import { Icon } from "../components/icons";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 
 interface SettingsPageProps {
   path?: string;
@@ -40,11 +41,13 @@ export function SettingsPage({ coralGptMode = false, privyLogout }: SettingsPage
           </div>
           <button
             type="button"
-            className="settings-logout-btn"
+            className="btn settings-logout-btn"
+            data-variant="destructive"
+            data-size="lg"
             onClick={handleLogout}
             disabled={isLoggingOut}
           >
-            <Icon name="logout" size={16} />
+            <Icon name="logout" size={16} className={BUTTON_ICON_CLASS} />
             <span>{isLoggingOut ? "Logging out…" : "Log out"}</span>
           </button>
         </section>

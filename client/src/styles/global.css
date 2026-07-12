@@ -129,7 +129,18 @@ body {
   display: none;
 }
 
-/* Mobile menu button */
+/*
+ * Mobile menu button — LAYOUT ONLY. The chrome is Basecoat's
+ * `.btn[data-variant="outline"]`.
+ *
+ * `display: none` here and `display: flex` in the mobile media query are what
+ * gate this control, so they have to beat Lyra's `inline-flex`. They do: this
+ * rule is unlayered, Lyra's `.btn` is in the `components` layer.
+ *
+ * The 44px box is NOT Lyra's `icon-lg` (36px) — it is the WCAG 2.5.5 touch
+ * target, and this is the one control that only ever renders on a touch screen.
+ * Kept deliberately.
+ */
 .mobile-menu-btn {
   display: none;
   position: fixed;
@@ -138,23 +149,6 @@ body {
   z-index: 90;
   width: 44px;
   height: 44px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  color: var(--text-primary);
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.mobile-menu-btn:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-color);
-}
-
-.mobile-menu-btn:active {
-  transform: scale(0.95);
 }
 
 /* Sidebar */
@@ -261,111 +255,57 @@ body {
   display: none;
 }
 
-.toggle-sidebar-btn {
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.toggle-sidebar-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
 /*
- * Theme toggle. Shares the geometry of .toggle-sidebar-btn so the two chrome
- * controls sit as a matched pair in .sidebar-header-actions.
+ * SIDEBAR CHROME — the four controls slice 1 could not finish.
  *
- * Contrast, measured against the surface each state actually sits on
- * (.sidebar is --bg-primary, i.e. --background):
- *   rest  --text-tertiary on --bg-primary  ~5.1:1 light / ~6.1:1 dark
- *   hover --text-primary  on --bg-hover   ~16.8:1 light / ~12.2:1 dark
- * Both clear the 3:1 floor for non-text UI in both themes with room to spare.
- * Hover deliberately steps up to --text-primary (not --text-secondary, as the
- * collapse button does) because --bg-hover lightens the surface underneath it.
+ * `.toggle-sidebar-btn`, `.theme-toggle-btn`, `.new-session-btn` and
+ * `.sidebar-search-btn` all rendered Basecoat's `.btn` after slice 1 but still
+ * carried a COMPLETE hand-written skin here — fill, border, radius, padding,
+ * font — which, being unlayered, beat every one of Lyra's `components`-layer
+ * variant rules. They were not half-migrated; they were unmigrated buttons
+ * wearing a `.btn` class. Those skins are gone.
+ *
+ * What survives is LAYOUT only, exactly as `badges.css` left the badge selectors:
+ * a width, an alignment, a reveal. Not one of these rules paints a fill, an ink
+ * or a border any more.
+ *
+ * Geometry check, so nothing silently resized:
+ *   .toggle-sidebar-btn / .theme-toggle-btn  28x28 hand-written -> Lyra
+ *     `icon-sm` is 28x28. Identical, so no override is needed at all.
+ *   .new-session-btn / .sidebar-search-btn   ~40px tall hand-written -> the call
+ *     sites now ask for `size="lg"` (Lyra h-9, 36px), the closest box Lyra ships.
+ *   The 18px icons are preserved at the call site with `iconSize={18}`, which
+ *     survives Lyra's `[&_svg:not([class*='size-'])]:size-4` clamp because
+ *     `Button` stamps `BUTTON_ICON_CLASS` on every icon it renders.
+ *
+ * The old `.theme-toggle-btn:focus-visible` rule is gone too: `buttons.css`
+ * restores the same `outline: 2px solid var(--ring)` for every `.btn` in the app,
+ * so this control no longer needs its own copy.
  */
-.theme-toggle-btn {
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.theme-toggle-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-/*
- * Focus ring. This used to use --primary-ink as a workaround, because --ring
- * itself measured 2.44:1 on white and failed the 3:1 WCAG 1.4.11 floor. That
- * defect is now fixed at source in theme.css (--ring is 4.32:1 at worst in
- * light, 5.17:1 at worst in dark, measured on every surface a ring lands on),
- * so this control goes back to the app-wide token. One focus-ring color, one
- * place to change it.
- */
-.theme-toggle-btn:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-.new-session-btn {
+.new-session-btn,
+.sidebar-search-btn {
   width: 100%;
-  padding: 10px 16px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  letter-spacing: -0.01em;
-  transition: all 0.2s;
-}
-
-.new-session-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-color);
-  box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.new-session-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 /* Sidebar section-nav buttons (Chat / Library / Research Brain /
    Admin / Corpus): full-width, left-aligned, with an active-section
-   highlight. `.sidebar` prefix keeps specificity above the base
-   Button variant so these win. */
+   highlight.
+
+   The active state is the BRAND GREEN accent, and it is deliberately NOT
+   flattened to `--primary` (teal): this is a nav highlight, not a call to
+   action. `--accent-light` / `--accent-ink` is the same pair `badges.css` reads
+   for `data-tone="brand"`, and it follows the teal sub-brand inside
+   `.library-page` for free.
+
+   The ink is `--accent-ink`, NOT `--accent-color`. Measured in Chromium on the
+   real sidebar: `--accent-color` (#10b981) on `--accent-light` composited over
+   the page is 2.30:1 in light — a pre-existing AA failure on the ONE nav item
+   the user is looking at. `--accent-ink` (#047857 light / #10b981 dark) is the
+   token theme.css defines for exactly this ("the brand color used as TEXT on the
+   app surface") and lands at 5.68:1 light / 6.96:1 dark.
+
+   Unlayered, so it beats Lyra's layered `.btn[data-variant='ghost']:hover`. */
 .sidebar .sidebar-library-btn,
 .sidebar .sidebar-admin-btn {
   width: 100%;
@@ -374,37 +314,11 @@ body {
 .sidebar .sidebar-library-btn.active,
 .sidebar .sidebar-admin-btn.active {
   background: var(--accent-light);
-  color: var(--accent-color);
+  color: var(--accent-ink);
 }
 .sidebar .sidebar-library-btn.active svg,
 .sidebar .sidebar-admin-btn.active svg {
-  color: var(--accent-color);
-}
-
-.sidebar-search-btn {
-  width: 100%;
-  padding: 10px 16px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  font-size: 14px;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  transition: all 0.15s;
-  position: relative;
+  color: var(--accent-ink);
 }
 
 /* The inline session-search input (it replaces the button when open) is
@@ -424,19 +338,15 @@ body {
   text-align: center;
 }
 
-.sidebar-search-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-.sidebar-search-btn svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.sidebar-search-btn span {
+/* `Button` wraps ALL its children in a single `.btn-text` span, so the label and
+   the ⌘K hint arrive as siblings inside one box. This spreads them to the two
+   edges. Layout, not chrome. */
+.sidebar-search-btn .btn-text {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .kbd {
@@ -559,42 +469,30 @@ body {
   font-weight: 500;
 }
 
+/*
+ * Delete-session button. The chrome is Basecoat's ghost `.btn` at `icon-sm`
+ * (28px, up from the hand-written 20px — a bigger hit target on a control that
+ * was already below the 24px minimum).
+ *
+ * What is left is the REVEAL, which Lyra has no vocabulary for: the button is
+ * invisible until its row is hovered. The 14px icon is preserved at the call
+ * site (`size={14}` on IconButton, which stamps BUTTON_ICON_CLASS).
+ */
 .delete-session-btn {
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-tertiary);
   opacity: 0;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.delete-session-btn svg {
-  width: 14px;
-  height: 14px;
 }
 
 .session-item:hover .delete-session-btn {
   opacity: 1;
 }
 
-.delete-session-btn:hover {
-  background: var(--bg-hover);
-  color: var(--foreground);
-}
-
+/* The active row is filled with the brand green in both themes, so the icon and
+   its hover wash are keyed to that fill, not to the page theme. Unlayered, so it
+   beats Lyra's layered ghost hover. */
 .session-item.active .delete-session-btn {
   color: var(--accent-color-foreground);
 }
 
-/* The active row is filled with the brand green in both themes, so the hover
-   wash and its icon are keyed to that fill, not to the page theme. */
 .session-item.active .delete-session-btn:hover {
   background: rgba(0, 0, 0, 0.1);
   color: var(--accent-color-foreground);
@@ -856,29 +754,15 @@ body {
   white-space: nowrap;
 }
 
-.settings-logout-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--error-color);
-  font-size: 14px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.settings-logout-btn:hover {
-  background: color-mix(in srgb, var(--error-color) 12%, transparent);
-}
-
-.settings-logout-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
+/*
+ * Log out is the destructive action on the settings page, and `buttons.css`
+ * already defines what a destructive `.btn` looks like in this app (the measured
+ * `--destructive-subtle` / `--destructive-subtle-foreground` pair, 8.2:1 light /
+ * 8.5:1 dark — NOT Lyra's `--destructive` on its own 10% wash, which is 3.99:1).
+ * So the whole hand-written skin, including its `color-mix()` hover, is gone and
+ * the call site just asks for `data-variant="destructive"`. Lyra's
+ * `disabled:opacity-50` replaces the hand-written disabled state.
+ */
 
 /* Main content area */
 .main-content {
@@ -1046,47 +930,23 @@ body {
   align-items: center;
 }
 
-.message-action-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-}
-
-.message-action-icon-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
+/*
+ * Message action bar (copy / like / share / …). The chrome is Basecoat's ghost
+ * `.btn` at `data-size="icon"` — Lyra's 32px square, which is exactly the box
+ * this hand-written skin declared, so nothing resized. The 18px icons are
+ * preserved at the call site with BUTTON_ICON_CLASS.
+ *
+ * `.message-action-disabled` is gone with it: every button that wore it is
+ * already `disabled`, and Lyra ships `disabled:opacity-50` +
+ * `disabled:pointer-events-none` for exactly that. The hand-written 0.3 opacity
+ * plus a `!important` ink was a second, weaker spelling of the same state.
+ *
+ * The `.active` copy state is the brand-green accent, which Lyra has no variant
+ * for. Unlayered, so it beats Lyra's layered ghost hover.
+ */
 .message-action-icon-btn.active {
   color: var(--accent-color);
   background: var(--accent-light);
-}
-
-.message-action-icon-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.message-action-disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  color: var(--text-tertiary) !important;
 }
 
 .message-action-disabled:hover {
@@ -1671,35 +1531,19 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
+/*
+ * The dev login CTA. LAYOUT ONLY — the fill is Basecoat's
+ * `.btn[data-variant="primary"]`, i.e. `--primary` (TEAL). It used to be the
+ * brand green, and that is the rebrand slice 1 made: primary buttons are teal,
+ * the green survives only as an ACCENT (the sidebar nav highlight, the badge
+ * `data-tone="brand"`). `buttons.css` supplies the opaque `--primary-hover` step
+ * that clears AA on its own fill in both themes.
+ *
+ * This is the legacy dev login screen, NOT the CoralGPT landing — `coralgpt.css`
+ * owns `.btn-coral` and is untouched.
+ */
 .login-button {
   width: 100%;
-  padding: 14px 24px;
-  background: var(--accent-color);
-  color: var(--accent-color-foreground);
-  border: none;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.login-button:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--accent-glow);
-}
-
-.login-button:active {
-  transform: translateY(0);
 }
 
 .login-footer {

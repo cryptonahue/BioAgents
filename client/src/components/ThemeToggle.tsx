@@ -1,4 +1,5 @@
 import { Icon } from "./icons";
+import { BUTTON_ICON_CLASS } from "./ui/Button";
 import { useTheme } from "../hooks";
 
 interface ThemeToggleProps {
@@ -32,18 +33,28 @@ export function ThemeToggle({ size = 16, className = "" }: ThemeToggleProps) {
 
   // Names the ACTION, not the current state, and flips with it.
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";
-  const classes = ["theme-toggle-btn", className].filter(Boolean).join(" ");
+  const classes = ["btn", "theme-toggle-btn", className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
       type="button"
       className={classes}
+      data-variant="ghost"
+      data-size="icon-sm"
       onClick={toggleTheme}
       aria-label={label}
       title={label}
     >
-      {/* Shows the theme you are about to GET, matching what the label says. */}
-      <Icon name={isDark ? "sun" : "moon"} size={size} />
+      {/* Shows the theme you are about to GET, matching what the label says.
+          BUTTON_ICON_CLASS opts this icon out of Lyra's `size-4` clamp so the
+          `size` prop still means something — see Button.tsx. */}
+      <Icon
+        name={isDark ? "sun" : "moon"}
+        size={size}
+        className={BUTTON_ICON_CLASS}
+      />
     </button>
   );
 }

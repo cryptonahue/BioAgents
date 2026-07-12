@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import { Icon } from "./icons";
+import { BUTTON_ICON_CLASS } from "./ui/Button";
 import { InlineCitationText } from "./InlineCitationText";
 
 export function Message({ message }) {
@@ -125,45 +126,57 @@ export function Message({ message }) {
             <div className="message-actions">
             <button
               onClick={handleCopy}
-              className="message-action-icon-btn"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="Copy"
             >
-              <Icon name={copied ? "check" : "copy"} size={18} />
+              <Icon name={copied ? "check" : "copy"} size={18} className={BUTTON_ICON_CLASS} />
             </button>
             <button
               disabled
-              className="message-action-icon-btn message-action-disabled"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="Like"
             >
-              <Icon name="thumbsUp" size={18} />
+              <Icon name="thumbsUp" size={18} className={BUTTON_ICON_CLASS} />
             </button>
             <button
               disabled
-              className="message-action-icon-btn message-action-disabled"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="Dislike"
             >
-              <Icon name="thumbsDown" size={18} />
+              <Icon name="thumbsDown" size={18} className={BUTTON_ICON_CLASS} />
             </button>
             <button
               disabled
-              className="message-action-icon-btn message-action-disabled"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="Share"
             >
-              <Icon name="share" size={18} />
+              <Icon name="share" size={18} className={BUTTON_ICON_CLASS} />
             </button>
             <button
               disabled
-              className="message-action-icon-btn message-action-disabled"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="Regenerate"
             >
-              <Icon name="refresh" size={18} />
+              <Icon name="refresh" size={18} className={BUTTON_ICON_CLASS} />
             </button>
             <button
               disabled
-              className="message-action-icon-btn message-action-disabled"
+              className="btn message-action-icon-btn"
+              data-variant="ghost"
+              data-size="icon"
               title="More"
             >
-              <Icon name="menu" size={18} />
+              <Icon name="menu" size={18} className={BUTTON_ICON_CLASS} />
             </button>
             </div>
           </div>

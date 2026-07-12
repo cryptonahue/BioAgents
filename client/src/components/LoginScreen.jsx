@@ -73,7 +73,13 @@ export function LoginScreen({ onLogin }) {
             </div>
           )}
 
-          <button type="submit" className="login-button" disabled={isLoading}>
+          <button
+            type="submit"
+            className="btn login-button"
+            data-variant="primary"
+            data-size="lg"
+            disabled={isLoading}
+          >
             {isLoading ? 'Verifying...' : 'Access UI'}
           </button>
         </form>

@@ -3,6 +3,7 @@ import type { ComponentChildren } from "preact";
 import { route } from "preact-router";
 
 import { Sidebar } from "./Sidebar";
+import { BUTTON_ICON_CLASS } from "./ui/Button";
 import { useAuth, useEmbeddedWallet, useSessions, useX402Payment } from "../hooks";
 import { generateConversationId, walletAddressToUUID } from "../utils/helpers";
 
@@ -103,11 +104,14 @@ export function AppLayout({ children, coralGptMode = false, privyLogout }: AppLa
       <div className="app-content">
         {/* Mobile menu button (fixed; hidden on desktop via CSS) */}
         <button
-          className="mobile-menu-btn"
+          className="btn mobile-menu-btn"
+          data-variant="outline"
           onClick={() => setIsMobileSidebarOpen(true)}
           aria-label="Open menu"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {/* BUTTON_ICON_CLASS opts this out of Lyra's `size-4` clamp, which
+              would otherwise shrink the 24px glyph to 16px. */}
+          <svg className={BUTTON_ICON_CLASS} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
