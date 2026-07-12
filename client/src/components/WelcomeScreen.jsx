@@ -125,18 +125,36 @@ export function WelcomeScreen({ onExampleClick, coralGptMode = false }) {
           </h2>
           <div className="example-prompts">
             {examples.map((example, index) => (
+              /*
+               * Basecoat's `.card`, wearing a scoped glass override (global.css).
+               * The card is a real control — it fills the composer when clicked —
+               * so it is `role="button" tabIndex={0}` with an Enter/Space handler,
+               * and it contains no nested interactive content, so that role is
+               * exactly true. It is the first clickable `.card` in the app, which
+               * means it is also the first thing to actually exercise the
+               * `.card:focus-visible` ring `surfaces.css` has been carrying as a
+               * guard since slice 7.
+               */
               <div
                 key={index}
-                className="example-prompt"
+                className="card example-prompt"
+                role="button"
+                tabIndex={0}
                 onClick={() => onExampleClick && onExampleClick(example.text)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onExampleClick && onExampleClick(example.text);
+                  }
+                }}
               >
                 <div className="example-prompt-icon">
                   <Icon name={example.icon} size={20} />
                 </div>
-                <div className="example-prompt-content">
-                  <div className="example-prompt-title">{example.title}</div>
-                  <div className="example-prompt-text">{example.text}</div>
-                </div>
+                <header className="example-prompt-content">
+                  <h3 className="example-prompt-title">{example.title}</h3>
+                  <p className="example-prompt-text">{example.text}</p>
+                </header>
               </div>
             ))}
           </div>

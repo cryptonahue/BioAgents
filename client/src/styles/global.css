@@ -1107,11 +1107,14 @@ body {
    app surface: the scrim, the smoked-glass prompt cards, and the light text on
    top of them. A scrim over an image does not invert, so none of this themes.
    Exactly the same call the CoralGPT hero already makes (see theme.css,
-   PINNED-DARK MARKETING SURFACES). Tokenizing these would put dark text on a
+   PINNED-DARK PHOTOGRAPHIC SURFACES). Tokenizing these would put dark text on a
    dark photo in light mode.
 
-   The few `var()` reads that remain (the prompt icon chip) are intentional and
-   stay legible either way. */
+   `.welcome-screen` IS NOW IN THAT SELECTOR LIST — for a long time it was only
+   described as a pinned surface and never actually added to one, which held up
+   only while every colour here was a literal. The `var()` reads in this block
+   (the prompt icon chip) and the Lyra `.card` the prompt now wears both resolve
+   against the PINNED token set, so they stay dark in light mode. */
 .welcome-screen {
   position: relative;
   display: flex;
@@ -1256,20 +1259,73 @@ body {
   width: 100%;
 }
 
+/**
+ * THE EXAMPLE PROMPTS — Basecoat's `.card`, WEARING GLASS.
+ *
+ * These are cards over a PHOTOGRAPH, and that is a reason to pin the COLORS, not
+ * a reason to forgo the pack's geometry. `.welcome-screen` is now in the
+ * pinned-dark selector list in `theme.css`, so `--card` — and, critically,
+ * Tailwind's `--color-card`, which is the alias Lyra's `.card` actually reads —
+ * resolve DARK inside this surface even when `<html>` is light. Without that pin
+ * this migration would have dropped white cards onto a dark photo in light mode.
+ *
+ * Lyra supplies the surface, the square corners, `overflow-hidden` (which clips
+ * the accent bar below), the `text-xs/relaxed` ramp and the `flex` box. Deleted
+ * with the skin: `display: flex`, `gap: 16px` (Lyra's `gap-4` IS 16px — the
+ * declaration was redundant, and per surfaces.css a card gets EITHER the pack's
+ * gap or the children's margins, never both), the 1px border and the 14px radius.
+ *
+ * SQUARE IS THE POINT, not a casualty. Lyra hard-codes `rounded-none` 71 times
+ * and never reads `--radius`; the token is inert in this build. Chasing 14px back
+ * would mean fighting the pack on every card in the app.
+ *
+ * TWO THINGS LYRA CANNOT EXPRESS, and they are the whole reason this override
+ * exists:
+ *
+ *   THE GLASS. The translucent fill, the blur and the light hairline are the
+ *   design — smoked glass over a reef photograph — and there is no token for
+ *   "72% of a colour that is not on the ramp, over an image". These three are the
+ *   ONLY raw colour literals this migration adds, and they are literals for the
+ *   same reason every literal in this block is: the substrate is a constant
+ *   photograph, so the ink and the glass must be constants too. `--card` at full
+ *   opacity would be an opaque slab that hides the image it is sitting on.
+ *
+ *   THE EDGE. Lyra draws a card's edge with `ring-1` — a 1px-spread `box-shadow`,
+ *   not a `border` — so there is no border-color to recolour on hover. The whole
+ *   shadow has to be re-declared, exactly as `surfaces.css` records for
+ *   `data-hover="brand"`, and the hover composes the brand glow into the same
+ *   declaration.
+ *
+ * `flex-direction: row` is spelled out: overriding `display: flex` on a `.card`
+ * does NOT undo Lyra's `flex-col`, which would stack the icon above the text.
+ * `transition` names its properties instead of `all`, so a focus `outline-width`
+ * cannot animate 0 -> 2px behind the ring.
+ */
 .example-prompt {
+  flex-direction: row;
+  align-items: flex-start;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  position: relative;
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+
+  /* Pinned-dark glass. See above — deliberate literals, over a photograph. */
   background: rgba(12, 18, 28, 0.72);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Lyra's `> header` is a `grid` with `gap-1` and `px-4`. The gap is the title/text
+   rhythm now (the title's own margin is gone with it — they would have composed
+   and doubled); the padding is the card's, not the header's. */
+.example-prompt-content {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .example-prompt::before {
@@ -1282,13 +1338,15 @@ body {
   background: var(--accent-color);
   transform: scaleX(0);
   transition: transform 0.3s ease;
+  z-index: 1;
 }
 
 .example-prompt:hover {
   background: rgba(16, 24, 36, 0.88);
-  border-color: var(--accent-color);
   transform: translateY(-4px);
-  box-shadow: var(--shadow-green);
+  box-shadow:
+    0 0 0 1px var(--accent-color),
+    var(--shadow-green);
 }
 
 .example-prompt:hover::before {
@@ -1300,7 +1358,7 @@ body {
   height: 40px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1317,15 +1375,15 @@ body {
   box-shadow: 0 4px 12px var(--accent-glow);
 }
 
-.example-prompt-content {
-  flex: 1;
-  min-width: 0;
-}
-
+/* The `<h3>` in the card's `> header`. Lyra types it `text-sm font-medium`; this
+   keeps the welcome screen's own 15px/600 display ramp, which is a size step
+   above anything in the app chrome on purpose. The colour is a pinned-dark
+   literal — white on a photograph — like everything else in this block. The
+   `margin-bottom` is GONE: Lyra's `> header` is `gap-1`, and a margin would have
+   composed with it and silently doubled the leading. */
 .example-prompt-title {
   font-size: 15px;
   font-weight: 600;
-  margin-bottom: 6px;
   color: #ffffff;
   letter-spacing: -0.01em;
 }

@@ -113,25 +113,33 @@
 }
 
 /* ---------------------------------------------------------------------------
- * FOCUS RING — A GUARD, AND HONESTLY NOT EXERCISED YET.
+ * FOCUS RING — AND IT IS EXERCISED NOW.
  *
  * Lyra kills the outline on everything interactive it ships and paints focus as
  * a Tailwind ring that never materializes in this build; slices 1-6 each had to
- * re-add this exact pair. It is declared here for the same reason, and — unlike
- * those slices — it is worth saying plainly that NOTHING TRIGGERS IT TODAY.
+ * re-add this exact pair. When this rule was written it was a pure GUARD: not one
+ * `.card`, `.alert`, `.empty` or `.item` in the app was a tab stop, and it was
+ * declared against the day someone made the paper card clickable or the alerts
+ * dismissible.
  *
- * Tab-walked in Chromium across every migrated page in both themes: not one
- * `.card`, `.alert`, `.empty` or `.item` in this app is a tab stop. They are all
- * non-interactive containers (`<div>`, `<article>`, `<section>`, `<aside>`). The
- * interactive things INSIDE them — the paper card's Chat / Evidence / Delete
- * buttons, the failure alert's Retry — are `.btn`s, and `buttons.css` already
- * rings those.
+ * That day arrived with the /chat surfaces. TWO components now fire it:
  *
- * So this guards the day someone makes the whole paper card clickable or the
- * alerts dismissible, which is the obvious next move for both and is exactly
- * when Lyra's missing outline would ship as an accessibility regression.
- * `--ring` is the app's opaque focus token, measured in PR 2 on every surface a
- * ring lands on.
+ *   `.item.session-item` — the sidebar's chat-history rows, which are
+ *   `role="button" tabIndex={0}` (they contain the delete button, so they cannot
+ *   BE buttons). Before the migration they had no keyboard access at all.
+ *
+ *   `.card.example-prompt` — the welcome screen's prompt cards, likewise
+ *   `role="button" tabIndex={0}`.
+ *
+ * Both were driven with a REAL Tab in Chromium in both themes, `:focus-visible`
+ * armed, and both paint `outline: 2px solid var(--ring)` at 2px offset: the row
+ * measures 6.90:1 on the sidebar in dark and 4.81:1 in light. `--ring` is the
+ * app's opaque focus token, measured in PR 2 on every surface a ring lands on.
+ *
+ * The prompt card is the interesting one, because it lands on a PINNED-DARK
+ * surface: inside `.welcome-screen`, `--ring` resolves to its DARK value in both
+ * themes, which is correct — the ring is on a photograph, not on the app's page
+ * fill, and the photograph does not invert.
  *
  * Lyra puts `transition-all` on these components, so `outline-width` ANIMATES
  * 0 -> 2px. Sampling `getComputedStyle` straight after a Tab reads 0px and looks
