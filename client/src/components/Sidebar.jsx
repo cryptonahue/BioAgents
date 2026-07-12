@@ -1,11 +1,24 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
-import { Button, IconButton } from './ui';
+import {
+  Button,
+  DropdownMenu,
+  IconButton,
+  Menu,
+  MenuHeading,
+  MenuItem,
+  MenuPopover,
+  MenuSeparator,
+  menuTriggerProps,
+} from './ui';
 import { Icon } from './icons';
 import { BioAgentsMark } from './BioAgentsMark';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth, useAdmin } from '../hooks';
 import { useVersion, shortSha, formatDate } from '../hooks/useVersion';
+
+/** Id namespace for the account menu's trigger/popover/menu wiring. */
+const USER_MENU = 'sidebar-user';
 
 export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSession, onDeleteSession, isMobileOpen, onMobileClose, coralGptMode = false, privyLogout, currentPath = '' }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -18,28 +31,11 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
   const username = userEmail ? userEmail.split('@')[0] : 'Account';
   const avatarInitial = (username.charAt(0) || 'U').toUpperCase();
 
-  // User menu popover (opens upward from the footer pill).
+  // User menu popover (opens upward from the footer pill). Open/close, Escape,
+  // outside-click dismissal and the arrow-key navigation all live in
+  // <DropdownMenu> — the document-level `mousedown` + `keydown` listeners this
+  // component used to install are gone. See the header of `ui/Menu.tsx`.
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuRef = useRef(null);
-
-  // Close the user menu on outside click and on Escape.
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const onPointer = (e) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setUserMenuOpen(false);
-      }
-    };
-    const onKey = (e) => {
-      if (e.key === 'Escape') setUserMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [userMenuOpen]);
 
   // Active section highlight. Falls back to the live pathname so the
   // sidebar still marks the right item if the parent doesn't pass it.
@@ -394,50 +390,45 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
           </div>
 
           <div className="sidebar-footer">
-            <div className="sidebar-user" ref={userMenuRef}>
+            <DropdownMenu
+              className="sidebar-user"
+              open={userMenuOpen}
+              onOpen={() => setUserMenuOpen(true)}
+              onClose={() => setUserMenuOpen(false)}
+            >
               <button
                 type="button"
                 className={`sidebar-user-trigger${userMenuOpen ? ' open' : ''}`}
                 onClick={() => setUserMenuOpen((open) => !open)}
-                aria-haspopup="menu"
-                aria-expanded={userMenuOpen}
                 title={userEmail || 'Account'}
+                {...menuTriggerProps(USER_MENU, userMenuOpen)}
               >
                 <span className="sidebar-user-avatar">{avatarInitial}</span>
                 <span className="sidebar-user-name">{username}</span>
                 <Icon name="chevronDown" size={16} className="sidebar-user-chevron" />
               </button>
-              {userMenuOpen && (
-                <div className="sidebar-user-menu" role="menu">
-                  <div className="sidebar-user-menu-email">
-                    {userEmail || 'Signed in'}
-                  </div>
-                  <div className="sidebar-user-menu-sep" />
-                  <button
-                    type="button"
-                    className="sidebar-user-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      route('/settings');
-                    }}
-                  >
+              <MenuPopover idPrefix={USER_MENU} open={userMenuOpen} side="top">
+                <MenuHeading>{userEmail || 'Signed in'}</MenuHeading>
+                <MenuSeparator />
+                <Menu idPrefix={USER_MENU}>
+                  {/* Closing is DropdownMenu's job — it also hands focus back to
+                      the trigger, which routing away from here would otherwise
+                      strand on a detached node. */}
+                  <MenuItem onClick={() => route('/settings')}>
                     <Icon name="settings" size={16} />
                     <span>Settings</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="sidebar-user-menu-item sidebar-user-menu-item--danger"
-                    role="menuitem"
+                  </MenuItem>
+                  <MenuItem
+                    variant="destructive"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
                   >
                     <Icon name="logout" size={16} />
                     <span>{isLoggingOut ? 'Logging out…' : 'Log out'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                  </MenuItem>
+                </Menu>
+              </MenuPopover>
+            </DropdownMenu>
             <div className="sidebar-powered-by">
               <span className="sidebar-powered-label">powered by</span>
               {/* The mark is inlined, not an <img>, so it can be filled with

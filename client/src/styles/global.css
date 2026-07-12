@@ -601,11 +601,14 @@ body {
   cursor: default;
 }
 
-/* User menu (ChatGPT/Claude-style pill + upward popover) */
-.sidebar-user {
-  position: relative;
-}
-
+/*
+ * User menu (ChatGPT/Claude-style pill + upward popover).
+ *
+ * Only the PILL is still hand-written. The popover itself — panel, e-mail
+ * heading, separator, items, destructive Log out — is Basecoat's `.dropdown-menu`
+ * now; see `menus.css` and `components/ui/Menu.tsx`. `.sidebar-user` no longer
+ * declares `position: relative` either: `.dropdown-menu` is `relative` already.
+ */
 .sidebar-user-trigger {
   width: 100%;
   padding: 8px 10px;
@@ -668,77 +671,6 @@ body {
 
 .sidebar-user-trigger.open .sidebar-user-chevron {
   transform: rotate(180deg);
-}
-
-/* Popover opens upward, above the pill. */
-.sidebar-user-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sidebar-user-menu-email {
-  padding: 8px 10px 6px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-user-menu-sep {
-  height: 1px;
-  margin: 2px 0;
-  background: var(--border-color);
-}
-
-.sidebar-user-menu-item {
-  width: 100%;
-  padding: 9px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.sidebar-user-menu-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.sidebar-user-menu-item:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.sidebar-user-menu-item svg {
-  flex-shrink: 0;
-}
-
-.sidebar-user-menu-item--danger {
-  color: var(--error-color);
-}
-
-.sidebar-user-menu-item--danger:hover {
-  background: color-mix(in srgb, var(--error-color) 12%, transparent);
-  color: var(--error-color);
 }
 
 /* Settings page (mirrors library-page/library-main layout) */
@@ -1955,52 +1887,16 @@ textarea:not(.textarea)::placeholder {
   font-size: 11px;
 }
 
-/* Upload menu dropdown */
-.upload-button-container {
-  position: relative;
-}
-
-.upload-menu {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: var(--shadow-lg);
-  min-width: 160px;
-  z-index: 100;
-  overflow: hidden;
-}
-
-.upload-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.upload-menu-item:hover {
-  background: var(--bg-hover);
-}
-
-.upload-menu-item svg {
-  color: var(--text-secondary);
-}
-
-.upload-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-}
+/*
+ * The composer's "Add" menu is Basecoat's `.dropdown-menu` now — panel, items and
+ * all — so the `.upload-menu*` skin is gone, and with it the full-screen
+ * `.upload-menu-backdrop` <div> that used to catch outside clicks. Dismissal is
+ * `focusout` on the wrapper; see `components/ui/Menu.tsx`. The backdrop had to go
+ * regardless: it sat at `z-index: 99` and Basecoat's popover is `z-50`, so it
+ * would have covered the very menu it was there to dismiss.
+ *
+ * `.upload-button-container` is gone too — `.dropdown-menu` is `relative` itself.
+ */
 
 /* Drag and drop overlay */
 .input-container {

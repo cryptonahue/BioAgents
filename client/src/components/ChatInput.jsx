@@ -2,6 +2,16 @@ import { useRef, useState, useEffect } from "preact/hooks";
 import { useAutoResize } from "../hooks";
 import { Icon } from "./icons";
 import { BUTTON_ICON_CLASS } from "./ui/Button";
+import {
+  DropdownMenu,
+  Menu,
+  MenuItem,
+  MenuPopover,
+  menuTriggerProps,
+} from "./ui";
+
+/** Id namespace for the upload menu's trigger/popover/menu wiring. */
+const UPLOAD_MENU = "chat-upload";
 
 export function ChatInput({
   value,
@@ -43,15 +53,10 @@ export function ChatInput({
     }
   };
 
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
-    setShowUploadMenu(false);
-  };
-
-  const handleFolderClick = () => {
-    folderInputRef.current?.click();
-    setShowUploadMenu(false);
-  };
+  // Closing the menu is <DropdownMenu>'s job — it also returns focus to the
+  // trigger, which the native file dialog these open would otherwise strand.
+  const handleFileClick = () => fileInputRef.current?.click();
+  const handleFolderClick = () => folderInputRef.current?.click();
 
   const selectMode = (newMode) => {
     if (newMode === mode) return;
@@ -259,31 +264,36 @@ export function ChatInput({
           )}
 
           <div className="input-action-buttons">
-            <div className="upload-button-container">
+            <DropdownMenu
+              open={showUploadMenu}
+              onOpen={() => setShowUploadMenu(true)}
+              onClose={() => setShowUploadMenu(false)}
+            >
               <button
                 onClick={() => setShowUploadMenu(!showUploadMenu)}
                 disabled={disabled}
                 className="btn input-action-btn"
                 data-variant="ghost"
                 title="Add files or folder"
+                {...menuTriggerProps(UPLOAD_MENU, showUploadMenu)}
               >
                 <Icon name="plus" size={16} className={BUTTON_ICON_CLASS} />
                 <span>Add</span>
                 <Icon name="chevronDown" size={12} className={BUTTON_ICON_CLASS} />
               </button>
-              {showUploadMenu && (
-                <div className="upload-menu">
-                  <button onClick={handleFileClick} className="upload-menu-item">
+              <MenuPopover idPrefix={UPLOAD_MENU} open={showUploadMenu} side="top">
+                <Menu idPrefix={UPLOAD_MENU}>
+                  <MenuItem onClick={handleFileClick}>
                     <Icon name="file" size={16} />
                     <span>Upload files</span>
-                  </button>
-                  <button onClick={handleFolderClick} className="upload-menu-item">
+                  </MenuItem>
+                  <MenuItem onClick={handleFolderClick}>
                     <Icon name="folder" size={16} />
                     <span>Upload folder</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                  </MenuItem>
+                </Menu>
+              </MenuPopover>
+            </DropdownMenu>
 
             {/* Mode Switcher - Only show for new conversations */}
             {isNewConversation ? (
@@ -348,14 +358,6 @@ export function ChatInput({
           onChange={handleFileChange}
         />
       </div>
-
-      {/* Click outside to close upload menu */}
-      {showUploadMenu && (
-        <div
-          className="upload-menu-backdrop"
-          onClick={() => setShowUploadMenu(false)}
-        />
-      )}
     </div>
   );
 }
