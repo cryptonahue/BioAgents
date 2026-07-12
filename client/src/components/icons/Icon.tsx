@@ -29,6 +29,7 @@
 
 import {
   ArrowsClockwise,
+  ArrowSquareOut,
   BookOpen,
   Brain,
   CaretDown,
@@ -149,6 +150,12 @@ const iconMap: Record<string, any> = {
   mic: Microphone,
   image: Image,
   globe: Globe,
+  /* The arrow-out-of-a-box glyph, and the ONE place Phosphor's own "Share" is the
+     right icon rather than "ShareNetwork" — but it is not a share affordance, so it
+     is named for what it means: this link leaves the app. Every external link in the
+     client wears it, which is the WCAG 3.2.5 warning that a new tab is about to
+     open. */
+  externalLink: ArrowSquareOut,
   lightbulb: Lightbulb,
   thumbsUp: ThumbsUp,
   thumbsDown: ThumbsDown,

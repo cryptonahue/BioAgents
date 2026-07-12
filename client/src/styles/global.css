@@ -2297,185 +2297,165 @@ textarea:not(.textarea)::placeholder {
   }
 }
 
-/* Inline Citations Styles */
+/* ============================================
+   Inline Citations
+   ============================================
+
+   THE CHIP IS BASECOAT'S `.badge` AND THE PREVIEW IS BASECOAT'S `.popover`.
+
+   `.citation-button` used to be hand-built in JS (`button.className =
+   'citation-button'`) and wore no Basecoat class at all: `background: none; border:
+   none; padding: 0 2px` on an 11px superscript, i.e. a blue `[1]` with a ~14px hit
+   area and nothing that reads as pressable. `.badge[data-variant="secondary"]` is
+   Lyra's inline marker — it brings the fill, the ink, the square box, the 12px face
+   and the focus ring. What is left here is the SUPERSCRIPT (a badge does not know it
+   is a footnote mark) and the target size.
+
+   THE VARIANT IS `primary`, AND IT WAS MEASURED. `secondary` — the obvious choice
+   for a quiet inline marker — paints a fill 1.10:1 against the prose in light and
+   1.32:1 in dark, i.e. an invisible chip: exactly the "renders as nothing" failure
+   this slice exists to fix. `outline` is worse (its border is 1.25:1). `primary` is
+   the only variant that clears the WCAG 1.4.11 3:1 floor for a non-text component:
+   5.28:1 light / 8.25:1 dark for the fill against the prose, with the numeral at
+   5.07:1 / 5.61:1 on that fill. The teal reads as "the one pressable thing in this
+   sentence", which is what a citation mark is.
+
+   `[data-popover]` is Lyra's positioning primitive — `absolute z-50 w-max`, the
+   side/align offsets, and the `aria-hidden`-keyed visibility + scale transition. It
+   positions against the nearest `.popover`, which is the wrapper span. That is why
+   the old `.citation-hover-preview` (a `position: absolute` box placed from a
+   `getBoundingClientRect` measurement taken on mouseenter, plus a CSS-triangle
+   `::before` that had to be re-pointed by a `data-placement` attribute nothing ever
+   set) is GONE, along with the measurement code behind it.
+
+   Lyra gives `[data-popover]` NO PAINT — read `dist/styles/lyra.css`: the fill, the
+   ring and the shadow are applied per consumer (`.combobox [data-popover]`, the
+   dropdown menu, …). So painting the card here is not a house escape hatch, it is
+   exactly what Lyra does; it just uses the same tokens Lyra uses (`--popover`,
+   `--popover-foreground`), which the card already read. Square, because Lyra is.
+*/
 .message-content-with-citations {
   position: relative;
 }
 
-.citation-button {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--info);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0 2px;
-  margin: 0 1px;
+/* `.popover` is `relative inline-flex` in Lyra, which is the containing block the
+   card positions against. The superscript is this element's job: a `.badge` sits on
+   the baseline like any other inline box. */
+.citation-popover {
   vertical-align: super;
   line-height: 1;
-  transition: color 0.2s;
-}
-
-.citation-button:hover {
-  color: var(--info-subtle-foreground);
+  margin: 0 1px;
 }
 
 .citation-button-wrapper {
-  position: relative;
   display: inline;
 }
 
-.citation-hover-preview {
-  position: absolute;
-  z-index: 9999;
-  pointer-events: auto;
-  transform: translate(-50%, -100%);
-  width: 280px;
+/* A `.badge` is `h-5` (20px) with `px-2`, sized for a status chip in a table row.
+   As a footnote mark it rides above the baseline of running prose, so it is scaled
+   down to sit inside the line box — while keeping a hit target the old 11px bare
+   text never had. */
+.citation-button {
+  min-width: 18px;
+  height: 16px;
+  padding-inline: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.citation-hover-preview::before {
-  content: "";
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 6px solid var(--popover);
+.citation-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
-.citation-hover-preview[data-placement="below"]::before {
-  top: -6px;
-  bottom: auto;
-  border-top: none;
-  border-bottom: 6px solid var(--popover);
-}
-
-/* The hover card used to be a hardcoded dark tooltip (the Perplexity/Arc
-   pattern) regardless of page theme. Nothing else in this app does that, so it
-   now follows the theme through the popover tokens. */
+/* The paint Lyra applies per popover consumer, on this consumer. */
 .citation-preview-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 300px;
+  max-width: min(300px, 80vw);
+  padding: 12px;
   background: var(--popover);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
-  padding: 16px;
-  max-width: 320px;
-  transition: background-color 0.2s;
-  text-decoration: none;
+  color: var(--popover-foreground);
   border: 1px solid var(--border);
-}
-
-.citation-preview-card:hover {
-  background: var(--muted);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+  vertical-align: baseline;
+  /* Running prose sets the citation's line-height to 1 and its face to superscript
+     size; the card is a surface, not part of the sentence. */
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
 }
 
 .citation-preview-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.citation-preview-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--muted);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--popover-foreground);
-  flex-shrink: 0;
+.citation-preview-kind {
+  gap: 4px;
 }
 
-.citation-preview-title {
-  flex: 1;
-  min-width: 0;
-}
-
-.citation-preview-domain {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--popover-foreground);
-  line-height: 1.3;
-  margin: 0 0 4px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.citation-preview-url {
-  font-size: 12px;
-  color: var(--muted-foreground);
+/* THE DOI, AS AN IDENTIFIER. It is the one string that names the paper, so it reads
+   in the mono face and it wraps: a DOI has no spaces, and a 300px card with
+   `overflow-wrap: normal` would simply let it escape the box. */
+.citation-preview-detail {
   margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.citation-preview-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 
 .citation-preview-text {
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0;
   color: var(--popover-foreground);
-  margin: 12px 0 0 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
 
-/* Citation Navigation */
-.citation-navigation {
+.citation-preview-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
-.citation-nav-button {
+/* When there is only one source there is no nav pair, and the action must not float
+   in the middle of the row. */
+.citation-preview-actions:not(:has(.citation-navigation)) {
+  justify-content: flex-end;
+}
+
+.citation-navigation {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--muted);
-  border: 1px solid var(--border);
-  color: var(--popover-foreground);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.citation-nav-button:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
-}
-
-.citation-nav-button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+  gap: 2px;
 }
 
 .citation-nav-counter {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted-foreground);
-  font-weight: 500;
-  min-width: 48px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Confirm dialog (reusable destructive-action modal) ----
