@@ -507,11 +507,12 @@ export function ResearchStatePanel({
                         <div key={i} className="research-step-item completed">
                           <div className="research-step-header">
                             <div
-                              className="research-step-type"
+                              className="badge"
+                              data-tone="task"
                               style={{
-                                background: stepInfo.bg,
-                                color: stepInfo.color,
-                              }}
+                                "--step-bg": stepInfo.bg,
+                                "--step-color": stepInfo.color,
+                              } as React.CSSProperties}
                             >
                               <span className="research-step-emoji">
                                 {stepInfo.icon}
@@ -529,7 +530,8 @@ export function ResearchStatePanel({
                               {step.datasets.map((ds, di) => (
                                 <span
                                   key={di}
-                                  className="research-step-dataset-badge"
+                                  className="badge"
+                                  data-tone="brand"
                                 >
                                   <Icon name="file" size={12} />
                                   {ds.filename}

@@ -61,7 +61,8 @@ export function ChainPager({
       aria-label="Multi-page table chain navigation"
     >
       <span
-        className="chain-pager__badge"
+        className="badge chain-pager__badge"
+        data-tone="neutral"
         data-testid="chain-pager-badge"
       >
         Part {currentIndex + 1} of {chain.length}

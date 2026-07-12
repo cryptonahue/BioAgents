@@ -2518,26 +2518,6 @@ textarea:not(.textarea)::placeholder {
   gap: 8px;
 }
 
-.thinking-steps-badge {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.thinking-steps-badge.in-progress {
-  background: var(--info-subtle);
-  color: var(--info-subtle-foreground);
-  border: 1px solid var(--info-border);
-}
-
-.thinking-steps-badge.complete {
-  background: var(--accent-light);
-  color: var(--accent-ink);
-  border: 1px solid var(--accent-border);
-}
-
 .thinking-steps-time {
   font-size: 11px;
   color: var(--text-tertiary);
@@ -2722,11 +2702,6 @@ textarea:not(.textarea)::placeholder {
 
   .thinking-steps-summary {
     gap: 6px;
-  }
-
-  .thinking-steps-badge {
-    font-size: 10px;
-    padding: 2px 6px;
   }
 
   .thinking-steps-time {

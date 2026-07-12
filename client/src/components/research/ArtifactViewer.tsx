@@ -173,18 +173,18 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
           <span className="artifact-viewer-title">Code Execution Results</span>
           <div className="artifact-viewer-badges">
             {hasArtifacts && (
-              <span className="artifact-badge artifact-badge-files">
+              <span className="badge" data-tone="brand">
                 {allArtifacts.length} file{allArtifacts.length !== 1 ? "s" : ""}
               </span>
             )}
             {hasErrors && (
-              <span className="artifact-badge artifact-badge-error">
+              <span className="badge" data-tone="danger">
                 {results.filter((r) => r.error).length} error
                 {results.filter((r) => r.error).length !== 1 ? "s" : ""}
               </span>
             )}
             {totalExecutionTime > 0 && (
-              <span className="artifact-badge artifact-badge-time">
+              <span className="badge artifact-badge-time" data-tone="neutral">
                 {(totalExecutionTime / 1000).toFixed(1)}s
               </span>
             )}

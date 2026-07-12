@@ -209,25 +209,6 @@
   color: var(--text-primary);
 }
 
-.research-level-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--violet-subtle-foreground);
-  background: var(--violet-subtle);
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--violet-border);
-}
-
-.research-steps-badge {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--accent-color);
-  background: var(--accent-light);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
 .research-state-chevron {
   color: var(--text-secondary);
   transition: transform 0.2s ease;
@@ -460,17 +441,6 @@
   border: 1px solid var(--border-color);
 }
 
-.research-step-type {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-
 .research-step-emoji {
   font-size: 12px;
 }
@@ -480,15 +450,6 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-}
-
-.research-step-level {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  padding: 2px 6px;
-  border-radius: 3px;
 }
 
 .research-step-objective {
@@ -503,21 +464,6 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
-}
-
-.research-step-dataset-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--accent-color);
-  background: var(--accent-light);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.research-step-dataset-badge svg {
-  flex-shrink: 0;
 }
 
 .research-step-output {
@@ -688,19 +634,6 @@
   justify-content: space-between;
 }
 
-.suggested-step-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--step-color, var(--accent-color));
-  background: var(--step-bg, var(--accent-light));
-  padding: 4px 10px;
-  border-radius: 4px;
-  border: 1px solid currentColor;
-}
-
 .suggested-step-emoji {
   font-size: 12px;
 }
@@ -813,30 +746,11 @@
   gap: 8px;
 }
 
-.artifact-badge {
-  font-size: 10px;
-  font-weight: 500;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.artifact-badge-files {
-  background: var(--accent-light);
-  color: var(--accent-ink);
-  border: 1px solid var(--accent-border);
-}
-
-.artifact-badge-error {
-  background: var(--destructive-subtle);
-  color: var(--destructive-subtle-foreground);
-  border: 1px solid var(--destructive-border);
-}
-
+/* TYPOGRAPHY ONLY. The execution time is a measurement, so it reads in the mono
+   face — the one thing Lyra's `.badge` has no vocabulary for and the only reason
+   this selector survives. Everything else it used to paint is now `data-tone`. */
 .artifact-badge-time {
-  background: var(--bg-tertiary);
-  color: var(--text-tertiary);
-  border: 1px solid var(--border-color);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .artifact-viewer-chevron {

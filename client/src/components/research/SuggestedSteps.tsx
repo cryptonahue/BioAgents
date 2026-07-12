@@ -94,7 +94,7 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
               } as React.CSSProperties}
             >
               <div className="suggested-step-header">
-                <span className="suggested-step-type-badge">
+                <span className="badge" data-tone="task">
                   <span className="suggested-step-emoji">{config.icon}</span>
                   {config.label}
                 </span>

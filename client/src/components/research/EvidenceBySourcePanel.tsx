@@ -114,7 +114,7 @@ export function EvidenceBySourcePanel({
           Evidence ({okCount}/{sources.length} sources, {totalCount} chunks)
         </span>
         {failedCount > 0 && (
-          <span className="evidence-by-source-badge evidence-by-source-badge-failed">
+          <span className="badge" data-tone="danger">
             {failedCount} failed
           </span>
         )}
