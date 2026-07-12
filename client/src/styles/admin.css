@@ -150,7 +150,6 @@
   margin-top: 16px;
   background: var(--muted);
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
   position: sticky;
   bottom: 16px;
 }
@@ -187,7 +186,6 @@
 .admin-dialog {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-lg);
 }
@@ -277,7 +275,6 @@
 .admin-stats-tile {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: 8px;
   padding: 16px;
   text-align: center;
 }

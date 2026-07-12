@@ -106,13 +106,15 @@ body.coralgpt-scroll {
   color: inherit;
 }
 
-.landing-brand img {
-  border-radius: 8px;
-}
 
 /* coralgpt.png is a wide canvas (909x241) with the coral mark on the left and
    transparent space to the right. Crop-display just the mark so it sits neatly
-   next to the CORAL GPT wordmark instead of leaving a big gap. */
+   next to the CORAL GPT wordmark instead of leaving a big gap.
+
+   The `border-radius: 0` below used to be dead: a sibling `.landing-brand img`
+   rule (specificity 0-1-1) out-ranked this class selector (0-1-0) and put an
+   8px radius back on the mark. That rule is gone, so the square intent stated
+   here is now what actually paints. */
 .landing-brand-img {
   height: 34px;
   width: 40px;
@@ -237,7 +239,6 @@ body.coralgpt-scroll {
 .landing-shot {
   margin: 0;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
   overflow: hidden;
   background: var(--bg-secondary);
   box-shadow: var(--shadow-lg);
@@ -444,7 +445,6 @@ body.coralgpt-scroll {
 .landing-token-card {
   padding: 32px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
   background: var(--bg-secondary);
   text-align: center;
 }
@@ -808,6 +808,10 @@ body.coralgpt-scroll {
   margin-top: 16px;
 }
 
+/* KEPT RADIUS (exception to the square sweep). This is a true capsule, not a
+   rounded rectangle: the radius is exactly half the track height, which is the
+   shape a progress track means. It is also a 4px hairline, so the geometry does
+   not read as "roundness" next to the square Basecoat components around it. */
 .waitlist-progress {
   height: 4px;
   border-radius: 2px;

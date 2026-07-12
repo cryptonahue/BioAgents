@@ -254,7 +254,6 @@ body {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border-radius: 8px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -406,7 +405,6 @@ body {
 .kbd {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
   font-family: monospace;
@@ -709,7 +707,6 @@ body {
 
 .settings-section {
   border: 1px solid var(--border-color);
-  border-radius: 12px;
   background: var(--bg-secondary);
   padding: 20px;
 }
@@ -773,7 +770,6 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -955,7 +951,6 @@ body {
 .message-content code {
   background: var(--bg-tertiary);
   padding: 3px 6px;
-  border-radius: 6px;
   font-family:
     "JetBrains Mono", "Fira Code", "SF Mono", "Monaco", "Cascadia Code",
     "Courier New", monospace;
@@ -967,7 +962,6 @@ body {
 .message-content pre {
   background: var(--bg-tertiary);
   padding: 16px 18px;
-  border-radius: 10px;
   overflow-x: auto;
   margin: 16px 0;
   border: 1px solid var(--border-color);
@@ -1219,7 +1213,6 @@ body {
   width: 64px;
   height: 64px;
   background: transparent;
-  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1463,7 +1456,6 @@ body {
   width: 64px;
   height: 64px;
   background: transparent;
-  border-radius: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1509,7 +1501,6 @@ body {
 .login-form {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
 }
@@ -1788,7 +1779,6 @@ textarea:not(.textarea)::placeholder {
   padding: 6px 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -1808,7 +1798,6 @@ textarea:not(.textarea)::placeholder {
   padding: 8px 14px;
   background: transparent;
   border: none;
-  border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
   font-family: "Inter", inherit;
@@ -1933,7 +1922,6 @@ textarea:not(.textarea)::placeholder {
 
 .file-chips-container::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 3px;
 }
 
 .file-chips-container::-webkit-scrollbar-thumb:hover {
@@ -2000,7 +1988,6 @@ textarea:not(.textarea)::placeholder {
   max-width: 500px;
   background: var(--bg-secondary);
   backdrop-filter: blur(20px);
-  border-radius: 12px;
   font-size: 14px;
   box-shadow: var(--shadow-lg);
   z-index: 1000;
@@ -2029,7 +2016,6 @@ textarea:not(.textarea)::placeholder {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
   flex-shrink: 0;
 }
 
@@ -2049,7 +2035,6 @@ textarea:not(.textarea)::placeholder {
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.2s;
@@ -2509,7 +2494,6 @@ a:focus-visible > .external-link-icon {
   max-width: 420px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 14px;
   padding: 22px;
   box-shadow: var(--shadow-lg);
 }

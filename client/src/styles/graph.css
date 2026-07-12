@@ -216,7 +216,6 @@
   gap: 6px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 999px;
   padding: 4px 12px;
   font-size: 12px;
   color: var(--muted-foreground);
@@ -240,7 +239,6 @@
 .graph-legend-swatch {
   width: 14px;
   height: 3px;
-  border-radius: 2px;
   background: var(--border-strong);
 }
 
@@ -299,7 +297,6 @@
 .graph-fact {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
 }
