@@ -1474,12 +1474,51 @@ body {
   padding: 0 32px;
 }
 
+/**
+ * THE COMPOSER — LYRA'S LOOK, WITHOUT WEARING `.input-group`.
+ *
+ * Slice 3's measurements of `.input-group` were right and are not being undone.
+ * The class DOES square the box, but it also forces `h-8` on anything that is not
+ * a direct-child textarea, re-sizes every button inside it to `size-6`, drops the
+ * inner control to `text-xs` (12px) with `px-2.5 py-1`, and — because it paints
+ * its own `focus-within:ring-1 ring-ring/50` — takes the brand-green glow with
+ * it. This is a 900px multi-line composite with a toolbar, not a 32px control.
+ *
+ * The wrong conclusion was "so leave it hand-written". The right one is the move
+ * slice 2 already made for the dialog panel: a STRUCTURAL SHELL that consumes the
+ * pack's tokens and geometry instead of wearing its component class. So:
+ *
+ *   SQUARE. `border-radius: 0`, the pack's geometry. Lyra hard-codes
+ *   `rounded-none` 71 times and never reads `--radius`; a 12px box was the single
+ *   loudest way this surface announced it was not wearing Basecoat.
+ *
+ *   `--input`, NOT `--border-color`. Lyra borders every control — `.input`,
+ *   `.textarea`, `.input-group`, `select.select` — with `border-input`, and
+ *   reserves `--border` for SURFACE hairlines (cards, tables, dividers). The
+ *   composer is a control. It now reads the same token every other control in
+ *   the app reads, so a token retune moves it with them.
+ *
+ *   `transition-colors`, NOT `transition: all`. Lyra's own is `transition-colors`,
+ *   and `all` is what makes an `outline-width` animate 0 -> 2px and read as a
+ *   missing focus ring for the first ~300ms.
+ *
+ * WHAT DOES NOT CHANGE IS THE GLOW. `:focus-within` still paints the brand-green
+ * border and the 3px `--accent-light` halo — Lyra's `ring-ring/50` idiom would
+ * have replaced a brand signal with a neutral one. Measured in Chromium after a
+ * real click into the textarea, in both themes: `box-shadow` computes to
+ * `rgba(16, 185, 129, 0.1) 0px 0px 0px 3px`, unchanged from before the migration.
+ * It fires for any focused descendant, so the buttons slice 5 migrated keep it
+ * too.
+ */
 .input-box {
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border: 1px solid var(--input);
+  border-radius: 0;
   background: var(--bg-secondary);
   padding: 16px;
-  transition: all 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .input-box:focus-within {
@@ -1579,7 +1618,7 @@ textarea:not(.textarea)::placeholder {
   align-items: center;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 2px;
   gap: 2px;
 }
@@ -1591,7 +1630,7 @@ textarea:not(.textarea)::placeholder {
   padding: 6px 12px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--text-secondary);
   font-size: 12px;
   font-family: "Inter", inherit;
@@ -1708,7 +1747,7 @@ textarea:not(.textarea)::placeholder {
   padding: 6px 10px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 12px;
   color: var(--text-secondary);
   transition: all 0.2s;
@@ -1738,7 +1777,7 @@ textarea:not(.textarea)::placeholder {
   margin-bottom: 12px;
   padding: 12px;
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border-color);
 }
 
@@ -1769,7 +1808,7 @@ textarea:not(.textarea)::placeholder {
   font-size: 12px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 0;
   transition: all 0.15s;
 }
 
@@ -1838,7 +1877,7 @@ textarea:not(.textarea)::placeholder {
   inset: 0;
   background: var(--accent-light);
   border: 2px dashed var(--accent-color);
-  border-radius: 16px;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2082,7 +2121,16 @@ textarea:not(.textarea)::placeholder {
     padding: 0 20px;
   }
 
-  textarea {
+  /* THE `:not(.textarea)` IS LOAD-BEARING HERE TOO, and this one was MISSED when
+     its unlayered twin at `textarea:not(.textarea)` was scoped. A bare element
+     selector is unlayered, so below 768px it beat Basecoat's `.textarea` (which
+     lives in `@layer components`) on EVERY migrated textarea in the app —
+     re-imposing a 75px right padding meant for the old composer's absolutely
+     positioned send button, on controls that no longer have one. Layer order
+     decides this before specificity is consulted; the class on the element is
+     irrelevant. Scoped, not deleted: it still dresses the two textareas that are
+     deliberately not migrated (the composer's and the waitlist form's). */
+  textarea:not(.textarea) {
     padding: 12px 75px 12px 14px;
     font-size: 14px;
   }
