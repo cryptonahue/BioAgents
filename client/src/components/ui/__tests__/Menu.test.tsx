@@ -64,17 +64,56 @@ function fakeItem(disabled = false, ariaDisabled: string | null = null): FakeIte
   };
 }
 
+/** The selector `Menu.tsx` resolves its trigger with. Kept verbatim: broadening
+ *  it is what lets a non-`<button>` trigger (an `<a>` carrying
+ *  `aria-haspopup`) resolve, and the test has to fail if it narrows again. */
+const TRIGGER_SELECTOR = ":scope > button, :scope > [aria-haspopup]";
+const POPOVER_SELECTOR = ":scope > [data-popover]";
+
+interface FakeRootOptions {
+  /** What the DOM says AT CALLBACK TIME — not the `open` prop. See afterPaint. */
+  popoverOpen?: boolean;
+  /** Drop the trigger to construct the broken contract Finding 4 is about. */
+  withTrigger?: boolean;
+}
+
 /** A stand-in for the `.dropdown-menu` element the handlers query. */
-function fakeRoot(items: FakeItem[], activeElement: unknown = null) {
+function fakeRoot(
+  items: FakeItem[],
+  activeElement: unknown = null,
+  { popoverOpen = true, withTrigger = true }: FakeRootOptions = {},
+) {
   const trigger = { focused: false, focus() { this.focused = true; } };
+  const popover = {
+    getAttribute: (name: string) =>
+      name === "aria-hidden" ? String(!popoverOpen) : null,
+  };
   return {
     trigger,
-    querySelector: (selector: string) =>
-      selector === ":scope > button" ? trigger : null,
+    querySelector: (selector: string) => {
+      if (selector === TRIGGER_SELECTOR) return withTrigger ? trigger : null;
+      if (selector === POPOVER_SELECTOR) return popover;
+      return null;
+    },
     querySelectorAll: () => items,
     contains: (node: unknown) => items.includes(node as FakeItem) || node === trigger,
     ownerDocument: { activeElement },
   };
+}
+
+/** Capture whatever `fn` writes to `console.error`. */
+function captureErrors(fn: () => void): unknown[][] {
+  const original = console.error;
+  const calls: unknown[][] = [];
+  console.error = (...args: unknown[]) => {
+    calls.push(args);
+  };
+  try {
+    fn();
+  } finally {
+    console.error = original;
+  }
+  return calls;
 }
 
 interface FakeEvent {
@@ -381,5 +420,63 @@ describe("Menu — the keyboard contract that replaces dropdown-menu.js", () => 
       closed += 1;
     }).onFocusOut({ currentTarget: root, relatedTarget: null });
     expect(closed).toBe(1);
+  });
+});
+
+/* ------------------------------------------------- THE CONTRACTS, ENFORCED */
+
+describe("Menu — the trigger contract fails LOUDLY, not silently", () => {
+  it("screams when the trigger cannot be resolved, instead of dropping focus", () => {
+    let closed = false;
+    const root = fakeRoot([fakeItem()], null, { withTrigger: false });
+
+    // A caller who wrapped the trigger in a layout div, or used a plain <span>.
+    // The menu still closes — a dropped focus is a degradation, not a reason to
+    // throw inside a keydown handler and take the page's interaction down — but
+    // it is now impossible to ship without noticing.
+    const errors = captureErrors(() => {
+      wrapper(true, () => {}, () => {
+        closed = true;
+      }).onKeyDown(keyEvent("Escape", root));
+    });
+
+    expect(closed).toBe(true);
+    expect(errors.length).toBe(1);
+    expect(String(errors[0][0])).toContain("[DropdownMenu] No trigger found");
+  });
+
+  it("resolves a non-<button> trigger that carries aria-haspopup", () => {
+    // `menuTriggerProps()` stamps `aria-haspopup="menu"` on whatever the caller
+    // uses. An <a> trigger is a legitimate shape; the old `:scope > button`
+    // selector returned null for it and said nothing.
+    const link = { focused: false, focus() { this.focused = true; } };
+    const root = {
+      querySelector: (selector: string) =>
+        selector === TRIGGER_SELECTOR ? link : null,
+      querySelectorAll: () => [] as FakeItem[],
+      contains: () => false,
+      ownerDocument: { activeElement: null },
+    };
+
+    const errors = captureErrors(() => {
+      wrapper(true, () => {}, () => {}).onKeyDown(keyEvent("Escape", root));
+    });
+
+    expect(link.focused).toBe(true);
+    expect(errors.length).toBe(0);
+  });
+
+  it("does not focus an item when the menu closed before the frame arrived", async () => {
+    // ArrowDown queues the focus for two frames' time; Escape within those two
+    // frames (~32ms, reachable with key repeat) closes the menu first. The
+    // queued callback must notice — the DOM's `aria-hidden`, not the stale
+    // `open` prop it captured, is what it asks.
+    const items = [fakeItem(), fakeItem()];
+    const root = fakeRoot(items, null, { popoverOpen: false });
+
+    wrapper(false, () => {}, () => {}).onKeyDown(keyEvent("ArrowDown", root));
+    await nextFrame();
+
+    expect(items.some((item) => item.focused)).toBe(false);
   });
 });

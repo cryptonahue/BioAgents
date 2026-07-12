@@ -117,9 +117,57 @@ function menuItems(root: HTMLElement): HTMLElement[] {
   );
 }
 
-/** The trigger `<button>` of `root` — always its first element child. */
+/**
+ * The selector the trigger contract is written in, and the only place it is
+ * spelled out. `[aria-haspopup]` is in it because `menuTriggerProps()` stamps
+ * exactly that attribute on whatever the caller uses as a trigger — so an `<a>`
+ * or a `<summary>` trigger resolves here just as a `<button>` does, as long as it
+ * is a DIRECT CHILD of the wrapper. The `:scope >` half is not negotiable: Lyra
+ * reaches the popover through `.dropdown-menu > [data-popover]`, a child
+ * selector, so a trigger wrapped in a layout div would break the SKIN as well as
+ * this lookup.
+ */
+const TRIGGER_SELECTOR = ":scope > button, :scope > [aria-haspopup]";
+
+/**
+ * The trigger of `root` — its first matching element child.
+ *
+ * FAILS LOUDLY. `closeToTrigger()` used to call `menuTrigger(root)?.focus()`, and
+ * the optional chain swallowed a null: the menu closed, focus fell to `<body>`,
+ * and a keyboard user pressing Escape silently lost their place — no throw, no
+ * warning, nothing to grep for. A contract that is only documented is not
+ * enforced. It does not THROW, because a dropped focus is a degradation and a
+ * thrown error inside a keydown handler would take the whole page's interaction
+ * down with it; a `console.error` naming the element is loud enough to be
+ * impossible to miss in development and harmless in production.
+ */
 function menuTrigger(root: HTMLElement): HTMLElement | null {
-  return root.querySelector<HTMLElement>(":scope > button");
+  const trigger = root.querySelector<HTMLElement>(TRIGGER_SELECTOR);
+  if (!trigger) {
+    console.error(
+      "[DropdownMenu] No trigger found. The trigger must be a DIRECT child of " +
+        `.dropdown-menu and match \`${TRIGGER_SELECTOR}\` — spread ` +
+        "menuTriggerProps() onto it and do not wrap it in a layout div. " +
+        "Focus cannot be returned to it, so Escape and item activation will " +
+        "drop focus onto <body>.",
+      root,
+    );
+  }
+  return trigger;
+}
+
+/**
+ * Is `root`'s popover open, as far as the DOM Preact has actually painted is
+ * concerned?
+ *
+ * `open` is a prop, and by the time a deferred callback runs (see `afterPaint`)
+ * the caller may have closed the menu — the prop the callback captured is stale.
+ * The popover's own `aria-hidden` is not: Preact re-rendered it. So the DOM is
+ * the source of truth for "is it still open two frames later".
+ */
+function isMenuOpen(root: HTMLElement): boolean {
+  const popover = root.querySelector<HTMLElement>(":scope > [data-popover]");
+  return !!popover && popover.getAttribute("aria-hidden") !== "true";
 }
 
 /**
@@ -205,6 +253,14 @@ export function DropdownMenu({
         // cannot take focus. So the focus call has to wait for Preact to paint
         // the open state — one frame, not a guess at a timeout.
         afterPaint(() => {
+          // The menu may already be CLOSED again by the time this runs: ArrowDown
+          // then Escape inside two frames (~32ms — trivially reachable with key
+          // repeat) queues this callback and then hides the panel before it
+          // fires. Focusing an item inside a `visibility: hidden` panel happens
+          // to be a silent no-op today, so the outcome was benign — but that is
+          // an accident of the CSS, not a decision. Ask the DOM whether the menu
+          // is still open, and if it is not, do nothing on purpose.
+          if (!isMenuOpen(root)) return;
           const items = menuItems(root);
           (toLast ? items[items.length - 1] : items[0])?.focus();
         });
