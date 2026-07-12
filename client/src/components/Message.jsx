@@ -80,7 +80,10 @@ export function Message({ message }) {
             <div className="message-files">
               {showCompact ? (
                 // Compact view for many files
-                <div className="message-file-badge message-file-summary">
+                <div
+                  className="badge message-file-badge message-file-summary"
+                  data-tone="brand"
+                >
                   <Icon name="folder" size={14} />
                   <span className="file-name">
                     {files.length} files attached
@@ -92,7 +95,11 @@ export function Message({ message }) {
               ) : (
                 // Show individual files when 3 or fewer
                 files.map((file, index) => (
-                  <div key={index} className="message-file-badge">
+                  <div
+                    key={index}
+                    className="badge message-file-badge"
+                    data-tone="brand"
+                  >
                     <Icon name={getFileIcon(file.mimeType)} size={14} />
                     <span className="file-name">
                       {file.name || file.filename}
@@ -198,11 +205,24 @@ export function Message({ message }) {
     );
   }
 
+  // NO AVATAR HERE, AND THAT IS A DELETION, NOT AN OMISSION.
+  //
+  // This component used to render `<div class="avatar {user|assistant}">` with a
+  // bot/user icon inside it. `global.css` set `.avatar { display: none }` — with
+  // no override anywhere — so the element has NEVER been painted. It was dead
+  // markup, and the rule that killed it was UNLAYERED, which meant it also beat
+  // Basecoat's own `.avatar` component (Lyra puts it in `@layer components`) and
+  // would have silently hidden any real avatar added anywhere in the app.
+  //
+  // Both are gone. The app's one REAL avatar — the account initial in the sidebar
+  // footer — now wears Lyra's `.avatar`; see `Sidebar.jsx`.
+  //
+  // Turning this one back ON would be a redesign, not a migration: the chat is a
+  // full-bleed 900px column with `gap: 0` and the user's bubble is right-aligned,
+  // so a left-hand avatar has nowhere coherent to sit. That is a product decision
+  // and it is not this slice's to take.
   return (
     <div className={`message ${isUser ? "user" : "assistant"}`}>
-      <div className={`avatar ${isUser ? "user" : "assistant"}`}>
-        <Icon name={isUser ? "user" : "bot"} size={16} />
-      </div>
       <div className="message-content-container">{renderContent()}</div>
     </div>
   );

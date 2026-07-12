@@ -5,6 +5,31 @@ import { parseCitationsFromText, extractDomainName } from '../utils/parseCitatio
 import { openProvenanceLightbox, openProvenanceInTab } from '../utils/provenanceTrigger';
 
 /**
+ * Render markdown to sanitized HTML, giving any table Basecoat's `.table`.
+ *
+ * `marked` emits a BARE `<table>` with no attributes and no wrapper, so a Basecoat
+ * table cannot be asked for at the call site the way every other component in this
+ * app can — there is no JSX here, only an HTML string. Decorating that string is
+ * the only seam. The `<table>` tag `marked` produces is always attribute-less and
+ * markdown tables cannot nest, so the two substitutions are exact.
+ *
+ * `.table-container` is not cosmetic. Lyra's `.table` sets `whitespace-nowrap` on
+ * every `th`/`td` and relies on the container's `overflow-x-auto` to scroll a wide
+ * table. The hand-written skin this replaces had NEITHER — a wide markdown table
+ * (and a table of measurements is exactly that) simply overflowed the message
+ * column with no way to reach the right-hand cells. The container is the fix.
+ *
+ * Runs BEFORE DOMPurify, so the markup we add is sanitized like everything else.
+ * DOMPurify keeps `div` and `class` by default.
+ */
+function renderMarkdown(text) {
+  const html = marked(text)
+    .replace(/<table>/g, '<div class="table-container"><table class="table">')
+    .replace(/<\/table>/g, '</table></div>');
+  return DOMPurify.sanitize(html);
+}
+
+/**
  * Component that renders text with inline citations
  * Citations format: [text]{url1,url2}
  * Renders as: text[1] with hover preview
@@ -93,12 +118,10 @@ export function InlineCitationText({ content }) {
   // If no citations found, render normally with cleaned content
   if (citations.length === 0) {
     const { textWithoutCitations } = parseCitationsFromText(content);
-    const rawHtml = marked(textWithoutCitations);
-    const sanitizedHtml = DOMPurify.sanitize(rawHtml);
     return (
       <div
         className="message-content"
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(textWithoutCitations) }}
       />
     );
   }
@@ -280,16 +303,13 @@ export function InlineCitationText({ content }) {
 
 
   // Render markdown with citations removed, then inject buttons via DOM manipulation
-  const rawHtml = marked(contentWithAnchors);
-  const sanitizedHtml = DOMPurify.sanitize(rawHtml);
-
   return (
     <div className="message-content-with-citations">
       {/* Render content - citations will be injected as buttons */}
       <div
         ref={contentRef}
         className="message-content"
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(contentWithAnchors) }}
       />
 
       {/* Hover preview card - positioned above button */}

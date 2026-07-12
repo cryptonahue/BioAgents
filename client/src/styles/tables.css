@@ -1,15 +1,23 @@
 /**
  * Basecoat table overrides.
  *
- * The three data tables in the client — the admin contradiction queue, the admin
- * dedup audit log and the corpus file list — now render Basecoat's `.table` inside
- * a `.table-container`, so the app's `.admin-table*` and `.corpus-file-table*`
- * skins are gone. Nothing else referenced them.
+ * FOUR tables in the client — the admin contradiction queue, the admin dedup audit
+ * log, the corpus file list, and now the MARKDOWN TABLES in the assistant's chat
+ * answers — render Basecoat's `.table` inside a `.table-container`, so the app's
+ * `.admin-table*`, `.corpus-file-table*` and `.message-content table` skins are all
+ * gone. Nothing else referenced them.
  *
- * NOT MIGRATED, on purpose: `.message-content table` in `global.css`. Those tables
- * are produced by the markdown renderer from assistant output, so there is no call
- * site to put a `.table` class on. They keep their hand-written skin until the
- * renderer grows a class hook.
+ * The markdown ones were the holdout, and this file used to say so: "there is no
+ * call site to put a `.table` class on … until the renderer grows a class hook."
+ * The renderer grew one. `marked` emits a bare `<table>` into an HTML string, so
+ * the hook is not JSX — `InlineCitationText.jsx` decorates the string before it is
+ * sanitized. That also gets those tables into a `.table-container`, which they
+ * never had: Lyra's cells are `whitespace-nowrap` and depend on the container to
+ * scroll, and a wide table of measurements used to simply overflow the message.
+ *
+ * The rules below therefore now apply to assistant output too. The small-caps
+ * `<th>` is the intended consequence: a markdown table in a chat answer is a data
+ * table, and it should read as one.
  *
  * As in `buttons.css`, the base layer carries the normalization Basecoat assumes
  * Preflight provides, and everything below it is unlayered.

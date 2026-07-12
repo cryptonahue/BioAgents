@@ -1,11 +1,9 @@
-import { Icon } from './icons/Icon';
-
 export function TypingIndicator() {
+  // The `.avatar` div this used to render was `display: none` in `global.css` and
+  // had never been painted. It is gone, with the rule that hid it. See the note in
+  // `Message.jsx`.
   return (
     <div className="message assistant">
-      <div className="avatar assistant">
-        <Icon name="bot" size={16} />
-      </div>
       <div className="message-content">
         <div className="typing-indicator">
           <span></span>

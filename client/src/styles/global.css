@@ -809,20 +809,40 @@ body {
   padding: 16px 32px;
 }
 
+/*
+ * THE USER'S BUBBLE IS NOT A LYRA `.card`, AND IT IS NOT SUPPOSED TO BE.
+ *
+ * `.card` is `flex flex-col gap-4 py-4` with a `> header` / `> section` /
+ * `> footer` contract, and it carries the `ring-1` hairline that says "this is a
+ * content surface". A chat bubble has none of that shape. Worse, it would trip the
+ * NO CARD INSIDE A CARD rule `surfaces.css` documents: an assistant turn already
+ * contains real `.card`s (the artifact viewer, the research panel, the suggested
+ * steps), so making the turn itself a card would nest two of them, and the `gap-4`
+ * would compose with the children's own margins and double every gap.
+ *
+ * So it takes the OTHER half of the house idiom — the one the composer and the
+ * dialog panel already use: consume the tokens, wear Lyra's geometry, skip the
+ * class.
+ *
+ *   - SQUARE. The 18px radius is gone. Lyra hard-codes `rounded-none` 71 times and
+ *     never reads `--radius` (which is INERT in this build; see `theme.css`). A
+ *     rounded bubble was the last round corner left in /chat and it read as a
+ *     leftover from the pre-Basecoat skin, because that is what it was.
+ *   - `--muted` + a `--border` hairline, rather than `--bg-hover` and no edge.
+ *     `--bg-hover` is the legacy bridge's fourth surface step and exists for HOVER
+ *     states; a resting surface in this design system is `--muted`, and every other
+ *     resting surface in the app carries the hairline that makes it an object.
+ */
 .message.user .message-content {
-  background: var(--user-msg-bg);
+  background: var(--muted);
+  border: 1px solid var(--border);
   padding: 12px 18px;
-  border-radius: 18px;
   max-width: fit-content;
   margin-left: auto;
 }
 
 .message.assistant {
   background: transparent;
-}
-
-.avatar {
-  display: none;
 }
 
 .message-content {
@@ -919,6 +939,11 @@ body {
   margin: 6px 0;
 }
 
+/* `--accent-ink`, not `--accent-color`. The brand green is a FILL token: `#10b981`
+   as text on this chip's `--muted` fill measures 2.42:1 in light and fails WCAG AA
+   outright. `--accent-ink` (emerald-700) is the measured text step and clears it.
+   Same substitution as `.message-timestamp` above already made, and the same one
+   the link below needs. */
 .message-content code {
   background: var(--bg-tertiary);
   padding: 3px 6px;
@@ -927,7 +952,7 @@ body {
     "JetBrains Mono", "Fira Code", "SF Mono", "Monaco", "Cascadia Code",
     "Courier New", monospace;
   font-size: 13px;
-  color: var(--accent-color);
+  color: var(--accent-ink);
   border: 1px solid var(--border-color);
 }
 
@@ -979,28 +1004,28 @@ body {
   max-width: fit-content;
 }
 
-.message-file-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-/* `--accent-rgb` was never defined anywhere, so `rgba(var(--accent-rgb), 0.1)`
-   was an invalid value the parser dropped: these two badges have had NO
-   background at all. `--accent-light` is already the brand tint at the same
-   alpha, and `--accent-soft` is the one-step-stronger tint meant for filled
-   chips — so the tokens close the bug without introducing a new name. */
-.message.user .message-file-badge {
-  background: var(--accent-light);
-  border-color: var(--accent-color);
-}
-
+/*
+ * THE ATTACHED-FILE CHIP IS BASECOAT'S `.badge`, `data-tone="brand"`.
+ *
+ * An earlier slice skipped this one on the grounds that it has a nested remove
+ * `<button>` and that Lyra's `.badge` is `h-5` + `overflow-hidden`, which would
+ * clip it. RE-EXAMINED, AND THE PREMISE WAS WRONG: `.message-file-badge` has NO
+ * nested button. It is an icon, a name and a size, and nothing else — grep
+ * `Message.jsx`. The remove button lives on the COMPOSER's `.file-preview-item`
+ * (`ChatInput.jsx`), which is a DIFFERENT class that merely shares the `.file-name`
+ * / `.file-size` children. The hazard was real; it was attributed to the wrong
+ * element, and it cost this chip six slices of being the last hand-painted pill in
+ * /chat.
+ *
+ * `overflow-hidden` is genuinely on Lyra's `.badge`, and it is fine here — the
+ * ellipsis is on `.file-name`'s own `max-width`, not on the badge box, so the name
+ * truncates before the badge ever has to clip it.
+ *
+ * What is left is TYPOGRAPHY and TRUNCATION only. The fill, the ink, the border,
+ * the radius, the gap and the height all come from `.badge` + the brand tone now:
+ * `.message-file-badge`'s own skin, and the `.message.user` override that painted
+ * it, are both gone.
+ */
 .message-file-badge .file-name {
   color: var(--text-primary);
   font-weight: 500;
@@ -1015,9 +1040,11 @@ body {
   font-size: 10px;
 }
 
-.message-file-summary {
-  background: var(--accent-soft);
-  border-color: var(--accent-color);
+/* The many-files roll-up. One step stronger than `data-tone="brand"`'s tint, so a
+   summary chip reads as heavier than the individual chips it stands in for — the
+   only thing the tone does not already say. */
+.badge.message-file-summary {
+  background-color: var(--accent-soft);
 }
 
 .message-file-summary .file-name {
@@ -1032,35 +1059,38 @@ body {
   font-style: italic;
 }
 
+/* The AA fix `.message-content code` documents, applied to the other place the
+   brand FILL token was being used as TEXT. `--accent-color` on `--background` is
+   2.54:1; every DOI and source link the agent cites was rendering below the floor.
+   `--accent-hover` (`#059669`) is no better — 3.68:1 — so hover cannot recolor
+   either, and says what it has to say with the underline instead. */
 .message-content a {
-  color: var(--accent-color);
+  color: var(--accent-ink);
   text-decoration: none;
   transition: all 0.2s;
 }
 
 .message-content a:hover {
-  color: var(--accent-hover);
   text-decoration: underline;
   text-shadow: 0 0 8px var(--accent-glow);
 }
 
-.message-content table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 16px 0;
-}
-
-.message-content th,
-.message-content td {
-  border: 1px solid var(--border-color);
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.message-content th {
-  background: var(--bg-tertiary);
-  font-weight: 600;
-}
+/*
+ * MARKDOWN TABLES ARE BASECOAT'S `.table`, AND THIS BLOCK IS THE SKIN THAT WENT.
+ *
+ * `.message-content table` / `th` / `td` used to paint a full 1px grid with a
+ * `--bg-tertiary` header. They are DELETED, and they had to be: they are unlayered
+ * descendant selectors, and unlayered CSS beats Basecoat's `@layer components`
+ * regardless of specificity — so leaving them in place would have silently overruled
+ * Lyra's `.table` on the very element being migrated. This is the trap `theme.css`
+ * and `global.css`'s `textarea:not(.textarea)` both already record; it applies to
+ * `.parent element` selectors exactly as it does to bare ones.
+ *
+ * `marked` emits a bare `<table>`, so the class cannot come from JSX. It is added
+ * to the HTML string in `InlineCitationText.jsx`, which also wraps it in Lyra's
+ * `.table-container` — see the note there for why that wrapper is a bug fix and not
+ * a decoration.
+ */
 
 /* Typing indicator */
 .typing-indicator {
