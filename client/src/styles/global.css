@@ -1700,6 +1700,24 @@ textarea:not(.textarea)::placeholder {
   color: var(--text-primary);
 }
 
+/*
+ * The composer's mode switcher is NOT a tablist and is deliberately not migrated
+ * to `.tabs`: it selects the mode of the message you are ABOUT to send, and
+ * switches no panel. Calling it `role="tab"` would be a lie to assistive tech.
+ * It is also not a Basecoat button variant — the selected segment is a SOLID
+ * brand fill, and every `data-tone` in this project is a tint — so forcing it
+ * into `.btn` would mean either changing the design or inventing a tenth tone.
+ *
+ * What it DID inherit from slice 5 is the defect: with the app's buttons migrated,
+ * these two were left as the only controls in the composer still announcing focus
+ * with the UA's `auto 1px` ring. That part is worth fixing on its own, so it gets
+ * the same 2px `--ring` indicator as every other focusable control here.
+ */
+.mode-option:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .mode-option:disabled {
   opacity: 0.4;
   cursor: not-allowed;
