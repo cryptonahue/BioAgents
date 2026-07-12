@@ -293,6 +293,18 @@ body {
   gap: 4px;
 }
 
+/* The collapsed rail's controls (expand + theme toggle). LAYOUT ONLY — the
+   buttons keep Lyra's `icon-sm` box and its focus ring; this rule just stacks
+   them down the 60px rail instead of across the 260px header row, and centres
+   them. It replaces the inline `margin: 0 auto` the lone expand button used to
+   carry. */
+.sidebar-rail-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Hide mobile close button on desktop */
 .mobile-close-btn {
   display: none;

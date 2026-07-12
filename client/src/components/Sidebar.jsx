@@ -283,14 +283,23 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
           </>
         )}
         {isCollapsed && (
-          <IconButton
-            icon="chevronRight"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            title="Expand sidebar"
-            variant="ghost"
-            className="toggle-sidebar-btn"
-            style={{ margin: '0 auto' }}
-          />
+          // The collapsed rail. Every control that must stay reachable while the
+          // sidebar is 60px wide lives here, stacked and centred — the expand
+          // button, and the theme toggle. The toggle is rendered in exactly ONE
+          // other place (`sidebar-header-actions` above), inside the
+          // `!isCollapsed` branch, so without this copy collapsing the sidebar
+          // made the theme impossible to change at all. Same component, same
+          // `aria-label`, same focus ring; only the row it sits in differs.
+          <div className="sidebar-rail-actions">
+            <IconButton
+              icon="chevronRight"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title="Expand sidebar"
+              variant="ghost"
+              className="toggle-sidebar-btn"
+            />
+            <ThemeToggle />
+          </div>
         )}
       </div>
 
