@@ -444,14 +444,40 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               onOpen={() => setUserMenuOpen(true)}
               onClose={() => setUserMenuOpen(false)}
             >
+              {/* The account pill is a ghost `.btn`, the same variant and size as
+                  the nav buttons above it — which is why the footer no longer reads
+                  as a pre-Basecoat leftover.
+
+                  IT MUST STAY A DIRECT CHILD OF `.dropdown-menu`. `Menu.tsx` resolves
+                  the trigger with `:scope > button, :scope > [aria-haspopup]` and
+                  `console.error`s if it cannot find one (Escape would silently drop
+                  focus onto <body>), and Lyra reaches the popover through
+                  `.dropdown-menu > [data-popover]`, a child selector. Do not wrap it
+                  in a layout div.
+
+                  There is no `open` class any more. `menuTriggerProps()` already
+                  stamps `aria-expanded`, and Lyra's ghost variant keys
+                  `aria-expanded:bg-muted` off exactly that — so the open state, which
+                  the removed class existed to paint, now paints itself from the ARIA
+                  the trigger was already rendering. The chevron rotation keys off the
+                  same attribute. */}
               <button
                 type="button"
-                className={`sidebar-user-trigger${userMenuOpen ? ' open' : ''}`}
+                className="btn sidebar-user-trigger"
+                data-variant="ghost"
+                data-size="lg"
                 onClick={() => setUserMenuOpen((open) => !open)}
                 title={userEmail || 'Account'}
                 {...menuTriggerProps(USER_MENU, userMenuOpen)}
               >
-                <span className="sidebar-user-avatar">{avatarInitial}</span>
+                {/* Basecoat's `.avatar`. Lyra gives it `rounded-full` and the
+                    `size-6` box; the initial goes in the `<span>` its rules expect
+                    (`.avatar > span:not(.avatar-badge)`). The app's only other
+                    `.avatar` was dead `display: none` markup in the chat message —
+                    see the note in `Message.jsx`. */}
+                <span className="avatar sidebar-user-avatar" data-size="sm">
+                  <span>{avatarInitial}</span>
+                </span>
                 <span className="sidebar-user-name">{username}</span>
                 <Icon name="chevronDown" size={16} className="sidebar-user-chevron" />
               </button>

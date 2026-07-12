@@ -601,50 +601,56 @@ body {
 /*
  * User menu (ChatGPT/Claude-style pill + upward popover).
  *
- * Only the PILL is still hand-written. The popover itself — panel, e-mail
- * heading, separator, items, destructive Log out — is Basecoat's `.dropdown-menu`
- * now; see `menus.css` and `components/ui/Menu.tsx`. `.sidebar-user` no longer
- * declares `position: relative` either: `.dropdown-menu` is `relative` already.
+ * THE PILL IS THE LAST PIECE, AND IT IS A GHOST `.btn` NOW. The popover — panel,
+ * e-mail heading, separator, items, destructive Log out — has been Basecoat's
+ * `.dropdown-menu` since slice 8 (`menus.css`, `components/ui/Menu.tsx`), but its
+ * TRIGGER was still hand-painted, which is why the footer went on looking
+ * pre-Basecoat while the menu it opened did not.
+ *
+ * Its whole skin is gone: the fill, the hover, the radius, the cursor, the
+ * transition and a hardcoded `font-family: "Inter"` (which was not even the app's
+ * face — everything else here is IBM Plex) all come from `.btn[data-variant=ghost]`
+ * at `data-size="lg"`, the same variant and size as the nav buttons above it.
+ *
+ * `.open` IS GONE TOO, and that is the neat part. It existed to paint the pill
+ * while the menu was open. `menuTriggerProps()` already stamps `aria-expanded` on
+ * this button, and Lyra's ghost variant carries `aria-expanded:bg-muted` — so the
+ * open state paints itself from ARIA the trigger was already rendering, and the
+ * chevron rotation keys off the same attribute instead of a parallel class.
+ *
+ * What is left is LAYOUT: `.btn` is `inline-flex`, `justify-center` and fixed
+ * height, and the pill is a full-width row that hangs its content off the left.
+ * Identical to the two-line override the nav buttons take (`.app-sidebar
+ * .sidebar-library-btn`), plus the height, because the pill is taller than a button
+ * — it holds an avatar.
  */
 .sidebar-user-trigger {
   width: 100%;
+  height: auto;
   padding: 8px 10px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
+  justify-content: flex-start;
   gap: 10px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  transition: background 0.15s ease;
 }
 
-.sidebar-user-trigger:hover,
-.sidebar-user-trigger.open {
-  background: var(--bg-hover);
-}
-
-.sidebar-user-avatar {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--accent-color);
+/*
+ * Basecoat's `.avatar`, and the app's ONLY one — the `.avatar` in the chat message
+ * was `display: none` dead markup and is deleted (see `Message.jsx`).
+ *
+ * Lyra supplies the circle (`rounded-full`, and yes a square style pack still rounds
+ * its avatars), the `size-6` box at `data-size="sm"`, the centring, and the hairline
+ * it draws with an `::after`. What it does NOT supply is the BRAND: its
+ * `.avatar > span` is `bg-muted text-muted-foreground`, a neutral grey chip. This
+ * account initial has always been the brand green, so the fill is repainted on the
+ * span Lyra styles — colour only, on top of Lyra's geometry, exactly as the
+ * `data-tone` layers in `buttons.css` and `badges.css` do.
+ *
+ * `--accent-color-foreground` is BLACK and is correct in both themes: white on
+ * `#10b981` is 2.4:1, black is 8.9:1. The text follows the FILL, not the theme.
+ */
+.sidebar-user-avatar > span {
+  background-color: var(--accent-color);
   color: var(--accent-color-foreground);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
   font-weight: 600;
-  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -666,7 +672,9 @@ body {
   transition: transform 0.15s ease;
 }
 
-.sidebar-user-trigger.open .sidebar-user-chevron {
+/* Keyed off the ARIA the trigger already renders, not off a parallel `.open` class.
+   See the note above the pill. */
+.sidebar-user-trigger[aria-expanded="true"] .sidebar-user-chevron {
   transform: rotate(180deg);
 }
 

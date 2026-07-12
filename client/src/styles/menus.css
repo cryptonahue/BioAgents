@@ -146,18 +146,14 @@
 }
 
 /*
- * The account pill's focus ring.
+ * THE ACCOUNT PILL'S FOCUS RING USED TO BE DECLARED HERE, AND NO LONGER NEEDS TO BE.
  *
- * The pill is hand-written, not a `.btn`, so it never got the ring `buttons.css`
- * gives every other control — measured here as `oklab(…) auto 1px`, i.e. the UA
- * default, in both themes. It is now the SINGLE tab stop for a menu whose items
- * are all `tabIndex={-1}`, so it is the one control a keyboard user has to be
- * able to find. The composer's "Add" trigger is a `.btn` and already had it.
+ * The rule existed because the pill was hand-written rather than a `.btn`, so it
+ * missed the ring `buttons.css` gives every other control and sat on the UA's
+ * `auto 1px` default — unacceptable for what is the SINGLE tab stop of a menu whose
+ * items are all `tabIndex={-1}`.
  *
- * Same 2px `--ring` at a 2px offset as every other focusable control in the app.
- * Outset, not inset: unlike a Lyra tab, nothing clips the pill's edges.
+ * The pill is a `.btn[data-variant="ghost"]` now, so `.btn:focus-visible` in
+ * `buttons.css` covers it, with the same 2px `--ring` at a 2px offset this rule
+ * declared. One spelling, not two.
  */
-.sidebar-user-trigger:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
