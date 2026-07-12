@@ -8,6 +8,9 @@
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
+  /* Same pre-existing override as `.admin-page`, and left alone for the same
+     reason — see the note there. This page renders in `-apple-system`, not the
+     IBM Plex Sans `body` asks for. */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 

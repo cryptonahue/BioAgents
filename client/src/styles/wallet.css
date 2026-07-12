@@ -25,7 +25,28 @@
  * The JS `onMouseOver` / `onMouseOut` handlers that reimplemented `:hover` are
  * gone; hover is a `:hover` rule, and every interactive control now has a
  * `:focus-visible` ring it previously lacked entirely.
- */
+ *
+ * ---------------------------------------------------------------------------
+ * THIS FILE WAS NEVER MIGRATED ONTO BASECOAT, AND THAT IS A KNOWN GAP.
+ *
+ * Every other surface in the app now wears Basecoat's component classes: the
+ * buttons are `.btn`, the pills are `.badge`, the callouts are `.alert`, the
+ * modals are `.dialog` on a native <dialog>. The wallet screens still carry
+ * their own hand-written `.wallet-btn`, `.wallet-chip` and `.wallet-panel`
+ * skins.
+ *
+ * The reason is honest and mechanical: these screens are gated behind CDP and
+ * the x402 payment flow, so no agent in the migration could RENDER them. The
+ * house rule across all nine slices was to measure in a real browser before
+ * changing a rule — and nobody migrates what they cannot see. Rewriting these
+ * blind, with no way to diff the result, would have been the one change in the
+ * whole migration with no oracle behind it.
+ *
+ * What this file DOES already do is share the app's tokens and the app's focus
+ * ring (`outline: 2px solid var(--ring)`, offset 2px — the same pair every
+ * migrated component uses), so the wallet does not look like a different product
+ * while it waits. Whoever can stand up a CDP/x402 session should finish the job.
+ * ------------------------------------------------------------------------ */
 
 /* ---------------------------------------------------------------------------
  * Shared

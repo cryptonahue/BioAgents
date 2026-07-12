@@ -235,3 +235,27 @@
     opacity: 1;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * NO TOOLTIP COMPONENT HERE, AND THAT IS A DECISION.
+ *
+ * Basecoat ships a `.tooltip`, and this app does not use it. The hint text on
+ * icon buttons, truncated titles and status chips is the NATIVE `title`
+ * attribute — 56 call sites across `pages/` and `components/`, ~8-22 live on any
+ * given page.
+ *
+ * Swapping them for a CSS tooltip would be an ACCESSIBILITY DOWNGRADE, not an
+ * upgrade. A `title` is announced by screen readers and shown by the browser on
+ * focus as well as hover. A CSS-only tooltip triggers on `:hover` and, with no
+ * JS, cannot be opened from the keyboard, cannot be dismissed with Escape (WCAG
+ * 1.4.13), and is invisible to assistive tech unless it is wired up with
+ * `aria-describedby`. Basecoat's own tooltip needs its JS for exactly that — and
+ * the standing rule in this project is that NO Basecoat JS is loaded, because
+ * `basecoat.js` runs a global MutationObserver on document.body and fights
+ * Preact's reconciler.
+ *
+ * So: the native tooltip is uglier and slower to appear, and it is the one that
+ * actually works for everybody. It stays until someone builds a Preact tooltip
+ * with real keyboard triggering and Escape dismissal. Do not "modernise" this by
+ * reaching for a CSS-only tooltip.
+ * ------------------------------------------------------------------------ */

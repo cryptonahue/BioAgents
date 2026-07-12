@@ -1365,7 +1365,20 @@
 }
 
 /* TYPOGRAPHY ONLY — both are `.badge[data-tone="brand"]`. The claim's status,
-   confidence and trust tier arrive as lowercase slugs and are set in caps. */
+   confidence and trust tier arrive as lowercase slugs and are set in caps.
+
+   KNOWN ASYMMETRY, PRE-EXISTING, NOT A MIGRATION BUG. `.paper-claim-status` is
+   uniformly brand-teal on PaperPage: every claim chip gets `data-tone="brand"`
+   whatever the claim actually says. ViewerPage renders the same information
+   SEMANTICALLY — it runs the status through `claimTone()`, so a contradicted
+   claim is red and an open question is amber. The two pages therefore disagree
+   about what a claim chip means.
+
+   PaperPage was already colour-blind to claim status before Basecoat; the
+   migration carried the behaviour across rather than quietly changing it, which
+   is why it is still here. Fixing it means giving PaperPage the same
+   `claimTone()` mapping — a product decision about what the paper view is FOR,
+   and a visible change. Do it deliberately, not as a drive-by. */
 .brain-claim-chip,
 .paper-claim-status {
   text-transform: uppercase;

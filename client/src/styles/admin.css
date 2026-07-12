@@ -25,6 +25,13 @@
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
+  /* PRE-EXISTING, AND LEFT ALONE ON PURPOSE. This overrides the app's face:
+     `body` asks for IBM Plex Sans, and every other page gets it, but the admin
+     page (and `.corpus-page`, which carries the same line) renders in
+     `-apple-system`. It predates the Basecoat migration and no slice introduced
+     it. Deleting the declaration would re-skin two whole pages to a different
+     typeface — a visible product change, not a cleanup, so it does not belong in
+     a slice whose contract is "pixel-identical". Decide it deliberately. */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   display: flex;
   flex-direction: column;
