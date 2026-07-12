@@ -223,13 +223,6 @@ body {
   gap: 10px;
 }
 
-.sidebar-title {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  padding: 0 4px 4px;
-  font-weight: 500;
-}
-
 .sidebar-branding {
   display: flex;
   align-items: center;
@@ -475,17 +468,6 @@ body {
   height: 20px;
   background: transparent;
   border-radius: 0 2px 2px 0;
-}
-
-.session-item-close {
-  width: 16px;
-  height: 16px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.session-item.active .session-item-close {
-  opacity: 1;
 }
 
 .session-info {
@@ -808,55 +790,6 @@ body {
   }
 }
 
-/* Highlight effect for new messages */
-.message-highlight {
-  position: relative;
-  animation: messageHighlight 1.5s ease-out;
-}
-
-/* DELIBERATE LITERALS: brand-green GLOWS. `--accent-color` and its tints are
-   frozen literals identical in both themes, and a glow is a fill, not an ink —
-   the same rule that froze the brand freezes these. They are spelled out rather
-   than tokenized because the pulse depends on animating the alpha across six
-   distinct steps, and minting six brand-glow tokens to serve two keyframe
-   blocks is token sprawl for no gain. */
-@keyframes messageHighlight {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
-    background: rgba(16, 185, 129, 0.08);
-  }
-  30% {
-    box-shadow: 0 0 25px 6px rgba(16, 185, 129, 0.25);
-    background: rgba(16, 185, 129, 0.08);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-    background: transparent;
-  }
-}
-
-/* Extra attention for highlighted user messages */
-.message.user.message-highlight .message-content {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
-  border: 1px solid var(--accent-border);
-  animation: userMessageGlow 1.5s ease-out;
-}
-
-@keyframes userMessageGlow {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-  }
-  20% {
-    transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 transparent;
-  }
-}
-
 .message.user {
   padding: 16px 32px;
 }
@@ -1112,27 +1045,6 @@ body {
 .message-content th {
   background: var(--bg-tertiary);
   font-weight: 600;
-}
-
-/* Streaming cursor */
-.streaming-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 20px;
-  background: var(--accent-color);
-  margin-left: 2px;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  51%,
-  100% {
-    opacity: 0;
-  }
 }
 
 /* Typing indicator */
@@ -2165,10 +2077,6 @@ textarea:not(.textarea)::placeholder {
     font-size: 14px;
   }
 
-  .input-actions {
-    right: 28px;
-  }
-
   .welcome-screen {
     padding: 32px 20px;
   }
@@ -2187,122 +2095,26 @@ textarea:not(.textarea)::placeholder {
   }
 }
 
-/* Thinking Steps - Real-time tool execution visualization */
-.thinking-steps {
-  max-width: 900px;
-  margin: 0 auto 16px auto;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  animation: fadeIn 0.3s ease-out;
-  overflow: hidden;
-}
-
-.thinking-steps-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  width: 100%;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  font-family: inherit;
-}
-
-.thinking-steps-header:hover {
-  background: var(--bg-tertiary);
-}
-
-.thinking-steps-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-}
-
-.thinking-steps-header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.thinking-steps-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-  color: var(--accent-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.thinking-steps-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-.thinking-steps-source {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  padding: 3px 8px;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.thinking-steps-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.thinking-steps-time {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-family:
-    "JetBrains Mono", "Fira Code", "SF Mono", "Monaco", "Cascadia Code",
-    monospace;
-  font-weight: 500;
-}
-
-.thinking-steps-chevron {
-  color: var(--text-secondary);
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-
-.thinking-steps-chevron.expanded {
-  transform: rotate(180deg);
-}
-
-.thinking-steps-thought {
-  margin: 0 20px 16px 20px;
-  padding: 12px 16px;
-  background: var(--bg-tertiary);
-  border-left: 3px solid var(--accent-color);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-  font-style: italic;
-  animation: slideDown 0.3s ease-out;
-}
-
-.thinking-steps-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 20px 16px 20px;
-  animation: slideDown 0.3s ease-out;
-}
-
+/* ---------------------------------------------------------------------------
+ * SHARED KEYFRAMES — kept, while the rules that used to declare them are gone.
+ *
+ * `slideDown`, `spin` and `pulse` were each declared INSIDE the thinking-steps /
+ * artifacts skins that used to live here. Those skins are dead and deleted (no
+ * component in the repo emits `.thinking-step*`, `.thinking-steps*`,
+ * `.artifacts-*`, `.artifact-item`, `.artifact-download-btn` or
+ * `.message-artifacts` — checked as literals AND as template-literal prefixes).
+ *
+ * The three animations, however, are NOT dead: they are referenced from OUTSIDE
+ * the block that declared them, and CSS animation names are global.
+ *
+ *   slideDown  research.css  (.research-section-body and two siblings)
+ *   spin       research.css  (the two research spinners)
+ *   pulse      this file     (.welcome-logo / .coral-welcome-logo)
+ *
+ * They live here, hoisted out of the deleted region, so those references still
+ * resolve. `pulseStep` and `streaming-pulse` went with the region: each had
+ * exactly one consumer and that consumer was itself dead.
+ * ------------------------------------------------------------------------ */
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -2314,391 +2126,10 @@ textarea:not(.textarea)::placeholder {
   }
 }
 
-.thinking-step {
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.thinking-step.complete {
-  background: var(--accent-light);
-  border-color: var(--accent-border);
-}
-
-.thinking-step-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  transition: all 0.2s ease;
-}
-
-.thinking-step.in-progress {
-  background: var(--info-subtle);
-  border-color: var(--info-border);
-  animation: pulseStep 2s ease-in-out infinite;
-}
-
-@keyframes pulseStep {
-  0%,
-  100% {
-    border-color: var(--info-border);
-  }
-  50% {
-    border-color: var(--info);
-  }
-}
-
-.thinking-step-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-primary);
-  border-radius: 6px;
-  color: var(--text-secondary);
-}
-
-.thinking-step-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-}
-
-.thinking-step-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-.thinking-step-duration {
-  font-size: 11px;
-  color: var(--text-secondary);
-  font-family:
-    "JetBrains Mono", "Fira Code", "SF Mono", "Monaco", "Cascadia Code",
-    monospace;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.thinking-step-status {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.thinking-step-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--info);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* Mobile responsiveness for thinking steps */
-@media (max-width: 768px) {
-  .thinking-steps {
-    margin: 0 16px 16px 16px;
-  }
-
-  .thinking-steps-header {
-    padding: 14px 16px;
-  }
-
-  .thinking-steps-header-left {
-    gap: 8px;
-  }
-
-  .thinking-steps-header-right {
-    gap: 8px;
-  }
-
-  .thinking-steps-icon {
-    font-size: 16px;
-  }
-
-  .thinking-steps-title {
-    font-size: 13px;
-  }
-
-  .thinking-steps-source {
-    display: none;
-  }
-
-  .thinking-steps-summary {
-    gap: 6px;
-  }
-
-  .thinking-steps-time {
-    font-size: 10px;
-  }
-
-  .thinking-steps-thought {
-    margin: 0 16px 12px 16px;
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-
-  .thinking-steps-list {
-    padding: 0 16px 12px 16px;
-    gap: 6px;
-  }
-
-  .thinking-step {
-    padding: 8px 10px;
-    gap: 8px;
-  }
-
-  .thinking-step-icon {
-    font-size: 16px;
-    width: 24px;
-    height: 24px;
-  }
-
-  .thinking-step-name {
-    font-size: 12px;
-  }
-
-  .thinking-step-duration {
-    font-size: 10px;
-  }
-}
-
-/* Inline Thinking Steps - Per-message collapsible thinking steps */
-.thinking-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  margin: 8px 0 4px 0;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.thinking-toggle-btn:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-color);
-  color: var(--text-primary);
-}
-
-.thinking-toggle-text {
-  font-weight: 500;
-  font-size: 11px;
-}
-
-.message-thinking-steps {
-  width: 100%;
-  margin-top: 8px;
-}
-
-.message-thinking-steps .thinking-steps {
-  background: var(--info-subtle);
-  border: 1px solid var(--info-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-/* Artifacts Section */
-.message-artifacts {
-  margin-top: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  overflow: hidden;
-}
-
-.artifacts-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--bg-tertiary);
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: background 0.2s;
-}
-
-.artifacts-header:hover {
-  background: var(--bg-secondary);
-}
-
-.artifacts-chevron {
-  margin-left: auto;
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-}
-
-.artifacts-chevron.expanded {
-  transform: rotate(180deg);
-}
-
-.artifacts-list {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: slideDown 0.3s ease-out;
-}
-
-.artifact-item {
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-primary);
-  overflow: hidden;
-  transition: all 0.2s;
-}
-
-.artifact-item:hover {
-  border-color: var(--accent-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.artifact-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-}
-
-.artifact-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.artifact-filename {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-.artifact-description {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-
-.artifact-download-btn {
-  padding: 8px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.artifact-download-btn:hover {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  color: var(--accent-color-foreground);
-  transform: translateY(-1px);
-}
-
-.artifact-download-btn:active {
-  transform: translateY(0);
-}
-
-.artifact-preview {
-  padding: 12px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  display: flex;
-  justify-content: center;
-}
-
-.artifact-preview img {
-  max-width: 100%;
-  max-height: 400px;
-  border-radius: 4px;
-  object-fit: contain;
-}
-
-@media (max-width: 768px) {
-  .artifacts-header {
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-
-  .artifact-info {
-    padding: 10px;
-    gap: 10px;
-  }
-
-  .artifact-filename {
-    font-size: 12px;
-  }
-
-  .artifact-description {
-    font-size: 11px;
-  }
-
-  .artifact-preview img {
-    max-height: 300px;
-  }
-}
-
-.thinking-step-inline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.thinking-step-icon-inline {
-  width: 16px;
-  text-align: center;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.thinking-step-inline.complete .thinking-step-icon-inline {
-  color: var(--accent-ink);
-}
-
-.thinking-step-inline.in-progress .thinking-step-icon-inline {
-  color: var(--info);
-  animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -2708,47 +2139,6 @@ textarea:not(.textarea)::placeholder {
   }
   50% {
     opacity: 0.5;
-  }
-}
-
-.thinking-step-name-inline {
-  flex: 1;
-  color: var(--text-primary);
-  font-size: 12px;
-}
-
-.thinking-step-duration-inline {
-  color: var(--text-tertiary);
-  font-family:
-    "JetBrains Mono", "Fira Code", "SF Mono", "Monaco", "Cascadia Code",
-    monospace;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-/* Mobile styles for inline thinking steps */
-@media (max-width: 768px) {
-  .thinking-toggle-btn {
-    padding: 3px 8px;
-    font-size: 11px;
-    gap: 4px;
-  }
-
-  .thinking-toggle-text {
-    font-size: 10px;
-  }
-
-  .message-thinking-steps {
-    padding: 6px;
-    gap: 3px;
-  }
-
-  .thinking-step-name-inline {
-    font-size: 11px;
-  }
-
-  .thinking-step-duration-inline {
-    font-size: 10px;
   }
 }
 
@@ -2888,13 +2278,6 @@ textarea:not(.textarea)::placeholder {
   -webkit-box-orient: vertical;
 }
 
-.citation-preview-count {
-  font-size: 11px;
-  color: var(--muted-foreground);
-  margin: 8px 0 0 0;
-  font-weight: 500;
-}
-
 /* Citation Navigation */
 .citation-navigation {
   display: flex;
@@ -2938,155 +2321,6 @@ textarea:not(.textarea)::placeholder {
   font-weight: 500;
   min-width: 48px;
   text-align: center;
-}
-
-/* Citation References Section */
-.citation-references {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.citation-references-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted-foreground);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 12px 0;
-}
-
-.citation-references-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.citation-reference-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.citation-reference-number {
-  color: var(--info);
-  font-weight: 600;
-  flex-shrink: 0;
-  min-width: 32px;
-}
-
-.citation-reference-domain {
-  color: var(--text-primary);
-  font-weight: 500;
-  flex-shrink: 0;
-  min-width: 100px;
-}
-
-.citation-reference-url {
-  color: var(--muted-foreground);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-  transition: color 0.2s;
-}
-
-.citation-reference-url:hover {
-  color: var(--info);
-  text-decoration: underline;
-}
-
-/* Mobile responsiveness for references */
-@media (max-width: 768px) {
-  .citation-reference-item {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .citation-reference-domain {
-    min-width: auto;
-    flex-basis: 100%;
-    margin-left: 32px;
-  }
-
-  .citation-reference-url {
-    flex-basis: 100%;
-    margin-left: 32px;
-  }
-}
-
-/* Streaming response indicator */
-.message.streaming {
-  position: relative;
-}
-
-.streaming-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 8px;
-  padding: 4px 0;
-}
-
-.streaming-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--accent-color);
-  border-radius: 50%;
-  animation: streaming-pulse 1.4s ease-in-out infinite;
-}
-
-.streaming-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.streaming-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes streaming-pulse {
-  0%,
-  60%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  30% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-}
-
-/* Thinking step collapsible chevron and details */
-.thinking-step-chevron {
-  transition: transform 0.2s ease;
-  color: var(--text-secondary);
-}
-
-.thinking-step-chevron.expanded {
-  transform: rotate(180deg);
-}
-
-.thinking-step-details {
-  margin: 0 14px 10px 14px;
-  padding: 12px;
-  background: var(--muted);
-  border-left: 2px solid var(--accent-color);
-  border-radius: 4px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 /* ---- Confirm dialog (reusable destructive-action modal) ----

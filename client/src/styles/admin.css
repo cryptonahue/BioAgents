@@ -30,28 +30,6 @@
   flex-direction: column;
 }
 
-.admin-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.admin-brand {
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--foreground);
-}
-
-.admin-topbar-links {
-  display: flex;
-  gap: 8px;
-}
-
 .admin-main {
   flex: 1;
   padding: 24px;

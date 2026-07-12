@@ -19,18 +19,6 @@
   flex-shrink: 0;
 }
 
-.library-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.library-brand-text {
-  font-size: 15px;
-}
-
 .paper-topbar-title {
   flex: 1;
   text-align: center;

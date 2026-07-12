@@ -953,16 +953,6 @@
     gap: 12px;
   }
 
-  .research-progress {
-    padding: 12px 16px;
-  }
-
-  .research-progress-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
   .research-state-header {
     padding: 12px 16px;
   }
