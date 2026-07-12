@@ -949,11 +949,6 @@ body {
   background: var(--accent-light);
 }
 
-.message-action-disabled:hover {
-  background: transparent !important;
-  color: var(--text-tertiary) !important;
-}
-
 /* Markdown styling */
 .message-content h1,
 .message-content h2,
