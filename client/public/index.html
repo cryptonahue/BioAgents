@@ -21,23 +21,34 @@
     <meta name="twitter:description" content="{{SEO_DESCRIPTION}}">
     <meta name="twitter:image" content="{{OG_IMAGE_URL}}">
     <!--
-      Theme bootstrap. Runs before first paint so a stored "light" preference
-      does not flash the dark UI (and vice versa). The <html> element ships
-      with class="dark", so doing nothing here keeps the historical dark-only
-      look. Keep the storage key in sync with client/src/contexts/ThemeContext.
+      Theme bootstrap. Runs before first paint so the resolved theme never
+      flashes the other one. It applies the SAME resolution order as
+      client/src/contexts/ThemeContext.tsx — stored preference, then the OS
+      (prefers-color-scheme), then dark — and the storage key and that order
+      must stay in sync with it. The <html> element ships with class="dark", so
+      the only work here is removing it when the resolution comes out light.
     -->
     <script>
       (function () {
+        var theme = null;
         try {
           var stored = localStorage.getItem('bioagents.theme');
-          if (stored === 'light') {
-            document.documentElement.classList.remove('dark');
-          } else if (stored === 'dark') {
-            document.documentElement.classList.add('dark');
-          }
+          if (stored === 'light' || stored === 'dark') theme = stored;
         } catch (e) {
           /* localStorage can throw in private mode / sandboxed iframes. */
         }
+        if (!theme) {
+          /* No stored choice: follow the OS. Anything that is not explicitly
+             light — dark, no-preference, or no matchMedia at all — stays dark. */
+          try {
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+          } catch (e) {
+            theme = 'dark';
+          }
+        }
+        document.documentElement.classList.toggle('dark', theme === 'dark');
       })();
     </script>
     <!-- Self-hosted IBM Plex Sans @font-face rules. Kept out of the bundled

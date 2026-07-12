@@ -8,12 +8,36 @@
  *   - The legacy token bridge in `styles/theme.css`, whose `.dark` block
  *     redefines every `--bg-*` / `--text-*` token the hand-written CSS uses.
  *
- * Default is `dark`. The app was dark-only before this provider existed, so an
- * unset preference must keep looking exactly the same.
+ * THE RESOLUTION ORDER, AND WHY IT IS A STATE MACHINE
  *
- * An inline script in `public/index.html` applies the stored preference before
- * first paint. This provider re-applies it on mount (idempotent) and owns every
- * change from then on. The storage key MUST stay in sync with that script.
+ * There are two distinct states, and they behave differently:
+ *
+ *   UNSET    — the user has never chosen a theme. `localStorage` holds nothing
+ *              valid. The theme FOLLOWS THE OS: `prefers-color-scheme: light`
+ *              renders light, anything else (dark, no-preference, or a browser
+ *              with no `matchMedia` at all) renders dark. The OS is followed
+ *              LIVE — flipping the system appearance flips the app with it,
+ *              because nothing the user said is being contradicted.
+ *   EXPLICIT — the user pressed the toggle (or something called `setTheme`).
+ *              The choice is written to `localStorage` AT THAT MOMENT, it wins
+ *              over the OS from then on, and the OS listener is torn down: a
+ *              later system change must NOT move a theme the user picked.
+ *
+ * So: stored -> OS -> dark. Dark is the last resort, not the default: the app
+ * was dark-only before light mode existed, and a browser that cannot report a
+ * preference should still look the way it always did.
+ *
+ * NOTHING IS PERSISTED UNTIL THE USER CHOOSES. An earlier version wrote the
+ * resolved theme to `localStorage` from a mount effect, which recorded an
+ * explicit preference the user never expressed — pinning every first-time
+ * visitor to whatever the default happened to be on the day they arrived, and
+ * making them indistinguishable from a user who really did pick it. The write
+ * now lives in `setTheme` / `toggleTheme` and nowhere else. Applying the class
+ * to `<html>` is still an effect; only the storage write moved.
+ *
+ * An inline script in `public/index.html` applies the SAME resolution order
+ * before first paint, so a light-OS visitor never sees a dark flash. The storage
+ * key AND the resolution order must stay in sync with that script.
  */
 import { useCallback, useContext, useEffect, useMemo, useState } from "preact/hooks";
 import { createContext } from "preact";
@@ -22,7 +46,16 @@ import type { ComponentChildren } from "preact";
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "bioagents.theme";
-const DEFAULT_THEME: Theme = "dark";
+
+/** The theme a browser that can tell us nothing gets. */
+const FALLBACK_THEME: Theme = "dark";
+
+/**
+ * Asking for LIGHT, not dark, is deliberate: `prefers-color-scheme: dark` and
+ * `prefers-color-scheme: no-preference` must both land on dark, and querying the
+ * light side makes that one boolean instead of two.
+ */
+const LIGHT_QUERY = "(prefers-color-scheme: light)";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -33,14 +66,52 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function readStoredTheme(): Theme {
+/** The user's stored choice, or `null` if they have never made one. */
+export function readStoredTheme(): Theme | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // localStorage can throw in private mode or a sandboxed iframe.
   }
-  return DEFAULT_THEME;
+  return null;
+}
+
+/** The live `(prefers-color-scheme: light)` query, or `null` where there is none. */
+function lightQuery(): MediaQueryList | null {
+  const mm = (globalThis as { matchMedia?: (q: string) => MediaQueryList }).matchMedia;
+  if (typeof mm !== "function") return null;
+  try {
+    return mm.call(globalThis, LIGHT_QUERY);
+  } catch {
+    return null;
+  }
+}
+
+/** What the OS is asking for. Anything that is not explicitly light is dark. */
+export function systemTheme(): Theme {
+  return lightQuery()?.matches ? "light" : FALLBACK_THEME;
+}
+
+export interface ResolvedTheme {
+  theme: Theme;
+  /** True once the user has made a choice — the OS stops being consulted. */
+  explicit: boolean;
+}
+
+/** The whole resolution order in one place: stored -> OS -> dark. */
+export function resolveTheme(): ResolvedTheme {
+  const stored = readStoredTheme();
+  if (stored) return { theme: stored, explicit: true };
+  return { theme: systemTheme(), explicit: false };
+}
+
+function persistTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // Preference is not persisted; the in-memory theme still works.
+  }
 }
 
 function applyTheme(theme: Theme): void {
@@ -52,24 +123,44 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(readStoredTheme);
+  const [resolved, setResolved] = useState<ResolvedTheme>(resolveTheme);
+  const { theme, explicit } = resolved;
 
+  // The class on <html>. Idempotent — the inline bootstrap script already put
+  // the same class there before first paint.
   useEffect(() => {
     applyTheme(theme);
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // Preference is not persisted; the in-memory theme still works.
-    }
   }, [theme]);
 
+  // Follow the OS, but ONLY while the user has not chosen. The moment `explicit`
+  // flips to true this effect re-runs, its cleanup removes the listener, and it
+  // subscribes to nothing — a later system change cannot move an explicit theme.
+  useEffect(() => {
+    if (explicit) return;
+    const query = lightQuery();
+    if (!query) return;
+
+    const onChange = (event: MediaQueryListEvent) => {
+      setResolved((current) =>
+        current.explicit
+          ? current
+          : { theme: event.matches ? "light" : FALLBACK_THEME, explicit: false },
+      );
+    };
+
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, [explicit]);
+
+  // The ONLY place a preference is written. An explicit choice, and nothing else.
   const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
+    persistTheme(next);
+    setResolved({ theme: next, explicit: true });
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((current) => (current === "dark" ? "light" : "dark"));
-  }, []);
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setTheme]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -91,10 +182,10 @@ export function useThemeContext(): ThemeContextValue {
   if (!ctx) {
     // Mirror ProvenanceContext: return a usable no-op shape rather than
     // throwing, so a component rendered outside the provider (e.g. in a test)
-    // still resolves. Reads report the default theme; writes do nothing.
+    // still resolves. Reads report the fallback theme; writes do nothing.
     return {
-      theme: DEFAULT_THEME,
-      isDark: DEFAULT_THEME === "dark",
+      theme: FALLBACK_THEME,
+      isDark: FALLBACK_THEME === "dark",
       setTheme: () => undefined,
       toggleTheme: () => undefined,
     };
