@@ -107,13 +107,9 @@
   margin: 0;
 }
 
+/* The skin is `select.select`'s now. Only the layout stays: Lyra sizes a native
+ * select `w-fit`, and this one spans the sidebar column. */
 .corpus-sidebar-header select {
-  background: var(--muted);
-  border: 1px solid var(--border-strong);
-  color: var(--foreground);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 13px;
   width: 100%;
 }
 
@@ -335,18 +331,11 @@
   margin-bottom: 12px;
 }
 
+/* The skin is `.input`'s now (placeholder included — Lyra paints it
+ * `--muted-foreground`, a step MORE legible than the `--text-tertiary` this used
+ * to set). Only the layout stays. */
 .corpus-file-search {
   flex: 1;
-  background: var(--muted);
-  border: 1px solid var(--border-strong);
-  color: var(--foreground);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-}
-
-.corpus-file-search::placeholder {
-  color: var(--text-tertiary);
 }
 
 .corpus-file-table {

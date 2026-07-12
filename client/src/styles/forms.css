@@ -1,0 +1,175 @@
+/**
+ * Basecoat form-control overrides.
+ *
+ * The app's text inputs, textareas, native selects and their labels now wear
+ * Basecoat's classes — `.input`, `.textarea`, `select.select`, `.label`, and
+ * `.field` for the label+control pair. The two bordered-box composites (the
+ * sidebar's session search and the Research Brain's evidence search) wear
+ * `.input-group`, which models them exactly.
+ *
+ * The hand-written SKINS they replaced (`.admin-dialog select`,
+ * `.corpus-sidebar-header select`, `.graph-search-form input`, `.brain-*`
+ * inputs, `.wallet-input`, `.sidebar-search-input`, `.login-input`,
+ * `.paper-input`, …) are gone. Where one of those selectors survives it now
+ * carries LAYOUT only — a `flex: 1`, a `width`, a `min-width: 0`, or an
+ * inheritance reset the wrapping label forces. None of them paint any more.
+ *
+ * What is left here is deliberately ADDITIVE, and it is the same three-part
+ * shape `buttons.css` already established: the Preflight normalization Basecoat
+ * assumes, the focus ring Lyra does not paint strongly enough, and the one place
+ * a Lyra default does not fit this app. Everything below the base layer is
+ * unlayered, and `global.css` @imports it after `basecoat.css`, so these rules
+ * beat Basecoat's layered ones by construction rather than by specificity
+ * accident.
+ *
+ * WHY THE NATIVE SELECT IS SAFE WITHOUT BASECOAT'S JS
+ *
+ * Basecoat ships TWO selects and they are different components. `select.css` is
+ * the JS-driven listbox, and every rule in it is scoped `.select:not(select)` —
+ * a div wearing `.select`, with a `<button>` and a `[role=listbox]` inside,
+ * driven by `select.js`. None of it can match a real `<select>` element, which
+ * is exactly why the `:not(select)` is there.
+ *
+ * `native-select.css` is the other one: `select.select`, a plain `<select>`,
+ * no JS at all. Lyra styles it fully — border, height, padding, and the chevron
+ * as a background image (`--chevron-down-icon-50`) with `pe-8` reserving room
+ * for it. Confirmed by rendering one in Chromium: correct border, 32px box,
+ * chevron painted.
+ *
+ * So the app uses `select.select` on real `<select>` elements, Preact keeps
+ * driving the state, and no Basecoat JS is loaded. (Which is the standing rule —
+ * `basecoat.js` runs a global MutationObserver on document.body and `select.js`
+ * rebuilds its markup with innerHTML; both fight Preact's reconciler.)
+ */
+
+/*
+ * FORM-CONTROL NORMALIZATION — the part of Preflight this app deliberately does
+ * not load.
+ *
+ * Basecoat is written against Tailwind Preflight, which resets every form
+ * control to `font: inherit` and `color: inherit`. This app opts out of Preflight
+ * on purpose (see basecoat.css), so a bare control keeps the UA's own font and
+ * ink.
+ *
+ * Lyra sets a font SIZE on each of these (`text-xs`) but never a font FAMILY, and
+ * it never sets a text color on `.input` / `select.select` at all — it assumes
+ * Preflight already made both inherit. Observed in Chromium without this reset:
+ * every migrated input and select rendered its value in 12px ARIAL (the UA's
+ * `font: -webkit-small-control`) while the label beside it was IBM Plex Sans, and
+ * the ink was the UA's `fieldtext` rather than `--foreground`.
+ *
+ * `background-color` is NOT reset here: Lyra paints that itself (`bg-transparent`,
+ * plus `dark:bg-input/30`), so there is nothing to normalize.
+ *
+ * THE INK IS `--foreground`, NOT `inherit`, and that difference is load-bearing.
+ * Preflight's `color: inherit` works upstream because it inherits from the body.
+ * Here it does not: several of these controls are wrapped in a `<label>` that
+ * recolors its own subtree — `.brain-filter-row label` and `.brain-entity-grid
+ * label` both set `color: var(--text-secondary)` for their uppercase micro-text.
+ * With `inherit`, the VALUE the user typed picked that up and rendered in the
+ * label's muted grey. Caught by reading the real Research Brain filters in the
+ * browser: every `.input` and `select.select` there computed
+ * `oklch(0.5 0.021 213.5)` — `--muted-foreground` — as its text color instead of
+ * `--foreground`. Basecoat itself is explicit about this for the one case it
+ * anticipated (`.input-group > input` is given `text-foreground`, not inherit).
+ *
+ * `.input-group > *` is in the list because that input carries NO class of its
+ * own — the group styles it by descent — so it is invisible to a `.input`-scoped
+ * reset and leaked 12px Arial until it was added here.
+ *
+ * This sits in the `base` LAYER, not unlayered, for the same reason `buttons.css`
+ * does: Lyra's component rules (`disabled:bg-input/50`, `dark:hover:bg-input/50`,
+ * the focus-visible recolors) live in the `components` layer and must still beat
+ * it. Unlayered would win over all of them and flatten every state. Scoped to the
+ * migrated classes, so no unmigrated control is touched.
+ */
+@layer base {
+  .input,
+  .textarea,
+  select.select,
+  .field > input,
+  .field > textarea,
+  .field > select,
+  .input-group > input,
+  .input-group > textarea,
+  .input-group > select {
+    font-family: inherit;
+    color: var(--foreground);
+  }
+}
+
+/*
+ * FOCUS RING.
+ *
+ * Unlike `.btn` — whose Lyra ring is genuinely ZERO-spread and paints nothing at
+ * all — the form controls DO get an indicator out of the box: Lyra recolors the
+ * 1px border to `--ring` and adds a 1px `ring-ring/50` halo. Verified in
+ * Chromium, letting the `transition-all` settle before sampling (reading
+ * `getComputedStyle` immediately after focus catches the outline mid-animation
+ * at 0px and looks like a missing ring, which it is not).
+ *
+ * So this is not repairing nothing — it is a deliberate upgrade on two counts.
+ * A 1px border RECOLOR is a weak indicator to hang WCAG 2.4.11 on: the shape and
+ * size of the control do not change, only its hue, and against `--border` at rest
+ * the delta is small. And it would make the app read as half-migrated — every
+ * other focusable control here, `.btn` included, already announces focus with a
+ * 2px offset outline.
+ *
+ * `--ring` was measured in PR 2 on every surface a ring can land on: 4.81:1 on
+ * `--background` and 4.32:1 on `--muted` in light, 6.90:1 / 5.17:1 in dark. All
+ * clear the 3:1 WCAG 1.4.11 floor for a non-text indicator. Lyra's own border
+ * recolor and halo stay underneath; they are additive, not in the way.
+ */
+.input:focus-visible,
+.textarea:focus-visible,
+select.select:focus-visible,
+.field > input:focus-visible,
+.field > textarea:focus-visible,
+.field > select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
+ * The ring for an `.input-group` goes on the GROUP, via `:focus-within` — not on
+ * the input inside it. The input there is deliberately borderless and edge-to-edge
+ * (`border-0 bg-transparent flex-1`); an outline on it would draw a rectangle
+ * INSIDE the box, floating around the text and clipping against the icon and the
+ * button. The bordered box is the thing the user perceives as the control, so the
+ * box is what should announce focus — which is also how Lyra models it
+ * (`focus-within:border-ring` on the group).
+ *
+ * Tab-walked in Chromium before this existed: focus landed on the sidebar's
+ * session-search input and on the Research Brain's evidence-search input and both
+ * computed `outline: 0px none` — no indicator whatsoever, in either theme. The
+ * `.input`/`select.select` rule above does not reach them, because that input
+ * carries no class of its own.
+ */
+.input-group:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
+ * WIDTH — one rule, and deliberately only one.
+ *
+ * Lyra sizes `select.select` `w-fit` (it shrinks to its widest option) while
+ * `.input` and `.textarea` are `w-full`. A blanket `select.select { width: 100% }`
+ * would be wrong: the corpus file toolbar puts a select beside a `flex: 1` search
+ * box, where it must keep its natural width. So width is LAYOUT, it stays with the
+ * call site, and each page's stylesheet keeps the `width` / `flex` declaration it
+ * already had.
+ *
+ * A select inside a `.field` is the exception, because there the answer is not a
+ * judgment call — a `.field` is a full-width label+control stack by definition,
+ * and `field.css` says so: `[&>*]:w-full`.
+ *
+ * It does not reach the select on its own, though. Both rules live in the
+ * `components` layer, so specificity decides, and `select.select` (0,1,1) beats
+ * `.field > *` (0,1,0) — `w-fit` wins. Rendered in Chromium: the admin unmerge
+ * dialog's Reason select collapsed to its option width, overflowing its own text
+ * and clipping the chevron. Being unlayered, this rule settles it.
+ */
+.field > select.select {
+  width: 100%;
+}

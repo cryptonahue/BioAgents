@@ -72,12 +72,16 @@ function FileList({ files }: { files: IngestionFileStatus[] }) {
     <div class="corpus-file-list">
       <div class="corpus-file-list-toolbar">
         <input
-          class="corpus-file-search"
+          class="input corpus-file-search"
           placeholder="Search file..."
           value={filter}
           onInput={(e) => setFilter((e.target as HTMLInputElement).value)}
         />
-        <select value={statusFilter} onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}>
+        <select
+          class="select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}
+        >
           <option value="">All</option>
           <option value="processed">Processed</option>
           <option value="skipped">Skipped</option>
@@ -179,7 +183,11 @@ export function CorpusDashboardPage() {
           <aside class="corpus-sidebar">
             <div class="corpus-sidebar-header">
               <h2>Runs</h2>
-              <select value={statusFilter} onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}>
+              <select
+                class="select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter((e.target as HTMLSelectElement).value)}
+              >
                 <option value="">All</option>
                 <option value="running">Running</option>
                 <option value="completed">Completed</option>

@@ -778,19 +778,9 @@
   gap: 8px;
 }
 
+/* The skin is `.input`'s now. Only the layout stays. */
 .paper-input {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.paper-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
 }
 
 .paper-send-btn {
@@ -947,33 +937,13 @@
   gap: 12px;
 }
 
-.brain-search-main {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 42px;
-  gap: 10px;
-  align-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: var(--surface-sunken);
-}
-
-.brain-search-main input,
-.brain-filter-row input,
-.brain-filter-row select {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 14px;
-  min-width: 0;
-}
-
-.brain-search-main input:focus,
-.brain-filter-row input:focus,
-.brain-filter-row select:focus {
-  outline: none;
-}
+/* The evidence search bar is Basecoat's `.input-group`: a bordered box, a
+ * borderless `flex: 1` input, a leading icon and a trailing submit button. That
+ * is the component as-shipped, so the box, the border, the focus-within ring and
+ * the input's own de-skinning are all gone from here — `.input-group > input` is
+ * given `border-0 bg-transparent flex-1` by the pack. The old `grid` with its
+ * hand-counted `auto minmax(0,1fr) 42px` track list is exactly what the flex
+ * component does for free. */
 
 .brain-search-btn {
   width: 34px;
@@ -996,19 +966,31 @@
   letter-spacing: 0.04em;
 }
 
+/* The controls are `.input` / `select.select` now. Only the two INHERITANCE
+ * RESETS survive, and they have to: the `<label>` wrapping each control is the
+ * uppercase micro-label above, and `text-transform` / `letter-spacing` both
+ * INHERIT — so without these the filter values would render "ALL" in uppercase
+ * with 0.04em tracking. The old rule carried the same two declarations for the
+ * same reason; they are not a leftover skin.
+ *
+ * `select option { background: var(--bg-secondary) }` is gone with the skin.
+ * Basecoat's `native-select.css` gives every `<option>` the `Canvas` /
+ * `CanvasText` system colors instead, which is why `theme.css` now sets
+ * `color-scheme` — that, not a background declaration, is what makes the dropdown
+ * follow the theme. */
 .brain-filter-row input,
 .brain-filter-row select {
-  height: 34px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0 9px;
-  color: var(--text-primary);
   text-transform: none;
   letter-spacing: 0;
 }
 
-.brain-filter-row select option {
-  background: var(--bg-secondary);
+/* Lyra sizes a native select `w-fit`, so each of these shrank to its widest
+ * option while the `.input`s beside them (which Lyra gives `w-full`) filled the
+ * grid cell. Rendered: the Source filter, whose only option is "All" until
+ * sources load, collapsed to a ~26px box that clipped its own chevron. They are
+ * grid cells in a `minmax(150px, 1fr)` track — they span it. */
+.brain-filter-row select {
+  width: 100%;
 }
 
 .brain-plan-panel {
@@ -1102,20 +1084,10 @@
   accent-color: var(--accent-color);
 }
 
+/* `.input` now. `min-width: 0` stays — it is a flex child and the skin never
+ * supplied that. */
 .brain-bulk-note {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--surface-sunken);
-  color: var(--text-primary);
-  font-size: 13px;
-  height: 34px;
   min-width: 0;
-  padding: 0 9px;
-}
-
-.brain-bulk-note:focus {
-  border-color: var(--accent-border);
-  outline: none;
 }
 
 .brain-bulk-actions {
@@ -1361,22 +1333,12 @@
   text-transform: uppercase;
 }
 
+/* `.input` now. Same two inheritance resets as `.brain-filter-row` — the wrapping
+ * `<label>` is uppercase and tracked, and both properties inherit into the box. */
 .brain-entity-grid input {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--surface-sunken);
-  color: var(--text-primary);
-  font-size: 13px;
-  height: 34px;
   min-width: 0;
-  padding: 0 8px;
   letter-spacing: 0;
   text-transform: none;
-}
-
-.brain-entity-grid input:focus {
-  border-color: var(--accent-border);
-  outline: none;
 }
 
 .brain-entity-save {
@@ -1413,24 +1375,14 @@
   letter-spacing: 0.04em;
 }
 
+/* `.textarea` now. `min-height` is kept because Lyra's floor (`min-h-16`, 4rem)
+ * is taller than the two rows this editor wants; the two inheritance resets are
+ * kept for the same reason as the blocks above. */
 .brain-review-note-editor textarea {
-  width: 100%;
   resize: vertical;
   min-height: 58px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--surface-sunken);
-  color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.45;
-  padding: 8px 9px;
   text-transform: none;
   letter-spacing: 0;
-}
-
-.brain-review-note-editor textarea:focus {
-  outline: none;
-  border-color: var(--accent-border);
 }
 
 .brain-review-actions {

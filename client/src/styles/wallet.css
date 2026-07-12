@@ -102,42 +102,33 @@
   margin-bottom: 20px;
 }
 
+/* The two wallet inputs are Basecoat's `.input` now, so the skin, the placeholder
+ * and the focus ring are gone from here. What remains is TYPOGRAPHY, which Lyra
+ * does not supply: its `.label` is only `flex; align-items: center;
+ * user-select: none` — no size, weight or color of its own. So the uppercase
+ * micro-label the wallet screens use is not fighting the pack, it is filling a
+ * hole the pack leaves open. `margin-bottom` is gone: the `.field` wrapper's 8px
+ * gap does that job now. */
 .wallet-label {
-  display: block;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  margin-bottom: 8px;
   color: var(--text-tertiary);
 }
 
-.wallet-input {
-  width: 100%;
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 2px solid var(--border-color);
-  background: var(--surface-sunken);
-  color: var(--text-primary);
-  font-size: 15px;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.wallet-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.wallet-input:focus-visible {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 4px var(--accent-light);
-}
-
-/* The 6-digit OTP field. `--complete` is the "all six entered" state, which was
-   a ternary on the inline border/box-shadow. */
+/* The 6-digit OTP field is a deliberate exception and stays bespoke: a 20px bold
+ * monospace box with 8px of letter-spacing is a code-entry affordance, not a text
+ * input, and `.input` is not trying to be one. It is layered ON TOP of `.input`
+ * rather than instead of it, so the border, the disabled state and the focus ring
+ * are still Basecoat's and only the type treatment is ours.
+ *
+ * `height: auto` is REQUIRED. Lyra's `.input` is `h-8` — a hard 2rem — which
+ * would clamp this box to 32px and crop the 20px digits, because a bigger
+ * `padding` cannot win against an explicit `height`. */
 .wallet-input--otp {
+  height: auto;
   padding: 16px;
-  border-radius: 12px;
   font-size: 20px;
   font-weight: 700;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -145,6 +136,7 @@
   letter-spacing: 8px;
 }
 
+/* The "all six digits entered" state. */
 .wallet-input--complete {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 4px var(--accent-light);

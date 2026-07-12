@@ -386,7 +386,7 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
               <div className="paper-input-row">
                 <input
                   type="text"
-                  className="paper-input"
+                  className="input paper-input"
                   placeholder="Ask something about this paper…"
                   value={input}
                   onInput={(e) => setInput((e.target as HTMLInputElement).value)}

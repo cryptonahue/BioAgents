@@ -373,7 +373,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               className="brain-evidence-search"
               onSubmit={handleEvidenceSearch}
             >
-              <div className="brain-search-main">
+              <div className="input-group brain-search-main">
                 <Icon name="search" size={17} />
                 <input
                   value={query}
@@ -393,6 +393,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Minimum value
                   <input
+                    class="input"
                     type="number"
                     value={measurementMin}
                     onInput={(e) =>
@@ -404,6 +405,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Unit
                   <select
+                    class="select"
                     value={measurementUnit}
                     onChange={(e) =>
                       setMeasurementUnit((e.target as HTMLSelectElement).value)
@@ -417,6 +419,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Direction
                   <select
+                    class="select"
                     value={measurementDirection}
                     onChange={(e) =>
                       setMeasurementDirection(
@@ -434,6 +437,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Condition
                   <input
+                    class="input"
                     value={condition}
                     onInput={(e) =>
                       setCondition((e.target as HTMLInputElement).value)
@@ -444,6 +448,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Review
                   <select
+                    class="select"
                     value={reviewStatusFilter}
                     onChange={(e) =>
                       setReviewStatusFilter(
@@ -463,6 +468,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Strength
                   <select
+                    class="select"
                     value={evidenceStrengthFilter}
                     onChange={(e) =>
                       setEvidenceStrengthFilter(
@@ -480,6 +486,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Trust tier
                   <select
+                    class="select"
                     value={sourceTrustTierFilter}
                     onChange={(e) =>
                       setSourceTrustTierFilter(
@@ -495,6 +502,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <label>
                   Source
                   <select
+                    class="select"
                     value={sourceIdFilter}
                     onChange={(e) =>
                       setSourceIdFilter((e.target as HTMLSelectElement).value)
@@ -557,7 +565,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     </span>
                   </label>
                   <input
-                    className="brain-bulk-note"
+                    className="input brain-bulk-note"
                     value={bulkReviewNote}
                     onInput={(e) =>
                       setBulkReviewNote((e.target as HTMLInputElement).value)
@@ -800,6 +808,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                               <label key={field.key}>
                                 {field.label}
                                 <input
+                                  class="input"
                                   value={getEntityFieldValue(fact, field.key)}
                                   onInput={(e) =>
                                     setEntityFieldValue(
@@ -825,6 +834,7 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                           <label>
                             Review note
                             <textarea
+                              class="textarea"
                               value={
                                 reviewNotes[fact.id] ?? fact.reviewNote ?? ""
                               }

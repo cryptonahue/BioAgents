@@ -185,15 +185,6 @@
   border-color: var(--primary-ink);
 }
 
-.admin-window-select {
-  background: var(--muted);
-  color: var(--foreground);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 13px;
-}
-
 /* ----------------- Tables ----------------- */
 
 .admin-table {
@@ -386,42 +377,28 @@
   line-height: 1.5;
 }
 
-.admin-dialog label {
-  display: block;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 6px;
-}
-
-.admin-dialog select,
-.admin-dialog textarea {
-  width: 100%;
-  background: var(--surface-sunken);
-  color: var(--foreground);
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 13px;
-  font-family: inherit;
+/* The label, the select and the textarea are Basecoat's now (`.field` > `.label`
+ * + `select.select` / `.textarea`), so their skins are gone from here. The
+ * `.field` supplies the label-to-control gap that `margin-bottom: 6px` used to;
+ * this is only the gap BETWEEN the two fields, which was the controls' own
+ * `margin-bottom: 12px`. */
+.admin-dialog .field {
   margin-bottom: 12px;
 }
 
-.admin-dialog select:focus,
-.admin-dialog textarea:focus {
-  outline: none;
-  border-color: var(--ring);
-}
-
-.admin-dialog textarea {
-  resize: vertical;
+/* Lyra gives `.textarea` `field-sizing: content` and a 4rem floor, which is
+ * shorter than the two lines this one wants to invite. */
+.admin-dialog .textarea {
   min-height: 80px;
 }
 
+/* The helper `<p>` is a child of the detail `.field` now, so it sits on the
+ * field's 8px gap. It used to hang off the textarea's bottom margin and needed
+ * `-8px` to claw it back. */
 .admin-dialog-helper {
   color: var(--text-tertiary);
   font-size: 12px;
-  margin: -8px 0 16px;
+  margin: 0;
 }
 
 .admin-dialog-actions {

@@ -472,6 +472,7 @@ export function GraphExplorerPage(_props: Props) {
             <form class="graph-search-form" onSubmit={handleSearch}>
               <Icon name="search" size={16} />
               <input
+                class="input"
                 value={query}
                 placeholder={
                   selectedKind === "compound"

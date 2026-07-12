@@ -584,33 +584,43 @@ function UnmergeDialog(props: {
           <code>{props.factId.slice(0, 8)}</code>
         </p>
 
-        <label for="admin-unmerge-reason">Reason *</label>
-        <select
-          id="admin-unmerge-reason"
-          required
-          value={reasonCode}
-          onChange={(e) =>
-            setReasonCode(
-              (e.target as HTMLSelectElement).value as ReasonCategory | "",
-            )
-          }
-        >
-          <option value="">— Select a reason —</option>
-          {REASON_CATEGORIES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+        <div class="field">
+          <label class="label" for="admin-unmerge-reason">
+            Reason *
+          </label>
+          <select
+            class="select"
+            id="admin-unmerge-reason"
+            required
+            value={reasonCode}
+            onChange={(e) =>
+              setReasonCode(
+                (e.target as HTMLSelectElement).value as ReasonCategory | "",
+              )
+            }
+          >
+            <option value="">— Select a reason —</option>
+            {REASON_CATEGORIES.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <label for="admin-unmerge-detail">Detail (optional)</label>
-        <textarea
-          id="admin-unmerge-detail"
-          value={reasonDetail}
-          placeholder="Why is this a wrong merge?"
-          onInput={(e) => setReasonDetail((e.target as HTMLTextAreaElement).value)}
-        />
-        <p class="admin-dialog-helper">Detail is optional</p>
+        <div class="field">
+          <label class="label" for="admin-unmerge-detail">
+            Detail (optional)
+          </label>
+          <textarea
+            class="textarea"
+            id="admin-unmerge-detail"
+            value={reasonDetail}
+            placeholder="Why is this a wrong merge?"
+            onInput={(e) => setReasonDetail((e.target as HTMLTextAreaElement).value)}
+          />
+          <p class="admin-dialog-helper">Detail is optional</p>
+        </div>
 
         {error && <div class="admin-dialog-error">{error}</div>}
 

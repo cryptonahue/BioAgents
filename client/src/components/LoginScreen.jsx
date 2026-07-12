@@ -62,7 +62,7 @@ export function LoginScreen({ onLogin }) {
                 setError('');
               }}
               placeholder="Enter password"
-              className="login-input"
+              className="input"
               autoFocus
             />
           </div>

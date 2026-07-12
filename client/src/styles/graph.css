@@ -99,18 +99,9 @@
   color: var(--text-tertiary);
 }
 
+/* The skin (placeholder included) is `.input`'s now. Only the layout stays. */
 .graph-search-form input {
   flex: 1;
-  background: var(--muted);
-  border: 1px solid var(--border-strong);
-  color: var(--foreground);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
-}
-
-.graph-search-form input::placeholder {
-  color: var(--text-tertiary);
 }
 
 .graph-search-submit {

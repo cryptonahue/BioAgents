@@ -15,6 +15,7 @@
  *     resolve `font-sans` from the Tailwind theme token rather than inheriting.
  */
 @import "./buttons.css";
+@import "./forms.css";
 @import "./research.css";
 @import "./ui.css";
 @import "./wallet.css";
@@ -405,31 +406,16 @@ body {
   position: relative;
 }
 
-/* Inline session-search input (replaces the button when open). */
-.sidebar-search-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 2px 6px 2px 12px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-}
-.sidebar-search-input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-primary);
-  font-size: 14px;
-  letter-spacing: -0.01em;
-}
-.sidebar-search-input::placeholder {
-  color: var(--text-tertiary);
-}
+/* The inline session-search input (it replaces the button when open) is
+ * Basecoat's `.input-group` now, and needs no CSS of its own.
+ *
+ * This is the one composite in the app that Lyra's `.input-group` models exactly
+ * as-shipped: a bordered box, a borderless `flex: 1` input inside it, and a
+ * trailing icon button. That is the component's literal definition —
+ * `.input-group > input` is given `border-0 bg-transparent flex-1`, the box
+ * carries the border and the `focus-within` ring, and `> button` is `shrink-0`.
+ * The close button needs no `data-align="end"`: that attribute only REORDERS,
+ * and it is already last in the DOM. */
 .sessions-empty {
   padding: 16px 12px;
   font-size: 13px;
@@ -1668,35 +1654,10 @@ body {
   margin-bottom: 20px;
 }
 
-.login-input {
-  width: 100%;
-  padding: 14px 16px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  letter-spacing: -0.01em;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.login-input:focus {
-  border-color: var(--accent-color);
-  background: var(--bg-tertiary);
-  box-shadow: 0 0 0 3px var(--accent-light);
-}
-
-.login-input::placeholder {
-  color: var(--text-tertiary);
-}
+/* The password box is a plain `.input` now — skin, placeholder and focus ring all
+ * Basecoat's. It loses its bespoke 15px/10px-radius/brand-green-glow treatment,
+ * which is the same trade every other control in this slice made: one form
+ * vocabulary beats a hero size on the dev-only password gate. */
 
 .login-error {
   padding: 12px 16px;
@@ -1778,7 +1739,30 @@ body {
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-textarea {
+/**
+ * THE `:not(.textarea)` IS LOAD-BEARING. Do not simplify it back to `textarea`.
+ *
+ * This is a BARE ELEMENT SELECTOR, and it is unlayered, so it beats Basecoat's
+ * `.textarea` (which lives in `@layer components`) no matter what class the
+ * element carries — layer order decides that before specificity is even
+ * consulted. Written for the chat composer below, it was in fact matching EVERY
+ * textarea in the app. Observed in Chromium: a textarea wearing Basecoat's
+ * `.textarea` computed `border: 0px none` and a 14px Inter face, i.e. Lyra's
+ * rule was fully neutralized and the migrated control rendered as a borderless
+ * transparent block.
+ *
+ * The rule is NOT dead, which is why it is scoped rather than deleted. It still
+ * dresses the two textareas that are deliberately NOT migrated: the chat
+ * composer's (a bespoke composite — see `.input-box`) and the waitlist form's
+ * (on the pinned-dark landing, which is out of bounds). Excluding the Basecoat
+ * class leaves both byte-identical while letting `.textarea` win where it is
+ * applied.
+ *
+ * Consequence for callers: on a migrated textarea the `.textarea` class is
+ * REQUIRED, not decorative. A bare `<textarea>` inside a `.field` will still be
+ * caught by this rule and render borderless.
+ */
+textarea:not(.textarea) {
   width: 100%;
   padding: 0;
   border: none;
@@ -1803,7 +1787,7 @@ textarea {
   margin-bottom: 12px;
 }
 
-textarea::placeholder {
+textarea:not(.textarea)::placeholder {
   color: var(--text-tertiary);
   font-weight: 400;
 }

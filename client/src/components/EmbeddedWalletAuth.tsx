@@ -194,8 +194,8 @@ export function EmbeddedWalletAuth({ onWalletConnected, usdcBalance }: EmbeddedW
         </div>
 
         <form onSubmit={handleOtpSubmit}>
-          <div className="wallet-field">
-            <label className="wallet-label" for="wallet-otp">
+          <div className="field wallet-field">
+            <label className="label wallet-label" for="wallet-otp">
               Verification Code
             </label>
             <input
@@ -207,7 +207,7 @@ export function EmbeddedWalletAuth({ onWalletConnected, usdcBalance }: EmbeddedW
               maxLength={6}
               autoFocus
               disabled={isVerifying}
-              class={`wallet-input wallet-input--otp${otpComplete ? " wallet-input--complete" : ""}`}
+              class={`input wallet-input--otp${otpComplete ? " wallet-input--complete" : ""}`}
             />
           </div>
 
@@ -252,8 +252,8 @@ export function EmbeddedWalletAuth({ onWalletConnected, usdcBalance }: EmbeddedW
       </div>
 
       <form onSubmit={handleEmailSubmit}>
-        <div className="wallet-field">
-          <label className="wallet-label" for="wallet-email">
+        <div className="field wallet-field">
+          <label className="label wallet-label" for="wallet-email">
             Email Address
           </label>
           <input
@@ -265,7 +265,7 @@ export function EmbeddedWalletAuth({ onWalletConnected, usdcBalance }: EmbeddedW
             required
             disabled={isSigningIn}
             autoFocus
-            className="wallet-input"
+            className="input"
           />
         </div>
 

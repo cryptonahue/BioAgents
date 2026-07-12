@@ -170,11 +170,10 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               </div>
             </div>
             {searchOpen ? (
-              <div className="sidebar-search-input-wrap">
+              <div className="input-group">
                 <input
                   ref={searchInputRef}
                   type="text"
-                  className="sidebar-search-input"
                   placeholder="Search chats…"
                   value={searchQuery}
                   onInput={(e) => setSearchQuery(e.currentTarget.value)}
