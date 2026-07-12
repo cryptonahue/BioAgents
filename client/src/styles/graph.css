@@ -146,12 +146,8 @@
   text-align: center;
 }
 
-.graph-empty {
-  color: var(--text-tertiary);
-  font-size: 13px;
-  text-align: center;
-  padding: 24px 16px;
-}
+/* `.graph-empty` is Basecoat's `.empty` now (the "no results" / "search to
+ * explore" state in the results column, and the node-detail fallback). */
 
 /* ---- Right canvas + detail panel ----------------------------------------*/
 .graph-canvas-panel {
@@ -191,60 +187,24 @@
   font-size: 14px;
 }
 
-.graph-canvas-empty {
+/* THE THREE CANVAS STATES — "pick a node", "this node has no neighbors", and
+ * "the neighborhood fetch failed" — are all Basecoat's `.empty` now. They were
+ * three near-identical hand-written copies of that component (centred column,
+ * bold lead line, muted detail line), and the failure state is the same shape
+ * plus a Retry button, which is what Lyra's `.empty > section` is for.
+ *
+ * The canvas is a fixed 520px box and `.empty` is `flex-1` inside a flex column,
+ * not a 100%-height block, so the fill has to be asked for explicitly. The
+ * dashed frame is dropped here and only here: this box already sits INSIDE
+ * `.graph-canvas-wrap`'s own edge, and a dashed line 1px inside a solid one just
+ * reads as a rendering artifact.
+ *
+ * The failure state carries `data-tone="danger"`, the house escape hatch — see
+ * `alerts.css`. Basecoat models exactly one status colour and it is not attached
+ * to `.empty` at all. */
+.graph-canvas-state {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px;
-  text-align: center;
-}
-
-.graph-canvas-empty p {
-  margin: 0;
-  color: var(--foreground);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.graph-canvas-empty span {
-  color: var(--text-tertiary);
-  font-size: 13px;
-  max-width: 320px;
-}
-
-/* Neighborhood fetch failed (401 / 500 / network) — explicit error state,
-   never a blank canvas. */
-.graph-canvas-error {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px;
-  text-align: center;
-}
-
-.graph-canvas-error p {
-  margin: 0;
-  color: var(--destructive);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.graph-canvas-error span {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  max-width: 360px;
-}
-
-/* `.graph-retry-btn` is Basecoat's `.btn[data-variant="outline"]` now; only the
- * spacing it needs from the error text above it is left. */
-.graph-retry-btn {
-  margin-top: 8px;
+  border: 0;
 }
 
 /* ---- Edge-type legend / filter ------------------------------------------*/

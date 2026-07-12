@@ -277,12 +277,17 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
 
             <div className="paper-chat-messages" ref={messagesRef}>
               {turns.length === 0 && (
-                <div className="paper-chat-empty">
-                  <Icon name="sparkles" size={20} />
-                  <p>
-                    Ask questions about this paper. Answers are based solely
-                    on its content and cite the fragments used.
-                  </p>
+                <div className="empty paper-chat-empty">
+                  <header>
+                    <figure>
+                      <Icon name="sparkles" size={16} />
+                    </figure>
+                    <h3>Ask about this paper</h3>
+                    <p>
+                      Answers are based solely on its content and cite the
+                      fragments used.
+                    </p>
+                  </header>
                 </div>
               )}
 

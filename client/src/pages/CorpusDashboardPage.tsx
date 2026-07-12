@@ -112,7 +112,15 @@ function FileList({ files }: { files: IngestionFileStatus[] }) {
             </tr>
           ))}
           {filtered.length === 0 && (
-            <tr><td colspan={4} class="corpus-empty">No files</td></tr>
+            <tr>
+              <td colspan={4}>
+                <div class="empty">
+                  <header>
+                    <p>No files</p>
+                  </header>
+                </div>
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
@@ -217,15 +225,22 @@ export function CorpusDashboardPage() {
                 </button>
               ))}
               {runs.length === 0 && !isLoading && (
-                <div class="corpus-empty">No runs. Start an ingestion from Research Brain.</div>
+                <div class="empty">
+                  <header>
+                    <p>No runs. Start an ingestion from Research Brain.</p>
+                  </header>
+                </div>
               )}
             </div>
           </aside>
 
           <section class="corpus-detail">
             {!selectedRun && (
-              <div class="corpus-empty-state">
-                Select a run to see details
+              <div class="empty">
+                <header>
+                  <h3>No run selected</h3>
+                  <p>Select a run to see details</p>
+                </header>
               </div>
             )}
 

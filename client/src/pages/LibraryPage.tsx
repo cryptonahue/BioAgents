@@ -511,9 +511,14 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
         )}
 
         {!isLoading && !error && papers.length === 0 && (
-          <div className="library-state">
-            No papers ingested yet. Add files to the documents folder
-            (KNOWLEDGE_DOCS_PATH) and restart the server.
+          <div className="empty">
+            <header>
+              <h3>No papers yet</h3>
+              <p>
+                Add files to the documents folder (KNOWLEDGE_DOCS_PATH) and
+                restart the server.
+              </p>
+            </header>
           </div>
         )}
 

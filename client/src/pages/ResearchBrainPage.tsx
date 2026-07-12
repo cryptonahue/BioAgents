@@ -657,8 +657,10 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 <div className="brain-evidence-grid">
                   <section className="brain-facts-list">
                     {facts.length === 0 && (
-                      <div className="library-state">
-                        No bioprospecting facts for this search.
+                      <div className="empty">
+                        <header>
+                          <p>No bioprospecting facts for this search.</p>
+                        </header>
                       </div>
                     )}
                     {facts.map((fact) => (
@@ -1013,7 +1015,11 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                         </button>
                       ))}
                       {evidencePack.sources.length === 0 && (
-                        <span className="brain-side-empty">No sources.</span>
+                        <div className="empty">
+                          <header>
+                            <p>No sources.</p>
+                          </header>
+                        </div>
                       )}
                     </div>
                   </aside>
@@ -1055,8 +1061,10 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                     </button>
                   ))}
                   {sources.length === 0 && (
-                    <div className="library-state">
-                      No sources registered yet.
+                    <div className="empty">
+                      <header>
+                        <p>No sources registered yet.</p>
+                      </header>
                     </div>
                   )}
                 </section>
@@ -1089,8 +1097,10 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                         <div className="library-state">Loading claims…</div>
                       )}
                       {!claimsLoading && claims.length === 0 && (
-                        <div className="library-state">
-                          No extracted claims for this source.
+                        <div className="empty">
+                          <header>
+                            <p>No extracted claims for this source.</p>
+                          </header>
                         </div>
                       )}
                       <div className="brain-claims-list">
@@ -1118,8 +1128,11 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                       </div>
                     </>
                   ) : (
-                    <div className="library-state">
-                      Choose a source to see its claims.
+                    <div className="empty">
+                      <header>
+                        <h3>No source selected</h3>
+                        <p>Choose a source to see its claims.</p>
+                      </header>
                     </div>
                   )}
                 </section>

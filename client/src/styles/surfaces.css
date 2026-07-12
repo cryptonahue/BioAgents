@@ -1,0 +1,163 @@
+/**
+ * Basecoat SURFACE components — the boxes the app's content sits in.
+ *
+ * Sibling of `buttons.css`, `badges.css`, `forms.css`, `tables.css` and
+ * `tabs.css`: the same shape, for the same reason. Lyra supplies the geometry;
+ * this file supplies only what Lyra cannot express against this app's tokens or
+ * against a build with no Tailwind Preflight.
+ *
+ * Three components live here because they are the same idea at three sizes:
+ *
+ *   `.card`   the padded content surface (`bg-card`, a 1px `ring-1` hairline,
+ *             `py-4`, `gap-4`) with a `> header` / `> section` / `> footer`
+ *             contract. Every hand-written "panel"/"card"/"tile" skin in
+ *             library.css, research.css, admin.css, graph.css and corpus.css is
+ *             this component.
+ *
+ *   `.empty`  the "nothing here yet" state: a centred, dashed, TRANSPARENT box.
+ *
+ *   `.item`   the compact row — icon + body + actions — used by the Library's
+ *             list view.
+ *
+ * `--radius` is deliberately NOT applied. Lyra is a square pack; see the note in
+ * `theme.css` and the same paragraph in `badges.css`.
+ *
+ * ---------------------------------------------------------------------------
+ * NO CARD INSIDE A CARD
+ *
+ * Slice 2 made the modal panel a structural shell rather than a Lyra `.card`
+ * because all six of its contents already self-card. The same hazard is
+ * everywhere in this slice, and the rule applied throughout is: the OUTER
+ * surface is the `.card`, and anything nested inside it stays a TINT or a SUNKEN
+ * sub-panel, never a second `.card`.
+ *
+ * Concretely, these stay NOT-cards on purpose:
+ *   `.admin-stats-tile`   inside `.admin-stats-card`     (a `--surface-sunken` tile)
+ *   `.graph-fact`         inside `.graph-detail-card`    (a `--surface-sunken` box)
+ *   `.corpus-metrics-bar` inside `.corpus-detail`        (a `--muted` strip)
+ *   `.brain-correction-history` inside `.brain-fact-card` (an `--accent-light` tint)
+ *   `.paper-card-icon`    inside `.paper-card`           (an `--accent-soft` square)
+ * ------------------------------------------------------------------------ */
+
+/* ---------------------------------------------------------------------------
+ * PREFLIGHT'S BORDER RESET, scoped to `.empty`.
+ *
+ * This one is REAL and was measured, not assumed. Lyra styles the empty state
+ * with `border-dashed`, which is a border-STYLE utility and nothing else —
+ * Tailwind expects Preflight's `*` rule to have already set `border-width: 0`,
+ * and the component's own width then comes from wherever the consumer puts it.
+ * This app has no Preflight, so `border-width` keeps the UA initial value
+ * `medium`. Rendered in Chromium, `.empty` computes to
+ *
+ *     border-top: 3px dashed …
+ *
+ * — a heavy 3px dashed frame, not the hairline the pack draws. (`.alert` and
+ * `.item` do NOT need this: they use Tailwind's `border` utility, which sets a
+ * width, and v4 registers `--tw-border-style: solid` as an `@property` initial
+ * value, so the style comes along for free. Both were checked; both compute to
+ * `1px solid`.)
+ *
+ * `base` layer, not unlayered: any Basecoat rule that DOES want a different
+ * border here must still win, and Basecoat's components live in `components`,
+ * which is ordered after `base`. Unlayered, this would outrank all of them. */
+@layer base {
+  .empty {
+    border-width: 1px;
+    border-color: var(--border);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * `.empty` TONE.
+ *
+ * Lyra attaches NO status colour to `.empty` — not even its single `destructive`
+ * — so the one failure state that wears this component (the graph canvas when
+ * the neighborhood fetch 401s/500s) has nowhere to say so. `data-tone` is the
+ * house escape hatch for exactly that; see the long note in `badges.css` for why
+ * it is a new attribute rather than a squatted `data-variant` value.
+ *
+ * Only the LEAD LINE is toned. The detail line underneath keeps Lyra's
+ * `--muted-foreground`, which is what the hand-written error state already did:
+ * the headline says "this failed", the body is just the server's message.
+ *
+ * `--destructive-subtle-foreground` and not `--destructive`: this text renders on
+ * `--card`, not on a tint, and the emphasis hue is the FILL step. The same
+ * reasoning `research.css` records for `--info` (3.50:1 on `--card` in dark).
+ * ------------------------------------------------------------------------ */
+.empty[data-tone="danger"] > header > :is(h2, h3, h4) {
+  color: var(--destructive-subtle-foreground);
+}
+
+/* ---------------------------------------------------------------------------
+ * FOCUS RINGS.
+ *
+ * Lyra kills the outline on everything interactive it ships and paints focus as
+ * a Tailwind ring that never materializes in this build. Slices 1-6 each had to
+ * re-add this exact pair; an interactive card is no different. `--ring` is the
+ * app's opaque focus token, measured in PR 2 against every surface a ring lands
+ * on (it clears the 3:1 WCAG 1.4.11 floor for a non-text indicator in both
+ * themes).
+ *
+ * Lyra puts `transition-all` on these components, so `outline-width` ANIMATES
+ * 0 -> 2px. Sampling `getComputedStyle` straight after a Tab reads 0px and looks
+ * like a missing ring, which it is not — let it settle first.
+ * ------------------------------------------------------------------------ */
+.card:focus-visible,
+.item:focus-visible,
+button.card:focus-visible,
+a.card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * `.card` NORMALIZATION — the part of Preflight this app does not load.
+ *
+ * Lyra's `.card` sets no font FAMILY and no INK of its own beyond
+ * `text-card-foreground`; on a `<button class="card">` (the Library's clickable
+ * paper card, the Research Brain's source rows) the UA's `font: 400 13.333px
+ * Arial` and `buttonface` fill leak straight through, exactly as they did on the
+ * badges in slice 4 and the buttons in slice 1.
+ *
+ * `text-align: start` because the UA centres a button's text.
+ * ------------------------------------------------------------------------ */
+@layer base {
+  button.card,
+  a.card,
+  button.item,
+  a.item {
+    font-family: inherit;
+    font-size: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  button.card,
+  button.item {
+    background-color: var(--card);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * THE BRAND HOVER EDGE.
+ *
+ * Lyra draws the card's edge with `ring-1` (a 1px-spread `box-shadow`), not with
+ * a `border`. Measured in Chromium, that resolves to
+ *
+ *     box-shadow: oklab(… / 0.1) 0 0 0 1px
+ *
+ * — a real, visible hairline in both themes. It also means the hand-written
+ * `:hover { border-color: … }` rules the paper cards used cannot simply be kept:
+ * there is no border to recolor. Re-declaring the whole `box-shadow` is the only
+ * way to move that edge, so that is what these do, and they compose the elevation
+ * shadow into the same declaration rather than fighting it.
+ *
+ * `--accent-border` is the token, NOT a literal, so the Library's teal sub-brand
+ * (scoped by `theme.css` to `.library-page` / `.paper-page`) comes through for
+ * free — the same reasoning `badges.css` gives for `data-tone="brand"`.
+ * ------------------------------------------------------------------------ */
+.card[data-hover="brand"]:hover {
+  box-shadow:
+    0 0 0 1px var(--accent-border),
+    var(--shadow-lg);
+}

@@ -340,13 +340,10 @@
   color: var(--destructive-subtle-foreground);
 }
 
-.corpus-empty-state,
-.corpus-empty {
-  color: var(--text-tertiary);
-  font-size: 14px;
-  text-align: center;
-  padding: 32px;
-}
+/* `.corpus-empty` / `.corpus-empty-state` are Basecoat's `.empty` now. The
+ * table's "No files" row keeps its `<td>` and nests the `.empty` INSIDE it:
+ * `.empty` is `display: flex`, and a flex `<td>` stops being a table cell — it
+ * would collapse out of the column layout it is meant to span. */
 
 .corpus-loading {
   color: var(--text-tertiary);

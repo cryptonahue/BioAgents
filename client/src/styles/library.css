@@ -502,16 +502,14 @@
   gap: 14px;
 }
 
+/* The paper-chat welcome state is Basecoat's `.empty`. It keeps this class for
+   one thing only: `.empty` is `flex-1` and `.paper-chat-messages` is a flex
+   COLUMN, so the box already stretches to fill the transcript area and centres
+   its own content — but Lyra also gives it a dashed frame, which around an
+   invitation to start a conversation reads as a broken drop-target rather than
+   as an empty list. */
 .paper-chat-empty {
-  margin: auto;
-  text-align: center;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  max-width: 280px;
-  line-height: 1.5;
+  border: 0;
 }
 
 .paper-msg {
@@ -1221,11 +1219,13 @@
   line-height: 1.3;
 }
 
-.brain-source-mini-list span,
-.brain-side-empty {
+.brain-source-mini-list span {
   color: var(--text-secondary);
   font-size: 12px;
 }
+
+/* `.brain-side-empty` is gone: the sidebar's "No sources." is Basecoat's
+   `.empty` now, like every other nothing-here-yet surface in this slice. */
 
 .brain-layout {
   display: grid;

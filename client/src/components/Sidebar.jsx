@@ -385,7 +385,11 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               </>
             )}
             {q && visibleSessions.length === 0 && (
-              <div className="sessions-empty">No chats found</div>
+              <div className="empty sessions-empty">
+                <header>
+                  <p>No chats found</p>
+                </header>
+              </div>
             )}
           </div>
 

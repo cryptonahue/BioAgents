@@ -331,12 +331,14 @@ export function GraphCanvas({
 
   if (!hasNeighbors) {
     return (
-      <div class="graph-canvas-empty">
-        <p>no linked neighbors yet</p>
-        <span>
-          This node has no compounds, facts, or sources linked to it in the
-          current corpus.
-        </span>
+      <div class="empty graph-canvas-state">
+        <header>
+          <h3>No linked neighbors yet</h3>
+          <p>
+            This node has no compounds, facts, or sources linked to it in the
+            current corpus.
+          </p>
+        </header>
       </div>
     );
   }

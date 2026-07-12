@@ -20,24 +20,31 @@ export function LibraryViewerPage({ docId }: LibraryViewerPageProps) {
 
   if (!id) {
     return (
-      <div className="viewer-page__empty">
-        <p>No document id in URL.</p>
+      <div className="empty viewer-page__empty">
+        <header>
+          <p>No document id in URL.</p>
+        </header>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="viewer-page__empty">
-        <p>Resolving source…</p>
+      <div className="empty viewer-page__empty">
+        <header>
+          <p>Resolving source…</p>
+        </header>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="viewer-page__empty">
-        <p>Failed to load document: {error}</p>
+      <div className="empty viewer-page__empty" data-tone="danger">
+        <header>
+          <h3>Could not load this document</h3>
+          <p>{error}</p>
+        </header>
       </div>
     );
   }
@@ -45,8 +52,10 @@ export function LibraryViewerPage({ docId }: LibraryViewerPageProps) {
   const sourceId = meta?.researchSourceId;
   if (!sourceId) {
     return (
-      <div className="viewer-page__empty">
-        <p>This document is not linked to a Research Brain source.</p>
+      <div className="empty viewer-page__empty">
+        <header>
+          <p>This document is not linked to a Research Brain source.</p>
+        </header>
       </div>
     );
   }

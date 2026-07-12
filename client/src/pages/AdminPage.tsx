@@ -308,7 +308,11 @@ function ContrasTab(_props: { onSwitchTab?: (t: TabId) => void }) {
       {isLoading && <div class="admin-loading">Loading contradictions...</div>}
 
       {!isLoading && rows.length === 0 && (
-        <div class="admin-empty">No contradictions match this filter.</div>
+        <div class="empty">
+          <header>
+            <p>No contradictions match this filter.</p>
+          </header>
+        </div>
       )}
 
       {!isLoading && rows.length > 0 && (
@@ -465,7 +469,11 @@ function DedupTab() {
       {isLoading && <div class="admin-loading">Loading dedup events...</div>}
 
       {!isLoading && events.length === 0 && (
-        <div class="admin-empty">No dedup events in this window.</div>
+        <div class="empty">
+          <header>
+            <p>No dedup events in this window.</p>
+          </header>
+        </div>
       )}
 
       {!isLoading && events.length > 0 && (

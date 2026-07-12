@@ -129,16 +129,20 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
 
   if (!id) {
     return (
-      <div className="viewer-page__empty">
-        <p>No source id in URL.</p>
-        <button
-          type="button"
-          className="btn"
-          data-variant="outline"
-          onClick={() => history.back()}
-        >
-          Go back
-        </button>
+      <div className="empty viewer-page__empty">
+        <header>
+          <p>No source id in URL.</p>
+        </header>
+        <section>
+          <button
+            type="button"
+            className="btn"
+            data-variant="outline"
+            onClick={() => history.back()}
+          >
+            Go back
+          </button>
+        </section>
       </div>
     );
   }
@@ -288,9 +292,11 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
           {!claims.length &&
           !evidence?.tables?.length &&
           !evidence?.figures?.length ? (
-            <p className="viewer-page__sidebar-empty">
-              No extracted evidence for this source.
-            </p>
+            <div className="empty">
+              <header>
+                <p>No extracted evidence for this source.</p>
+              </header>
+            </div>
           ) : null}
         </aside>
       </main>

@@ -17,6 +17,7 @@
 @import "./buttons.css";
 @import "./forms.css";
 @import "./badges.css";
+@import "./surfaces.css";
 @import "./tabs.css";
 @import "./tables.css";
 @import "./research.css";
@@ -378,11 +379,14 @@ body {
  * carries the border and the `focus-within` ring, and `> button` is `shrink-0`.
  * The close button needs no `data-align="end"`: that attribute only REORDERS,
  * and it is already last in the DOM. */
+/* `.sessions-empty` is Basecoat's `.empty` now. Only the padding survives: the
+   pack's `p-6` is tuned for a page-width empty state and is far too generous
+   inside a 260px sidebar rail. The dashed frame is dropped for the same reason
+   it is dropped on the graph canvas — the rail already has its own edges, and a
+   dashed box inside them reads as noise, not as a boundary. */
 .sessions-empty {
   padding: 16px 12px;
-  font-size: 13px;
-  color: var(--text-tertiary);
-  text-align: center;
+  border: 0;
 }
 
 /* `Button` wraps ALL its children in a single `.btn-text` span, so the label and

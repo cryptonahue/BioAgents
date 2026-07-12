@@ -560,10 +560,14 @@ export function GraphExplorerPage(_props: Props) {
                 ((selectedKind === "compound" && compoundResults.length === 0) ||
                   (selectedKind !== "compound" &&
                     entityResults.length === 0)) && (
-                  <div class="graph-empty">
-                    {query.trim()
-                      ? "No results. Try another term."
-                      : "Search to explore the graph."}
+                  <div class="empty">
+                    <header>
+                      <p>
+                        {query.trim()
+                          ? "No results. Try another term."
+                          : "Search to explore the graph."}
+                      </p>
+                    </header>
                   </div>
                 )}
             </div>
@@ -575,26 +579,32 @@ export function GraphExplorerPage(_props: Props) {
                 <div class="graph-canvas-loading">Loading neighborhood…</div>
               )}
               {!focusNode && !expanding && (
-                <div class="graph-canvas-empty">
-                  <p>Select a result to explore its neighborhood</p>
-                  <span>
-                    The canvas shows the focus node, its compounds and sources,
-                    and the edges BETWEEN those neighbors.
-                  </span>
+                <div class="empty graph-canvas-state">
+                  <header>
+                    <h3>Select a result to explore its neighborhood</h3>
+                    <p>
+                      The canvas shows the focus node, its compounds and
+                      sources, and the edges BETWEEN those neighbors.
+                    </p>
+                  </header>
                 </div>
               )}
               {focusNode && !expanding && graphError && (
-                <div class="graph-canvas-error">
-                  <p>Could not load this neighborhood</p>
-                  <span>{graphError}</span>
-                  <button
-                    type="button"
-                    class="btn graph-retry-btn"
-                    data-variant="outline"
-                    onClick={retryFocus}
-                  >
-                    Retry
-                  </button>
+                <div class="empty graph-canvas-state" data-tone="danger">
+                  <header>
+                    <h3>Could not load this neighborhood</h3>
+                    <p>{graphError}</p>
+                  </header>
+                  <section>
+                    <button
+                      type="button"
+                      class="btn"
+                      data-variant="outline"
+                      onClick={retryFocus}
+                    >
+                      Retry
+                    </button>
+                  </section>
                 </div>
               )}
               {focusNode && !expanding && !graphError && (
@@ -829,5 +839,11 @@ function DetailCard({
     );
   }
 
-  return <div class="graph-empty">No details for this node.</div>;
+  return (
+    <div class="empty">
+      <header>
+        <p>No details for this node.</p>
+      </header>
+    </div>
+  );
 }
