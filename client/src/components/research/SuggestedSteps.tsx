@@ -23,39 +23,40 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
   if (!steps || steps.length === 0) return null;
 
   const getStepConfig = (type: string) => {
+    // `icon` is an `Icon` NAME, not an emoji (see ResearchStatePanel.formatStepType).
     const configs: Record<string, { icon: string; label: string; color: string; bgColor: string }> = {
       LITERATURE: {
-        icon: "📚",
+        icon: "bookOpen",
         label: "Literature Search",
         color: "var(--task-literature)",
         bgColor: "var(--task-literature-subtle)",
       },
       ANALYSIS: {
-        icon: "📊",
+        icon: "barChart",
         label: "Data Analysis",
         color: "var(--task-analysis)",
         bgColor: "var(--task-analysis-subtle)",
       },
       HYPOTHESIS: {
-        icon: "💡",
+        icon: "lightbulb",
         label: "Hypothesis Generation",
         color: "var(--task-hypothesis)",
         bgColor: "var(--task-hypothesis-subtle)",
       },
       REFLECTION: {
-        icon: "🔍",
+        icon: "search",
         label: "Reflection",
         color: "var(--task-reflection)",
         bgColor: "var(--task-reflection-subtle)",
       },
       PLANNING: {
-        icon: "📋",
+        icon: "clipboard",
         label: "Planning",
         color: "var(--task-planning)",
         bgColor: "var(--task-planning-subtle)",
       },
       CODE_EXEC: {
-        icon: "💻",
+        icon: "code",
         label: "Code Execution",
         color: "var(--task-code)",
         bgColor: "var(--task-code-subtle)",
@@ -63,7 +64,7 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
     };
     return (
       configs[type] || {
-        icon: "⚡",
+        icon: "zap",
         label: type,
         color: "var(--task-other)",
         bgColor: "var(--task-other-subtle)",
@@ -74,7 +75,7 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
   return (
     <div className="card suggested-steps-container">
       <div className="suggested-steps-header">
-        <span className="suggested-steps-icon">🚀</span>
+        <Icon name="zap" size={16} className="suggested-steps-icon" />
         <span className="suggested-steps-title">Suggested Next Steps</span>
         <span className="suggested-steps-hint">Click to proceed</span>
       </div>
@@ -95,7 +96,7 @@ export function SuggestedSteps({ steps, onSelectStep, onCustomInput, disabled }:
             >
               <div className="suggested-step-header">
                 <span className="badge" data-tone="task">
-                  <span className="suggested-step-emoji">{config.icon}</span>
+                  <Icon name={config.icon} size={12} className="suggested-step-emoji" />
                   {config.label}
                 </span>
                 <Icon name="send" size={14} className="suggested-step-arrow" />

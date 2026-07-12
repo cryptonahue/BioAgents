@@ -114,20 +114,25 @@ export function ResearchStatePanel({
     // code built the chip background as `${color}15` — a hex-alpha concat — and
     // that idiom cannot survive tokenization: you cannot append "15" to
     // `var(--task-literature)`.
+    //
+    // `icon` is an `Icon` NAME, not an emoji. The five task types used to carry
+    // book / chart / bulb / glass / clipboard EMOJI and rendered them as text;
+    // they are Phosphor glyphs now, so they take the chip's `currentColor`, scale
+    // with `size`, and do not depend on a system emoji font being installed.
     const types: Record<
       string,
       { label: string; icon: string; color: string; bg: string }
     > = {
-      LITERATURE: { label: "Literature Search", icon: "📚", color: "var(--task-literature)", bg: "var(--task-literature-subtle)" },
-      ANALYSIS: { label: "Data Analysis", icon: "📊", color: "var(--task-analysis)", bg: "var(--task-analysis-subtle)" },
-      HYPOTHESIS: { label: "Hypothesis", icon: "💡", color: "var(--task-hypothesis)", bg: "var(--task-hypothesis-subtle)" },
-      REFLECTION: { label: "Reflection", icon: "🔍", color: "var(--task-reflection)", bg: "var(--task-reflection-subtle)" },
-      PLANNING: { label: "Planning", icon: "📋", color: "var(--task-planning)", bg: "var(--task-planning-subtle)" },
+      LITERATURE: { label: "Literature Search", icon: "bookOpen", color: "var(--task-literature)", bg: "var(--task-literature-subtle)" },
+      ANALYSIS: { label: "Data Analysis", icon: "barChart", color: "var(--task-analysis)", bg: "var(--task-analysis-subtle)" },
+      HYPOTHESIS: { label: "Hypothesis", icon: "lightbulb", color: "var(--task-hypothesis)", bg: "var(--task-hypothesis-subtle)" },
+      REFLECTION: { label: "Reflection", icon: "search", color: "var(--task-reflection)", bg: "var(--task-reflection-subtle)" },
+      PLANNING: { label: "Planning", icon: "clipboard", color: "var(--task-planning)", bg: "var(--task-planning-subtle)" },
     };
     return (
       types[type] || {
         label: type,
-        icon: "⚡",
+        icon: "zap",
         color: "var(--task-other)",
         bg: "var(--task-other-subtle)",
       }
@@ -236,7 +241,7 @@ export function ResearchStatePanel({
         onClick={onToggle}
       >
         <div className="research-state-header-left">
-          <span className="research-state-icon">🧬</span>
+          <Icon name="dna" size={18} className="research-state-icon" />
           <span className="research-state-title">Research State</span>
         </div>
         <div className="research-state-header-right">
@@ -264,7 +269,7 @@ export function ResearchStatePanel({
           {state?.currentObjective && (
             <div className="research-section research-current-objective">
               <div className="research-section-label">
-                <span className="research-section-icon">🎯</span>
+                <Icon name="target" size={14} className="research-section-icon" />
                 Current Objective
               </div>
               <p className="research-objective-text">
@@ -329,7 +334,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("hypothesis")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">💡</span>
+                  <Icon name="lightbulb" size={14} className="research-section-icon" />
                   <span>Hypothesis</span>
                 </div>
                 <Icon
@@ -373,7 +378,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("discoveries")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">🔬</span>
+                  <Icon name="microscope" size={14} className="research-section-icon" />
                   <span>Discoveries ({state.discoveries.length})</span>
                 </div>
                 <Icon
@@ -412,7 +417,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("insights")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">✨</span>
+                  <Icon name="sparkles" size={14} className="research-section-icon" />
                   <span>Key Insights ({state.keyInsights.length})</span>
                 </div>
                 <Icon
@@ -451,7 +456,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("methodology")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">🔬</span>
+                  <Icon name="microscope" size={14} className="research-section-icon" />
                   <span>Methodology</span>
                 </div>
                 <Icon
@@ -479,7 +484,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("datasets")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">📁</span>
+                  <Icon name="folder" size={14} className="research-section-icon" />
                   <span>Datasets ({state.uploadedDatasets.length})</span>
                 </div>
                 <Icon
@@ -526,7 +531,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("plan")}
               >
                 <div className="research-section-toggle-left">
-                  <span className="research-section-icon">✅</span>
+                  <Icon name="checkCircle" size={14} className="research-section-icon" />
                   <span>Completed Steps ({completedSteps.length})</span>
                 </div>
                 <Icon
@@ -556,9 +561,11 @@ export function ResearchStatePanel({
                                 "--step-color": stepInfo.color,
                               } as React.CSSProperties}
                             >
-                              <span className="research-step-emoji">
-                                {stepInfo.icon}
-                              </span>
+                              <Icon
+                                name={stepInfo.icon}
+                                size={12}
+                                className="research-step-emoji"
+                              />
                               {stepInfo.label}
                             </div>
                           </div>
@@ -684,7 +691,7 @@ export function ResearchStatePanel({
                 onClick={() => toggleSection("activityLog")}
               >
                 <span className="research-section-label">
-                  <span className="research-activity-log-icon">📋</span>
+                  <Icon name="clipboard" size={14} className="research-activity-log-icon" />
                   Activity Log ({state.plan.filter(s => s.end).length}/{state.plan.length} done)
                 </span>
                 <Icon
@@ -717,8 +724,23 @@ export function ResearchStatePanel({
                         data-variant="outline"
                         data-size="xs"
                       >
-                        <figure className="research-activity-log-icon">
-                          {isCurrent ? "⏳" : isDone ? "✓" : stepInfo.icon}
+                        <figure
+                          className="research-activity-log-icon"
+                          aria-label={
+                            isCurrent ? "Running" : isDone ? "Done" : "Queued"
+                          }
+                          role="img"
+                        >
+                          <Icon
+                            name={
+                              isCurrent
+                                ? "spinner"
+                                : isDone
+                                  ? "check"
+                                  : stepInfo.icon
+                            }
+                            size={12}
+                          />
                         </figure>
                         <section>
                           <h4 className="research-activity-log-type">

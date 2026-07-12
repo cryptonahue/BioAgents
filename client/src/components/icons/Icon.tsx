@@ -34,9 +34,13 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  CaretUp,
   ChartBar,
   Chat,
   Check,
+  CheckCircle,
+  Circle,
+  ClipboardText,
   Code,
   Copy,
   DotsThree,
@@ -51,6 +55,7 @@ import {
   Globe,
   GraduationCap,
   Image,
+  Info,
   Lightbulb,
   Lightning,
   List,
@@ -64,11 +69,13 @@ import {
   Pill,
   Play,
   Plus,
+  Prohibit,
   Pulse,
   Robot,
   ShareNetwork,
   SignOut,
   Sparkle,
+  Spinner,
   SquaresFour,
   Sun,
   Syringe,
@@ -82,6 +89,7 @@ import {
   Warning,
   WarningCircle,
   X,
+  XCircle,
   type IconWeight,
 } from "@phosphor-icons/react";
 
@@ -130,6 +138,11 @@ const iconMap: Record<string, any> = {
   chevronLeft: CaretLeft,
   chevronRight: CaretRight,
   chevronDown: CaretDown,
+  // `chevronUp` was ALREADY being rendered by the research panel's
+  // "Show less" toggle and was never in this map: `Icon` fell through to its
+  // `return null`, so that button showed a bare label and console.warn'd on every
+  // render. Registering it is the fix.
+  chevronUp: CaretUp,
   file: File,
   fileCode: FileCode,
   menu: DotsThree,
@@ -172,6 +185,43 @@ const iconMap: Record<string, any> = {
   // switch, so the Phosphor names carry straight through.
   sun: Sun,
   moon: Moon,
+
+  /*
+   * EMOJI REPLACEMENTS.
+   *
+   * These have no Lucide ancestor either: they replace emoji that were being
+   * rendered as UI (task-type chips, status glyphs, section headers, toast
+   * icons). The mapping is by MEANING, not by shape — an emoji is a picture, an
+   * icon is a symbol, and the ones worth calling out are:
+   *
+   *   clipboard    📋 is a clipboard, and Phosphor's "List" (already mapped as
+   *                `list`) is a bare bulleted list. PLANNING and the activity log
+   *                mean "the checklist of work", so this is `ClipboardText`, not
+   *                `List`.
+   *   checkCircle  ✅ is a check INSIDE a filled disc. Plain `Check` (mapped as
+   *                `check`) is the bare tick and is the right glyph for a
+   *                per-row done marker; the disc is what a SECTION header and a
+   *                success toast want, so both spellings exist and are used
+   *                deliberately.
+   *   xCircle      ✕ vs ❌. Same split as above: `close` is the bare X used for
+   *                dismiss affordances, `xCircle` is the status disc.
+   *   circle       ○ — the "no matches" glyph in the evidence panel. An absence,
+   *                not a failure, so it is an empty ring rather than a hue.
+   *   prohibit     ⊘ — the corpus dashboard's "skipped" state. Phosphor's
+   *                "Prohibit" is the circle-with-a-slash; "ProhibitInset" puts
+   *                the slash inside the ring and reads as a different symbol.
+   *   spinner      ⏳ meant "this step is running". An hourglass is a WAIT; the
+   *                app's other in-progress affordance is a spinner, so this
+   *                matches the app rather than the emoji.
+   *   info         ℹ — the toast's info type.
+   */
+  clipboard: ClipboardText,
+  checkCircle: CheckCircle,
+  xCircle: XCircle,
+  circle: Circle,
+  prohibit: Prohibit,
+  spinner: Spinner,
+  info: Info,
 };
 
 /**

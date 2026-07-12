@@ -8,6 +8,7 @@ import {
   type IngestionFileStatus,
 } from "../hooks/useIngestionRuns";
 import { useIngestionWebSocket, type IngestionNotification } from "../hooks/useIngestionWebSocket";
+import { Icon } from "../components/icons";
 
 function formatElapsed(startedAt: string, finishedAt?: string): string {
   const start = new Date(startedAt).getTime();
@@ -103,8 +104,24 @@ function FileList({ files }: { files: IngestionFileStatus[] }) {
             <tr key={f.filePath}>
               <td class="corpus-file-path">{f.filePath.split("/").pop()}</td>
               <td>
-                <span class={`corpus-status-badge status-${f.status}`}>
-                  {f.status === "processed" ? "✓" : f.status === "skipped" ? "⊘" : "✗"}
+                {/* The badge's ONLY content is the glyph -- the status word
+                    appears nowhere else in the row -- so it carries the
+                    accessible name rather than hiding it. */}
+                <span
+                  class={`corpus-status-badge status-${f.status}`}
+                  role="img"
+                  aria-label={f.status}
+                >
+                  <Icon
+                    name={
+                      f.status === "processed"
+                        ? "check"
+                        : f.status === "skipped"
+                          ? "prohibit"
+                          : "close"
+                    }
+                    size={14}
+                  />
                 </span>
               </td>
               <td>{f.chunksInserted ?? "-"}</td>

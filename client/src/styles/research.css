@@ -112,8 +112,31 @@
   gap: 12px;
 }
 
-.research-state-icon {
-  font-size: 18px;
+/* THE SECTION AND CHIP GLYPHS ARE `<Icon>` NOW, NOT EMOJI.
+ *
+ * Six rules died here: `.research-state-icon`, `.research-section-icon`,
+ * `.research-step-emoji`, `.suggested-steps-icon`, `.suggested-step-emoji` and
+ * `.artifact-viewer-icon` were each a lone `font-size`, sizing an emoji CHARACTER.
+ * An SVG does not read `font-size` -- it takes its box from the `size` prop -- so
+ * the declarations were inert the moment the glyph changed.
+ *
+ * What they need instead is to stop being laid out as TEXT. An inline SVG sits on
+ * the baseline, which left every one of these hanging a couple of pixels below the
+ * label beside it; `inline-flex` puts them on the row's optical centre. The colour
+ * is inherited (`currentColor`), so the task chips keep tinting their own glyph.
+ */
+.research-state-icon,
+.research-section-icon,
+.research-step-emoji,
+.suggested-steps-icon,
+.suggested-step-emoji,
+.artifact-viewer-icon,
+.evidence-by-source-icon,
+.evidence-by-source-row-icon,
+.evidence-by-source-row-icon-name {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .research-state-title {
@@ -165,10 +188,6 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 8px;
-}
-
-.research-section-icon {
-  font-size: 14px;
 }
 
 .research-objective-text {
@@ -359,10 +378,6 @@
   border: 1px solid var(--border-color);
 }
 
-.research-step-emoji {
-  font-size: 12px;
-}
-
 .research-step-header {
   display: flex;
   align-items: center;
@@ -493,10 +508,6 @@
   margin-bottom: 16px;
 }
 
-.suggested-steps-icon {
-  font-size: 18px;
-}
-
 .suggested-steps-title {
   font-size: 14px;
   font-weight: 600;
@@ -545,10 +556,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.suggested-step-emoji {
-  font-size: 12px;
 }
 
 .suggested-step-arrow {
@@ -650,10 +657,6 @@
   gap: 10px;
 }
 
-.artifact-viewer-icon {
-  font-size: 16px;
-}
-
 .artifact-viewer-title {
   font-size: 13px;
   font-weight: 600;
@@ -723,6 +726,9 @@
   margin-left: auto;
   color: var(--accent-ink);
   font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .artifact-output-content {

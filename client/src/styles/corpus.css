@@ -299,6 +299,10 @@
   white-space: nowrap;
 }
 
+/* The 24px status disc. Its content is a Phosphor SVG now, not an emoji, so the
+   `font-size` that used to size that glyph is gone -- the icon takes its box from
+   the `size` prop. The disc itself is unchanged, and the per-status `color` below
+   still reaches the glyph because Phosphor paints with `currentColor`. */
 .corpus-status-badge {
   display: inline-flex;
   align-items: center;
@@ -306,7 +310,6 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  font-size: 14px;
 }
 
 .corpus-status-badge.status-processed {

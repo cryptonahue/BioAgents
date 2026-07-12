@@ -260,11 +260,11 @@ export function useChatAPI(
       // Handle 402 after payment attempt
       if (response.status === 402) {
         toast.error(
-          "💳 Payment failed. Please ensure you have sufficient USDC balance.",
+          "Payment failed. Please ensure you have sufficient USDC balance.",
           8000,
         );
         throw new Error(
-          "💳 Payment failed. Please ensure you have sufficient USDC balance.",
+          "Payment failed. Please ensure you have sufficient USDC balance.",
         );
       }
 
@@ -287,7 +287,7 @@ export function useChatAPI(
             const txShort = `${paymentResponse.transaction.slice(0, 8)}...${paymentResponse.transaction.slice(-6)}`;
 
             toast.success(
-              `✅ Payment Transaction Approved!\n\nYour payment has been successfully processed.\n\nTx: ${txShort}`,
+              `Payment Transaction Approved!\n\nYour payment has been successfully processed.\n\nTx: ${txShort}`,
               7000,
             );
 
@@ -352,7 +352,7 @@ export function useChatAPI(
         !errorMessage.includes("Payment Required") &&
         !errorMessage.includes("Session expired")
       ) {
-        toast.error(`❌ Error: ${errorMessage}`, 6000);
+        toast.error(`Error: ${errorMessage}`, 6000);
       }
 
       throw err;
@@ -515,11 +515,11 @@ export function useChatAPI(
       // Handle 402 after payment attempt
       if (response.status === 402) {
         toast.error(
-          "💳 Payment failed. Please ensure you have sufficient USDC balance.",
+          "Payment failed. Please ensure you have sufficient USDC balance.",
           8000,
         );
         throw new Error(
-          "💳 Payment failed. Please ensure you have sufficient USDC balance.",
+          "Payment failed. Please ensure you have sufficient USDC balance.",
         );
       }
 
@@ -536,7 +536,7 @@ export function useChatAPI(
             const txShort = `${paymentResponse.transaction.slice(0, 8)}...${paymentResponse.transaction.slice(-6)}`;
 
             toast.success(
-              `✅ Payment Transaction Approved!\n\nTx: ${txShort}`,
+              `Payment Transaction Approved!\n\nTx: ${txShort}`,
               7000,
             );
 
@@ -616,7 +616,7 @@ export function useChatAPI(
         !errorMessage.includes("Payment Required") &&
         !errorMessage.includes("Session expired")
       ) {
-        toast.error(`❌ Error: ${errorMessage}`, 6000);
+        toast.error(`Error: ${errorMessage}`, 6000);
       }
 
       throw err;

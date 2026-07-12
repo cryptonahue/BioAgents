@@ -350,7 +350,7 @@ export function useX402Payment(): UseX402PaymentReturn {
 
       // Show success toast
       toast.success(
-        `✅ Wallet Connected!\n\nAddress: ${account.slice(0, 6)}...${account.slice(-4)}`,
+        `Wallet Connected!\n\nAddress: ${account.slice(0, 6)}...${account.slice(-4)}`,
         5000
       );
 
@@ -384,7 +384,7 @@ export function useX402Payment(): UseX402PaymentReturn {
       setError(errorMsg);
       
       // Show error toast
-      toast.error(`❌ Wallet Connection Failed\n\n${errorMsg}`, 6000);
+      toast.error(`Wallet Connection Failed\n\n${errorMsg}`, 6000);
       
       throw err;
     } finally {
@@ -403,7 +403,7 @@ export function useX402Payment(): UseX402PaymentReturn {
       resetSigner();
       
       // Show disconnection toast
-      toast.info("👋 Wallet Disconnected", 3000);
+      toast.info("Wallet Disconnected", 3000);
     }
   }, [resetSigner, toast]);
 
@@ -422,7 +422,7 @@ export function useX402Payment(): UseX402PaymentReturn {
         const isTestnet = network.includes("sepolia");
 
         toast.warning(
-          `⚠️ Low USDC Balance\n\nYour balance is $${usdcBalance} USDC. You need at least $0.10 to make payments.\n\n${isTestnet ? "Get free testnet USDC from Circle Faucet!" : "Please fund your wallet."}`,
+          `Low USDC Balance\n\nYour balance is $${usdcBalance} USDC. You need at least $0.10 to make payments.\n\n${isTestnet ? "Get free testnet USDC from Circle Faucet!" : "Please fund your wallet."}`,
           8000
         );
       }

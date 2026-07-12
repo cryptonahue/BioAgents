@@ -1,4 +1,5 @@
 import { Modal } from "./ui/Modal";
+import { Icon } from "./icons";
 
 interface PaymentConfirmationModalProps {
   isOpen: boolean;
@@ -60,7 +61,9 @@ export function PaymentConfirmationModal({
 
           {isTestnet && (
             <div className="payment-modal__testnet">
-              ⚠️ Testnet Transaction - No real funds will be used
+              {/* Decorative: the sentence beside it already says "Testnet". */}
+              <Icon name="alertTriangle" size={14} />
+              Testnet Transaction - No real funds will be used
             </div>
           )}
         </div>

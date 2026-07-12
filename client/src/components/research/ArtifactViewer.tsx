@@ -171,7 +171,7 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="artifact-viewer-header-left">
-          <span className="artifact-viewer-icon">💻</span>
+          <Icon name="code" size={16} className="artifact-viewer-icon" />
           <span className="artifact-viewer-title">Code Execution Results</span>
           <div className="artifact-viewer-badges">
             {hasArtifacts && (
@@ -210,7 +210,10 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
                     <Icon name="terminal" size={14} />
                     <span>Console Output</span>
                     {result.success && (
-                      <span className="artifact-status-success">✓ Success</span>
+                      <span className="artifact-status-success">
+                        <Icon name="check" size={12} />
+                        Success
+                      </span>
                     )}
                   </div>
                   <pre className="artifact-output-content">{result.output}</pre>

@@ -82,7 +82,7 @@ export function useEmbeddedWallet(network?: string, x402Enabled: boolean = true)
   useEffect(() => {
     if (isSignedIn && evmAddress && !hasShownToast.current) {
       toast.success(
-        `✅ Embedded Wallet Connected!\n\nAddress: ${evmAddress.slice(0, 6)}...${evmAddress.slice(-4)}`,
+        `Embedded Wallet Connected!\n\nAddress: ${evmAddress.slice(0, 6)}...${evmAddress.slice(-4)}`,
         5000
       );
       hasShownToast.current = true;
@@ -100,10 +100,10 @@ export function useEmbeddedWallet(network?: string, x402Enabled: boolean = true)
 
     try {
       await signOutFn();
-      toast.info("👋 Embedded Wallet Disconnected", 3000);
+      toast.info("Embedded Wallet Disconnected", 3000);
     } catch (err: any) {
       console.error("[useEmbeddedWallet] Sign out failed:", err);
-      toast.error(`❌ Failed to disconnect: ${err?.message || "Unknown error"}`, 5000);
+      toast.error(`Failed to disconnect: ${err?.message || "Unknown error"}`, 5000);
     }
   }, [signOutFn, toast]);
 

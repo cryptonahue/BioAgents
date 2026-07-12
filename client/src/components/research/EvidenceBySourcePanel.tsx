@@ -30,27 +30,27 @@ const SOURCE_META: Record<
 > = {
   OPENSCHOLAR: {
     label: "OpenScholar",
-    icon: "🎓",
+    icon: "graduationCap",
     description: "Academic papers via OpenScholar API",
   },
   KNOWLEDGE: {
     label: "Knowledge base",
-    icon: "📚",
+    icon: "bookOpen",
     description: "Locally ingested PDFs (vector search)",
   },
   EDISON: {
     label: "Edison",
-    icon: "🔬",
+    icon: "microscope",
     description: "External Edison research agent",
   },
   BIOLIT: {
     label: "BioLit",
-    icon: "🧬",
+    icon: "dna",
     description: "External BioLit fast literature",
   },
   BIOLITDEEP: {
     label: "BioLit Deep",
-    icon: "🧬",
+    icon: "dna",
     description: "External BioLit deep literature",
   },
 };
@@ -70,10 +70,10 @@ function statusGlyph(status: LiteratureSource["status"]): {
   // so they take the status family rather than a data palette. "No matches" is
   // not a failure — it is an absence — so it reads as dimmed text, not a hue.
   if (status === "ok")
-    return { icon: "✓", color: "var(--success)", label: "OK" };
+    return { icon: "check", color: "var(--success)", label: "OK" };
   if (status === "empty")
-    return { icon: "○", color: "var(--text-tertiary)", label: "No matches" };
-  return { icon: "✗", color: "var(--destructive)", label: "Failed" };
+    return { icon: "circle", color: "var(--text-tertiary)", label: "No matches" };
+  return { icon: "close", color: "var(--destructive)", label: "Failed" };
 }
 
 /**
@@ -117,7 +117,7 @@ export function EvidenceBySourcePanel({
         aria-expanded={isPanelOpen}
         onClick={() => setIsPanelOpen((prev) => !prev)}
       >
-        <span className="evidence-by-source-icon">🔬</span>
+        <Icon name="microscope" size={14} className="evidence-by-source-icon" />
         <span className="evidence-by-source-title">
           Evidence ({okCount}/{sources.length} sources, {totalCount} chunks)
         </span>
@@ -159,13 +159,17 @@ export function EvidenceBySourcePanel({
                   <span
                     className="evidence-by-source-row-icon"
                     style={{ color: glyph.color }}
+                    role="img"
+                    aria-label={glyph.label}
                   >
-                    {glyph.icon}
+                    <Icon name={glyph.icon} size={12} />
                   </span>
                   <span className="evidence-by-source-row-label">
-                    <span className="evidence-by-source-row-icon-name">
-                      {meta.icon}
-                    </span>{" "}
+                    <Icon
+                      name={meta.icon}
+                      size={12}
+                      className="evidence-by-source-row-icon-name"
+                    />{" "}
                     {meta.label}
                   </span>
                   <span className="evidence-by-source-row-meta">
