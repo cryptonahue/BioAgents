@@ -260,7 +260,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section">
+      <section className="landing-section landing-section--band">
         <h2 className="landing-section-title">How It Works</h2>
         <div className="landing-steps">
           {STEPS.map((step) => (
@@ -318,7 +318,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-section">
+      <section className="landing-section landing-section--band">
         <h2 className="landing-section-title">FAQ</h2>
         <div className="landing-faq">
           {FAQ.map((item, index) => (

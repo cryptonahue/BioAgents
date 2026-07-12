@@ -25,32 +25,34 @@
  * ---------------------------------------------------------------------------
  * PINNED-DARK PHOTOGRAPHIC SURFACES
  *
- * `.landing-page` and `.access-pending-page` (styled by `coralgpt.css`) and
+ * `.landing-hero` (the reef hero band, styled by `coralgpt.css`) and
  * `.welcome-screen` (the /chat empty state, styled by `global.css`) appear in
  * the selector list of every `.dark` block below. That is deliberate and it is
  * the ONLY mechanism scoping those surfaces out of the theme.
  *
- * All three are designed against a full-bleed PHOTOGRAPH with a dark scrim and
- * light text over the image. There is no light-mode design for them, and
- * inventing one is a design job, not a refactor. Re-declaring the dark token
- * values on those roots pins every token their CSS reads to its dark value,
- * whatever the `dark` class on `<html>` says. Descendants — including the
- * waitlist modal, which renders inline rather than through a portal — inherit
- * from the pinned root.
+ * Both are text over a full-bleed PHOTOGRAPH, behind a dark scrim. A photograph
+ * cannot be inverted: a white scrim over a dark image yields muddy grey, and
+ * dark ink over an image has per-pixel contrast — it can clear AA over one
+ * region of the picture and fail over the next. So the scrim stays dark and the
+ * ink stays light IN BOTH THEMES, which is the pairing that was actually
+ * measured. Stripe, Linear and Apple all resolve this the same way. Re-declaring
+ * the dark token values on these roots pins every token their CSS reads to its
+ * dark value, whatever the `dark` class on `<html>` says, and descendants
+ * inherit from the pinned root.
  *
- * `.welcome-screen` was identified as the third such surface when its literals
- * were first documented, but it was never actually ADDED to these lists — the
- * pin was described and not applied. That was harmless only for as long as
- * nothing inside it wore a Basecoat class: the surface painted itself entirely
- * with hardcoded rgba() literals, so there was no token left to defect. The
- * moment its example prompts became Lyra `.card`s — which read `--card`, WHITE
- * in light — the missing pin would have dropped white cards onto a dark
- * photograph. So it is pinned now, for real, in every block.
+ * THE PIN IS SCOPED TO THE PHOTOGRAPH, NOT TO THE PAGE. `.landing-page` and
+ * `.access-pending-page` used to sit in these lists too, which froze the ENTIRE
+ * marketing page dark and was the only reason the landing had no light mode.
+ * They are gone from every list: everything below the hero band — features,
+ * steps, trust cards, the token card, the FAQ, the footer, the sticky header and
+ * the waitlist modal — now reads the normal tokens and themes for real. That is
+ * what makes the footer's theme toggle mean something. `.access-pending-page`
+ * has no photograph at all (it is an icon, a heading and two buttons on a flat
+ * fill), so it had no business being pinned in the first place; it themes fully.
  *
- * The raw literals inside `coralgpt.css` and inside the welcome-screen block of
- * `global.css` are intentionally left untokenized for the same reason. Do not
- * remove these selectors, and do not tokenize those blocks, until a light design
- * has actually been drawn.
+ * If you add another element that sits over an image, PIN THE ELEMENT, not its
+ * page root — and add it to EVERY list below, including the alias re-anchor
+ * block, or it will silently half-defect to light. See that block's header.
  * ---------------------------------------------------------------------------
  */
 
@@ -136,8 +138,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   /* MUST BE RE-DECLARED HERE, and this is not symmetry for its own sake.
      Basecoat's base.css already says `.dark { color-scheme: dark }`, but the
@@ -343,8 +344,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   --bg-hover: oklch(0.32 0.012 216.9);
   /* DARK IS THE DEFAULT THEME, so this is the failure users actually see.
@@ -385,26 +385,32 @@
  * sits on `<html>`, the SAME element `:root` matches, so there the alias and its
  * referent resolve on one element and the cascade already picks the dark value.
  * Verified: all twelve are correct under `.dark` today. Only a DESCENDANT root
- * that re-declares tokens — which is what these three photographic surfaces are —
+ * that re-declares tokens — which is what these two photographic surfaces are —
  * breaks the bridge.
  *
  * The rule for anyone adding a scoped token override in the future: if your
  * block re-declares a token that some `var()` alias points at, you must
  * re-declare the alias too. The Library sub-brand block at the bottom of this
  * file is safe from this precisely because it only overrides `--accent-*`, which
- * are LITERALS that nothing aliases.
+ * are LITERALS that nothing aliases. So is the CoralGPT brand block further
+ * down, and the `--landing-header-bg` literal in `coralgpt.css`, for the same
+ * reason.
  */
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   /* Basecoat's own `.dark` block ends with `color-scheme: dark`, and the pinned
      roots never picked it up. It is not a token, so no amount of re-aliasing
      reaches it — but it is what tells the UA to paint native controls dark, and
-     the landing has a real `<input type="checkbox">` in the waitlist form. In
-     light mode that checkbox rendered as a WHITE box on the dark card. It also
-     governs the `Canvas` / `CanvasText` system colors that Basecoat's
-     `native-select.css` gives every `<option>`, so a dark-pinned surface without
-     it would drop a white dropdown out of a dark select. */
+     the welcome screen's prompt cards and the hero's controls both sit on a
+     photograph. It also governs the `Canvas` / `CanvasText` system colors that
+     Basecoat's `native-select.css` gives every `<option>`, so a dark-pinned
+     surface without it would drop a white dropdown out of a dark select.
+
+     The waitlist modal's `<input type="checkbox">` and `<select>` used to depend
+     on this too, back when the whole page was pinned. They no longer do: the
+     modal now sits on the THEMED page, so it takes `color-scheme` from `<html>`
+     and its native controls follow the real theme, which is what they should
+     have done all along. */
   color-scheme: dark;
 
   --bg-primary: var(--background);
@@ -658,8 +664,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   --surface-sunken: oklch(0.185 0.008 228.8);
   --border-strong: oklch(1 0 0 / 20%);
@@ -748,8 +753,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   --bbox-table-ink: #93c5fd;
   --bbox-figure-ink: #c4b5fd;
@@ -803,8 +807,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   --graph-node-entity: #3b82f6; /* blue-500   — 4.72:1 on `--card` */
   --graph-node-compound: #4ade80; /* green-400  — 9.97:1 on `--card` */
@@ -873,8 +876,7 @@
 
 /* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. */
 .dark,
-.landing-page,
-.access-pending-page,
+.landing-hero,
 .welcome-screen {
   /* violet-300 — 6.49:1 on its tint. violet-400 is 4.40:1 and misses AA. */
   --task-literature: #c4b5fd;
@@ -929,4 +931,114 @@
 .dark .paper-page {
   /* teal-300 — 13.3:1 on the dark background */
   --accent-ink: #5eead4;
+}
+
+/**
+ * CoralGPT brand — CORAL + TEAL.
+ *
+ * The marketing landing, the waitlist modal and the access-pending page are a
+ * two-color brand: coral `#ff6b6b` and teal `#2dd4bf`. Until now both were
+ * hardcoded as literals in `coralgpt.css` (16 call sites), which was survivable
+ * only because the whole page was pinned dark. On a page that themes, a literal
+ * is a bug: `#ff6b6b` is 2.78:1 on white and `#2dd4bf` is 1.86:1 — both fail AA
+ * as text by a wide margin.
+ *
+ * So the brand gets the same FILL/INK split the rest of this file already uses
+ * (`--accent-color` vs. `--accent-ink`, `--primary` vs. `--primary-ink`):
+ *
+ *   --coral / --teal        The brand FILL, BORDER and GLOW. Theme-INVARIANT, so
+ *                           the brand is the same color in both themes. These are
+ *                           never used as text.
+ *   --coral-ink / --teal-ink  The brand used as TEXT on the app surface. This is
+ *                           the half that has to theme, because the surface does.
+ *
+ * `--coral-foreground` is the ink that sits ON the coral fill, and it is BLACK.
+ * White on `#ff6b6b` measures 2.78:1 — the CTA that says "Test Agent" has been
+ * failing AA outright, in the one theme the page had. Black on the same fill is
+ * 7.57:1. Same idiom as `--accent-color-foreground` and `--destructive-foreground`
+ * one block up: the text follows the FILL, not the theme. Darkening the fill
+ * instead so white would clear 4.5:1 needs `#c23636`, which is not coral any more.
+ *
+ * The light inks are NOT the dark ones darkened by eye, they are measured on
+ * every surface each one actually lands on (`--background` / `--card` are white,
+ * `--muted` and `--surface-sunken` are the banded sections):
+ *
+ *                    LIGHT               DARK
+ *   --coral-ink      #c23636             #ff6b6b
+ *                    5.42 / 4.87 worst   7.11 / 5.33 worst
+ *   --teal-ink       #0f766e             #2dd4bf
+ *                    5.47 / 4.91 worst   10.59 / 7.94 worst
+ *
+ * `--teal-border` is a real BUTTON BOUNDARY (the "Learn about $CRLAI" link
+ * button), so it carries the 3:1 WCAG 1.4.11 non-text floor rather than the 4.5:1
+ * text one. The `rgba(45, 212, 191, 0.35)` it replaces composites to 1.26:1 on
+ * white — invisible. Teal-600 opaque is 3.74:1 in light; in dark the translucent
+ * form still works because the surface behind it is near-black (4.4:1 at 0.6).
+ */
+:root {
+  --coral: #ff6b6b;
+  --coral-hover: #e85555;
+  /* 7.57:1 on `--coral`, 5.86:1 on `--coral-hover`. See above. */
+  --coral-foreground: #000000;
+  --coral-ink: #c23636;
+
+  --teal: #2dd4bf;
+  --teal-ink: #0f766e;
+  --teal-subtle: rgba(45, 212, 191, 0.1);
+  /* teal-600 — 3.74:1 on white, 3.36:1 on `--muted`. */
+  --teal-border: #0d9488;
+}
+
+/* See PINNED-DARK PHOTOGRAPHIC SURFACES at the top of this file. `.welcome-screen`
+   is not in this list: it carries no CoralGPT brand color. */
+.dark,
+.landing-hero {
+  --coral-ink: #ff6b6b;
+  --teal-ink: #2dd4bf;
+  --teal-border: rgba(45, 212, 191, 0.6);
+}
+
+/**
+ * THE HERO'S SUBSTRATE IS A PHOTOGRAPH, NOT A TOKEN SURFACE.
+ *
+ * Everything above measures its ink against `--background` / `--card` / `--muted`
+ * — flat, known fills. The hero has none of those behind it. It has a reef video
+ * behind a scrim, and the composite under any given glyph depends on the pixel.
+ *
+ * The dark token set the block above pins onto `.landing-hero` is therefore
+ * necessary but NOT sufficient: two of its steps were tuned against the app's
+ * near-black card, which is darker than a scrimmed photograph ever is.
+ *
+ *   --muted-foreground  The hero SUBTITLE reads this (through `--text-secondary`).
+ *                       The app's dark value, oklch(0.723 …), measures 1.94:1
+ *                       against the scrim composited over a bright region of the
+ *                       reef — a live AA failure on today's dark-only landing,
+ *                       found by sampling the real pixels rather than the nominal
+ *                       scrim. This step is bright enough to clear 4.5:1 against
+ *                       the LIGHTEST pixel that actually sits under the subtitle.
+ *   --ring              Focus rings on the hero's CTA land on the photograph, not
+ *                       on `--muted`. The app's dark ring is a mid grey; on a
+ *                       scrimmed photo it drops toward the 3:1 floor. Near-white
+ *                       is the only value that is safe over an arbitrary image.
+ *   --teal-subtle       The `Powered by $CRLAI` badge's own fill. Everywhere else
+ *                       in the app a `-subtle` tint is a 10% wash that lets the
+ *                       card show through, because what shows through is a known
+ *                       fill. Here it would let the REEF show through, and the
+ *                       teal ink would be measured against whatever pixel landed
+ *                       under it. Making the chip nearly OPAQUE gives the badge a
+ *                       substrate of its own — the ink is then 8.3:1 on it,
+ *                       independent of the photograph. This is the general fix
+ *                       for a chip over an image, and it is why the badge did not
+ *                       simply inherit the app's tint.
+ *
+ * This block must stay AFTER the `.dark, .landing-hero` blocks above — same
+ * element, same (0,1,0) specificity, so source order decides. `--text-secondary`
+ * still follows: `var()` resolves against the CASCADED value of the property on
+ * the element, so re-declaring `--muted-foreground` here feeds the alias the
+ * re-anchor block declared earlier.
+ */
+.landing-hero {
+  --muted-foreground: oklch(0.92 0.006 214.4);
+  --ring: oklch(0.97 0.002 197.1);
+  --teal-subtle: rgba(2, 8, 12, 0.62);
 }

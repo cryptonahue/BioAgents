@@ -1,4 +1,53 @@
-/* CoralGPT theme overrides */
+/**
+ * CoralGPT — the marketing surfaces.
+ *
+ * The landing page, the waitlist modal and the access-pending page.
+ *
+ * ---------------------------------------------------------------------------
+ * THIS FILE USED TO BE UNTHEMED, ON PURPOSE, AND IS NOT ANY MORE.
+ *
+ * Every color here was a raw literal (`#ff6b6b`, `rgba(0, 0, 0, 0.92)`, …) and
+ * `theme.css` pinned `.landing-page` / `.access-pending-page` to the dark token
+ * set so none of it could defect. That was the right call while there was no
+ * light design; it is the wrong call now that there is one.
+ *
+ * The pin is now scoped to `.landing-hero` alone — the one element that sits over
+ * a PHOTOGRAPH — and everything else on these pages reads the normal tokens. Read
+ * the PINNED-DARK header in `theme.css` before changing anything here.
+ *
+ * So: NO RAW COLOR LITERALS BELOW. The brand coral and teal are `--coral*` /
+ * `--teal*` (declared in `theme.css`, with a measured light ink and a measured
+ * dark one); everything else is a normal app token. A literal you add here is a
+ * light-mode bug you cannot see, because you are almost certainly looking at the
+ * dark theme.
+ * ---------------------------------------------------------------------------
+ *
+ * UNLAYERED, and imported after `global.css` (see `index.jsx`), so every rule
+ * here beats Basecoat's `@layer components` regardless of specificity. That is
+ * what lets the marketing type scale below override Lyra's app-sized `.btn` and
+ * `.accordion` with a plain class selector.
+ */
+
+/* The CoralGPT app skin — worn by <body> on every CoralGPT route, not just the
+   landing. It re-points the shared `--accent-*` family at the brand coral, which
+   is why the chat UI reads coral rather than the BioAgents green. */
+.coralgpt-theme {
+  --accent-color: var(--coral);
+  --accent-hover: var(--coral-hover);
+  --accent-light: rgba(255, 107, 107, 0.1);
+  --accent-glow: rgba(255, 107, 107, 0.15);
+  --shadow-accent: 0 4px 16px rgba(255, 107, 107, 0.15);
+}
+
+.coralgpt-theme .welcome-title-bio,
+.coralgpt-theme .logo-bio {
+  color: var(--coral-ink);
+}
+
+.coralgpt-theme .welcome-title-agents,
+.coralgpt-theme .logo-agents {
+  color: var(--teal-ink);
+}
 
 html.coralgpt-scroll,
 body.coralgpt-scroll {
@@ -7,32 +56,33 @@ body.coralgpt-scroll {
   min-height: 100vh;
 }
 
-.coralgpt-theme {
-  --accent-color: #ff6b6b;
-  --accent-hover: #e85555;
-  --accent-light: rgba(255, 107, 107, 0.1);
-  --accent-glow: rgba(255, 107, 107, 0.15);
-  --accent-secondary: #2dd4bf;
-  --shadow-accent: 0 4px 16px rgba(255, 107, 107, 0.15);
-}
-
-.coralgpt-theme .welcome-title-bio,
-.coralgpt-theme .logo-bio {
-  color: #ff6b6b;
-}
-
-.coralgpt-theme .welcome-title-agents,
-.coralgpt-theme .logo-agents {
-  color: #2dd4bf;
-}
-
-/* Landing page */
+/* ---------------------------------------------------------------------------
+ * Landing shell
+ * ------------------------------------------------------------------------- */
 
 .landing-page {
   min-height: 100vh;
   overflow-y: auto;
   background: var(--bg-primary);
   color: var(--text-primary);
+}
+
+/* The sticky header floats OVER the hero photograph once the page scrolls, so it
+   is translucent in both themes — but it is not pinned dark, because at rest it
+   sits in its own band above the hero and below it there is only themed page. A
+   literal rgba() rather than a token: it is a translucent scrim over unknowable
+   content, which is exactly the case `theme.css` documents `--overlay` for, and
+   like `--overlay` it does not invert — it just takes the page's own color.
+   Nothing aliases it, so declaring it on a page root is safe (see the re-anchor
+   note in `theme.css`). */
+.landing-page,
+.access-pending-page {
+  --landing-header-bg: rgba(255, 255, 255, 0.9);
+}
+
+.dark .landing-page,
+.dark .access-pending-page {
+  --landing-header-bg: rgba(9, 11, 12, 0.92);
 }
 
 .landing-header {
@@ -44,7 +94,7 @@ body.coralgpt-scroll {
   justify-content: space-between;
   padding: 16px 32px;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.92);
+  background: var(--landing-header-bg);
   backdrop-filter: blur(8px);
 }
 
@@ -77,18 +127,30 @@ body.coralgpt-scroll {
   letter-spacing: 0.08em;
 }
 
+/* The WORDMARK. WCAG 1.4.3 exempts logotypes from the contrast floor, so the
+   brand fills could legally have stayed literal here — but `#2dd4bf` on a white
+   header is 1.86:1, which is unreadable whether or not it is exempt. The inks
+   keep the brand hue and clear 4.5:1 in both themes instead. */
 .landing-brand-text .coral {
-  color: #ff6b6b;
+  color: var(--coral-ink);
 }
 
 .landing-brand-text .gpt {
-  color: #2dd4bf;
+  color: var(--teal-ink);
 }
 
 .landing-nav-actions {
   display: flex;
   gap: 12px;
 }
+
+/* ---------------------------------------------------------------------------
+ * Hero — THE DARK ISLAND.
+ *
+ * `theme.css` pins the full dark token set onto `.landing-hero`, so everything
+ * inside it renders dark in BOTH themes. The scrim below is what the hero's inks
+ * were measured against; do not lighten it without re-measuring them.
+ * ------------------------------------------------------------------------- */
 
 .landing-hero {
   position: relative;
@@ -97,6 +159,8 @@ body.coralgpt-scroll {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .landing-hero-video-wrap {
@@ -111,10 +175,20 @@ body.coralgpt-scroll {
   object-fit: cover;
 }
 
+/* A flat `rgba(0, 0, 0, 0.55)` wash left the subtitle at 1.94:1 over the bright
+   regions of the reef. This is denser in the band where the copy actually sits
+   and denser still at the edges, which is also what stops the hero from bleeding
+   into the header above it and the product shot below it. */
 .landing-hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: linear-gradient(
+    180deg,
+    rgba(2, 8, 12, 0.78) 0%,
+    rgba(2, 8, 12, 0.66) 45%,
+    rgba(2, 8, 12, 0.7) 75%,
+    rgba(2, 8, 12, 0.88) 100%
+  );
 }
 
 .landing-hero-content {
@@ -146,24 +220,19 @@ body.coralgpt-scroll {
   gap: 16px;
 }
 
-.landing-badge {
-  display: inline-block;
-  padding: 6px 14px;
-  border: 1px solid rgba(45, 212, 191, 0.35);
-  border-radius: 999px;
-  color: #2dd4bf;
-  font-size: 13px;
-  font-weight: 500;
+/* The CTA's own boundary against the PHOTOGRAPH. No border color can guarantee
+   3:1 against an arbitrary image — the coral fill drops to 2.2:1 over a specular
+   highlight — so the button carries a dark 1px ring of its own, which does. The
+   drop shadow lifts it off the reef. */
+.landing-hero-actions .btn-coral {
+  box-shadow:
+    0 0 0 1px rgba(2, 8, 12, 0.55),
+    0 8px 24px rgba(2, 8, 12, 0.45);
 }
 
-.landing-badge--sm {
-  padding: 4px 11px;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-}
-
-/* App-window screenshot frame */
+/* ---------------------------------------------------------------------------
+ * Screenshot frames
+ * ------------------------------------------------------------------------- */
 
 .landing-shot {
   margin: 0;
@@ -171,7 +240,7 @@ body.coralgpt-scroll {
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-secondary);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-lg);
   line-height: 0;
 }
 
@@ -182,8 +251,8 @@ body.coralgpt-scroll {
   max-width: 100%;
 }
 
-/* Hero product shot (below the hero copy) */
-
+/* Hero product shot — sits OUTSIDE `.landing-hero`, so it themes. It is pulled up
+   over the hero's bottom edge, which is why the scrim above ends dark. */
 .landing-hero-shot-wrap {
   max-width: 1040px;
   margin: -48px auto 0;
@@ -193,13 +262,35 @@ body.coralgpt-scroll {
 }
 
 .landing-hero-shot {
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
 }
+
+/* ---------------------------------------------------------------------------
+ * Sections
+ * ------------------------------------------------------------------------- */
 
 .landing-section {
   max-width: 1100px;
   margin: 0 auto;
   padding: 64px 24px;
+}
+
+/* A full-bleed sunken band, without a wrapper element.
+ *
+ * In LIGHT, `--card` and `--background` are the same white, so a `.card` on the
+ * page background is a white box on a white page held together by a 10% ring —
+ * correct for an app, thin for a marketing page. Alternating bands give the card
+ * rows a surface to sit on and give the page a rhythm. `--surface-sunken` is the
+ * token that already means "one step below the page" and it themes both ways.
+ *
+ * `box-shadow` with a huge spread paints past the section's own max-width box;
+ * `clip-path` then trims that paint to the viewport so it cannot become
+ * horizontal overflow. The alternative is an extra wrapper <div> around five
+ * sections in the JSX, which buys nothing. */
+.landing-section--band {
+  background: var(--surface-sunken);
+  box-shadow: 0 0 0 100vmax var(--surface-sunken);
+  clip-path: inset(0 -100vmax);
 }
 
 .landing-section--token {
@@ -222,7 +313,9 @@ body.coralgpt-scroll {
   line-height: 1.6;
 }
 
-/* Feature rows */
+/* ---------------------------------------------------------------------------
+ * Feature rows
+ * ------------------------------------------------------------------------- */
 
 .landing-features {
   display: flex;
@@ -247,7 +340,7 @@ body.coralgpt-scroll {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #ff6b6b;
+  color: var(--coral-ink);
   margin-bottom: 12px;
 }
 
@@ -264,7 +357,9 @@ body.coralgpt-scroll {
   line-height: 1.7;
 }
 
-/* Trust cards */
+/* ---------------------------------------------------------------------------
+ * Card rows
+ * ------------------------------------------------------------------------- */
 
 .landing-trust {
   display: grid;
@@ -283,7 +378,7 @@ body.coralgpt-scroll {
   font-size: 1.05rem;
   font-weight: 600;
   margin-bottom: 10px;
-  color: var(--accent-secondary);
+  color: var(--teal-ink);
 }
 
 .landing-trust-body {
@@ -308,7 +403,7 @@ body.coralgpt-scroll {
 .landing-step-num {
   font-size: 12px;
   font-weight: 700;
-  color: #ff6b6b;
+  color: var(--coral-ink);
   letter-spacing: 0.1em;
   margin-bottom: 8px;
 }
@@ -343,7 +438,7 @@ body.coralgpt-scroll {
   content: "·";
   position: absolute;
   left: 0;
-  color: #ff6b6b;
+  color: var(--coral-ink);
   font-weight: 700;
 }
 
@@ -393,6 +488,10 @@ body.coralgpt-scroll {
   flex-wrap: wrap;
 }
 
+/* ---------------------------------------------------------------------------
+ * FAQ
+ * ------------------------------------------------------------------------- */
+
 .landing-faq {
   max-width: 720px;
   margin: 0 auto;
@@ -424,6 +523,10 @@ body.coralgpt-scroll {
   font-size: 15px;
 }
 
+/* ---------------------------------------------------------------------------
+ * Footer
+ * ------------------------------------------------------------------------- */
+
 .landing-footer {
   border-top: 1px solid var(--border-color);
   padding: 24px;
@@ -438,18 +541,20 @@ body.coralgpt-scroll {
 }
 
 .landing-footer a:hover {
-  color: #2dd4bf;
+  color: var(--teal-ink);
 }
 
-/* Buttons */
+/* ---------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------- */
 
 .btn-coral {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 12px 28px;
-  background: #ff6b6b;
-  color: #fff;
+  background: var(--coral);
+  color: var(--coral-foreground);
   border: none;
   border-radius: 8px;
   font-size: 15px;
@@ -459,7 +564,7 @@ body.coralgpt-scroll {
 }
 
 .btn-coral:hover {
-  background: #e85555;
+  background: var(--coral-hover);
 }
 
 .btn-coral:disabled {
@@ -483,8 +588,8 @@ body.coralgpt-scroll {
 }
 
 .btn-ghost:hover {
-  border-color: #ff6b6b;
-  color: #ff6b6b;
+  border-color: var(--coral-ink);
+  color: var(--coral-ink);
 }
 
 .btn-teal-link {
@@ -492,8 +597,8 @@ body.coralgpt-scroll {
   align-items: center;
   padding: 10px 20px;
   background: transparent;
-  color: #2dd4bf;
-  border: 1px solid rgba(45, 212, 191, 0.35);
+  color: var(--teal-ink);
+  border: 1px solid var(--teal-border);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -503,10 +608,28 @@ body.coralgpt-scroll {
 }
 
 .btn-teal-link:hover {
-  background: rgba(45, 212, 191, 0.08);
+  background: var(--teal-subtle);
 }
 
-/* Waitlist modal */
+.landing-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 1px solid var(--teal-border);
+  border-radius: 999px;
+  color: var(--teal-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.landing-badge--sm {
+  padding: 4px 11px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Waitlist modal
+ * ------------------------------------------------------------------------- */
 
 .waitlist-form {
   padding: 32px;
@@ -557,11 +680,16 @@ body.coralgpt-scroll {
   resize: vertical;
 }
 
-.waitlist-field input:focus,
-.waitlist-field select:focus,
-.waitlist-field textarea:focus {
-  outline: none;
-  border-color: #ff6b6b;
+/* The house focus ring, not a coral border. A recolored 1px border is not a
+   focus indicator: it moves the boundary's contrast around instead of adding
+   one, and `#ff6b6b` on the field's own fill is 2.49:1 in light — under the 3:1
+   floor for a non-text indicator. Every other focusable control in this app
+   already uses this exact pair. */
+.waitlist-field input:focus-visible,
+.waitlist-field select:focus-visible,
+.waitlist-field textarea:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .waitlist-checkbox {
@@ -602,13 +730,21 @@ body.coralgpt-scroll {
   line-height: 1.6;
 }
 
-/* Access pending */
+/* ---------------------------------------------------------------------------
+ * Access pending
+ *
+ * NO PHOTOGRAPH ANYWHERE ON THIS PAGE — an icon, a heading, two buttons and a
+ * flat fill. It was only ever in the pinned-dark list because it shares
+ * `.landing-header` with the landing, not because it had a substrate that could
+ * not be inverted. It themes fully.
+ * ------------------------------------------------------------------------- */
 
 .access-pending-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .access-pending-content {
@@ -632,7 +768,7 @@ body.coralgpt-scroll {
   align-items: center;
   justify-content: center;
   margin-bottom: 24px;
-  color: #ff6b6b;
+  color: var(--coral-ink);
   font-size: 28px;
 }
 
@@ -660,6 +796,8 @@ body.coralgpt-scroll {
   font-size: 13px;
   color: var(--text-tertiary);
 }
+
+/* ------------------------------------------------------------------------- */
 
 @media (max-width: 860px) {
   .landing-feature {
