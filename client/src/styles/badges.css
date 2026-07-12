@@ -1,0 +1,209 @@
+/**
+ * Basecoat badge overrides — the project TONE layer.
+ *
+ * Every text pill in the app (status badges, type chips, metadata tags, filter
+ * chips) now wears Basecoat's `.badge`. The hand-written skins they replaced
+ * (`.artifact-badge`, `.admin-status-badge`, `.paper-chip`, `.claim-status`,
+ * `.graph-tag`, `.brain-*` span pills, `.provenance-badge`, …) are gone. Where
+ * one of those selectors survives it carries LAYOUT or TYPOGRAPHY only — a
+ * `margin`, an `align-self`, a `text-transform`, a mono face. None of them paint
+ * a background, an ink or a border any more.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY A PROJECT `data-tone` AND NOT BASECOAT'S `data-variant`
+ *
+ * Basecoat ships exactly ONE status color: `destructive`. Its badge variants are
+ * `primary` / `secondary` / `outline` / `destructive` / `ghost` / `link` — a
+ * chrome vocabulary, not a semantic one. This app's badges are almost all
+ * SEMANTIC: the color IS the information. Green means the fact was verified,
+ * violet means bioprospecting data, amber means HYPOTHESIS, blue means the
+ * evidence is a table. PR 2 built the four-slot status family
+ * (`--success` / `--warning` / `--info` / `--destructive` / `--violet`, each with
+ * emphasis + `-subtle` + `-subtle-foreground` + `-border`) and the seven-hue
+ * `--task-*` family precisely because Basecoat has no vocabulary for any of it.
+ *
+ * So the split is a single rule, applied everywhere:
+ *
+ *   Basecoat's `data-variant` when the badge wants a Basecoat SEMANTIC — which
+ *   in practice is only the admin filter chip, whose selected state is genuinely
+ *   "the primary fill" and whose unselected state is genuinely "an outline".
+ *
+ *   The project's `data-tone` for every badge whose color carries MEANING.
+ *
+ * `data-tone` is a NEW attribute rather than a new `data-variant` value on
+ * purpose. Basecoat's default rule is `.badge:not([data-variant])`, so squatting
+ * `data-variant="success"` would work today — and would silently collide the day
+ * Basecoat 1.x ships a `success` variant of its own. `data-tone` is ours, is
+ * additive, and composes with `data-variant` rather than fighting it. It is the
+ * documented Basecoat escape hatch: keep the component class, layer your own
+ * modifier on top.
+ *
+ * The tone rules are UNLAYERED, so they beat Lyra's `components`-layer variant
+ * rules by construction rather than by specificity accident. They declare COLOR
+ * only — Lyra keeps supplying the geometry (`h-5`, `px-2`, `gap-1`, `text-xs`,
+ * `rounded-none`, the 1px border box, `[&>svg]:size-3`).
+ *
+ * `--radius` is intentionally NOT applied: Lyra is a square style pack and the
+ * square look is the chosen one, exactly as `buttons.css` and `forms.css` left it.
+ * ---------------------------------------------------------------------------
+ */
+
+/*
+ * BADGE NORMALIZATION — the part of Preflight this app deliberately does not load.
+ *
+ * Basecoat is written against Tailwind Preflight, which resets every element to
+ * `font-family: inherit` and every <button> to `background-color: transparent;
+ * color: inherit`. This app opts out of Preflight on purpose (see basecoat.css).
+ *
+ * Lyra's `.badge` sets a font SIZE and WEIGHT (`text-xs font-medium`) but never a
+ * font FAMILY — it assumes Preflight already made it inherit. On a `<span>` that
+ * is harmless (a span inherits anyway); on the interactive badges, which are real
+ * `<button>` elements (the admin filter chips, the provenance badge, the paper
+ * source chips), the UA's `font: 400 13.333px Arial` leaks through. That is the
+ * same leak slice 3 found on the form controls.
+ *
+ * THE INK IS `--foreground`, NOT `inherit`. Badges sit inside parents that
+ * recolor their subtree — `.brain-claim-meta`, `.paper-claim-mini` and the
+ * research step cards all set a muted ink on the wrapper — so `inherit` picks up
+ * the parent's grey. Every tone below overrides this anyway; it is the floor for
+ * a `.badge` carrying neither a tone nor a variant.
+ *
+ * This sits in the `base` LAYER, not unlayered, for the same reason `buttons.css`
+ * and `forms.css` do: Lyra's variant rules live in the `components` layer and
+ * must still beat it. Unlayered would win over all of them and flatten every
+ * variant. Scoped to `.badge`, so nothing unmigrated is touched.
+ */
+@layer base {
+  .badge {
+    font-family: inherit;
+    color: var(--foreground);
+  }
+
+  button.badge {
+    background-color: transparent;
+    cursor: pointer;
+  }
+}
+
+/*
+ * FOCUS RING.
+ *
+ * Lyra kills the outline on every interactive component it ships (`outline-hidden`
+ * plus a Tailwind ring whose spread resolves to zero against this app's tokens),
+ * so a focused badge announces nothing. Slices 1, 2 and 3 all had to re-add this
+ * exact pair; the interactive badges are no different. `--ring` was measured in
+ * PR 2 on every surface a ring can land on and clears the 3:1 WCAG 1.4.11 floor
+ * for a non-text indicator in both themes.
+ *
+ * Lyra puts `transition-all` on `.badge`, so `outline-width` ANIMATES 0 -> 2px on
+ * focus. Sampling `getComputedStyle` immediately after a Tab reads 0px and looks
+ * like a missing ring, which it is not — let it settle before measuring.
+ */
+.badge:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Lyra forces `[&>svg]:size-3!` but never stops the icon from being squeezed by a
+ * long label beside it in the flex row. One rule, for every badge.
+ */
+.badge > svg {
+  flex-shrink: 0;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * TONES.
+ *
+ * Each is the same four-slot shape PR 2 established: a subtle background TINT, an
+ * on-tint INK, and a border. The ink is measured ON ITS OWN TINT, which is the
+ * surface it actually renders against — never on the page background.
+ *
+ * The light values are NOT inversions of the dark ones; that asymmetry lives in
+ * `theme.css` and these rules simply read it.
+ * ---------------------------------------------------------------------------
+ */
+
+/* The app's neutral pill. NOT Basecoat's `secondary` variant: `--secondary` is a
+   near-white surface in light mode that disappears on `--background`, while every
+   neutral badge in this app has always sat on `--muted` with a visible hairline.
+   `--border-strong` (the divider weight) rather than `--border` (the hairline),
+   because the tint and the page are close and the box needs an edge. */
+.badge[data-tone="neutral"] {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border-strong);
+}
+
+/* The BRAND tint. `--accent-color` is the brand green on most of the app and the
+   teal sub-brand inside `.library-page` / `.paper-page`, which `theme.css` scopes.
+   Reading the tokens rather than the literals means a Library badge follows the
+   sub-brand for free. `--accent-ink` (not `--accent-color`) is the text step:
+   `#10b981` on white is 2.54:1 and fails AA. */
+.badge[data-tone="brand"] {
+  background-color: var(--accent-light);
+  color: var(--accent-ink);
+  border-color: var(--accent-border);
+}
+
+.badge[data-tone="success"] {
+  background-color: var(--success-subtle);
+  color: var(--success-subtle-foreground);
+  border-color: var(--success-border);
+}
+
+.badge[data-tone="warning"] {
+  background-color: var(--warning-subtle);
+  color: var(--warning-subtle-foreground);
+  border-color: var(--warning-border);
+}
+
+.badge[data-tone="info"] {
+  background-color: var(--info-subtle);
+  color: var(--info-subtle-foreground);
+  border-color: var(--info-border);
+}
+
+/* NOT Lyra's `data-variant="destructive"`. That variant is `bg-destructive/10` +
+   `text-destructive` — the EMPHASIS hue used as an ink on its own 10% wash, which
+   is not a pairing this app ever measured. `--destructive-subtle` /
+   `--destructive-subtle-foreground` are the measured pair, and they are what every
+   danger badge in the app already used. */
+.badge[data-tone="danger"] {
+  background-color: var(--destructive-subtle);
+  color: var(--destructive-subtle-foreground);
+  border-color: var(--destructive-border);
+}
+
+/* Bioprospecting data — fact counts, measurements, research depth. Not a status:
+   see the `--violet-*` note in `theme.css`. */
+.badge[data-tone="violet"] {
+  background-color: var(--violet-subtle);
+  color: var(--violet-subtle-foreground);
+  border-color: var(--violet-border);
+}
+
+/* The PDF provenance code, echoed in the app chrome. The evidence a fact cites is
+   a table often enough that the card badge tracks the BLUE bbox — and it tracks
+   `--bbox-table-ink`, not the generic `--info`, so the badge and the box it points
+   at can never drift apart. The bbox strokes themselves do not theme (they are ink
+   on a white raster); the `-ink` echo does, because it sits on the app surface.
+   See the `--bbox-*` block in `theme.css`. */
+.badge[data-tone="provenance"] {
+  background-color: var(--info-subtle);
+  color: var(--bbox-table-ink);
+  border-color: var(--info-border);
+}
+
+/* The deep-research TASK type — LITERATURE, ANALYSIS, HYPOTHESIS, REFLECTION,
+   PLANNING, CODE_EXEC. Seven hues, so it is driven by two custom properties the
+   call site sets (`--step-color` / `--step-bg`, already fed from the `--task-*`
+   family) rather than seven more attribute values. `.suggested-step-card` reads
+   the same two properties for its own hover, so they have to stay on the card.
+   `--task-other` is the documented fallback for an unrecognized type. */
+.badge[data-tone="task"] {
+  background-color: var(--step-bg, var(--task-other-subtle));
+  color: var(--step-color, var(--task-other));
+  border-color: currentColor;
+}
