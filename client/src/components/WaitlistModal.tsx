@@ -74,142 +74,187 @@ export function WaitlistModal({ isOpen, onClose, onTestAgent }: WaitlistModalPro
   return (
     <Modal isOpen={isOpen} onClose={handleClose} maxWidth="520px">
       {submitted ? (
-        <div className="waitlist-success">
-          <h2>You're on the list!</h2>
-          <p>
-            We'll notify you when access opens. Want to try sooner? Whitelisted
-            users can Test Agent today.
-          </p>
+        <div className="card waitlist-success">
+          <header>
+            <h2>You're on the list!</h2>
+            <p>
+              We'll notify you when access opens. Want to try sooner? Whitelisted
+              users can Test Agent today.
+            </p>
+          </header>
           {onTestAgent && (
-            <button
-              type="button"
-              className="btn btn-marketing"
-              data-variant="outline"
-              data-tone="coral"
-              onClick={onTestAgent}
-            >
-              Test Agent
-            </button>
+            <section>
+              <button
+                type="button"
+                className="btn btn-marketing"
+                data-variant="outline"
+                data-tone="coral"
+                onClick={onTestAgent}
+              >
+                Test Agent
+              </button>
+            </section>
           )}
         </div>
       ) : (
-        <form className="waitlist-form" onSubmit={handleSubmit}>
-          <h2>Join the CoralGPT Waitlist</h2>
-          <p className="waitlist-form-subtitle">
-            Be first to know when we expand access. Your answers help us build
-            the right product for coral science.
-          </p>
+        <form className="card waitlist-form" onSubmit={handleSubmit}>
+          <header>
+            <h2>Join the CoralGPT Waitlist</h2>
+            <p>
+              Be first to know when we expand access. Your answers help us build
+              the right product for coral science.
+            </p>
+          </header>
 
-          {error && <div className="waitlist-error">{error}</div>}
+          <section>
+            {error && (
+              <div className="alert" data-tone="danger" role="alert">
+                <strong>{error}</strong>
+              </div>
+            )}
 
-          <div className="waitlist-field">
-            <label htmlFor="wl-name">Full Name *</label>
-            <input
-              id="wl-name"
-              required
-              value={form.full_name}
-              onInput={(e) => updateField('full_name', (e.target as HTMLInputElement).value)}
-            />
-          </div>
+            <div className="field">
+              <label className="label" htmlFor="wl-name">
+                Full Name *
+              </label>
+              <input
+                className="input"
+                id="wl-name"
+                required
+                value={form.full_name}
+                onInput={(e) => updateField('full_name', (e.target as HTMLInputElement).value)}
+              />
+            </div>
 
-          <div className="waitlist-field">
-            <label htmlFor="wl-email">Email *</label>
-            <input
-              id="wl-email"
-              type="email"
-              required
-              value={form.email}
-              onInput={(e) => updateField('email', (e.target as HTMLInputElement).value)}
-            />
-          </div>
+            <div className="field">
+              <label className="label" htmlFor="wl-email">
+                Email *
+              </label>
+              <input
+                className="input"
+                id="wl-email"
+                type="email"
+                required
+                value={form.email}
+                onInput={(e) => updateField('email', (e.target as HTMLInputElement).value)}
+              />
+            </div>
 
-          <div className="waitlist-field">
-            <label htmlFor="wl-wallet">Wallet Address</label>
-            <input
-              id="wl-wallet"
-              placeholder="0x..."
-              value={form.wallet_address}
-              onInput={(e) => updateField('wallet_address', (e.target as HTMLInputElement).value)}
-            />
-          </div>
+            <div className="field">
+              <label className="label" htmlFor="wl-wallet">
+                Wallet Address
+              </label>
+              <input
+                className="input"
+                id="wl-wallet"
+                placeholder="0x..."
+                value={form.wallet_address}
+                onInput={(e) => updateField('wallet_address', (e.target as HTMLInputElement).value)}
+              />
+            </div>
 
-          <div className="waitlist-field">
-            <label htmlFor="wl-role">Role *</label>
-            <select
-              id="wl-role"
-              required
-              value={form.role}
-              onChange={(e) => updateField('role', (e.target as HTMLSelectElement).value)}
+            <div className="field">
+              <label className="label" htmlFor="wl-role">
+                Role *
+              </label>
+              <select
+                className="select"
+                id="wl-role"
+                required
+                value={form.role}
+                onChange={(e) => updateField('role', (e.target as HTMLSelectElement).value)}
+              >
+                <option value="">Select...</option>
+                {ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="wl-org">
+                Organization (optional)
+              </label>
+              <input
+                className="input"
+                id="wl-org"
+                value={form.organization}
+                onInput={(e) => updateField('organization', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="wl-use-case">
+                What would you use CoralGPT for? *
+              </label>
+              <textarea
+                className="textarea"
+                id="wl-use-case"
+                required
+                value={form.use_case}
+                onInput={(e) => updateField('use_case', (e.target as HTMLTextAreaElement).value)}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="wl-referral">
+                How did you hear about us?
+              </label>
+              <input
+                className="input"
+                id="wl-referral"
+                placeholder="Twitter / Friend / Event..."
+                value={form.referral_source}
+                onInput={(e) => updateField('referral_source', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="wl-twitter">
+                X / Twitter handle (optional)
+              </label>
+              <input
+                className="input"
+                id="wl-twitter"
+                placeholder="@"
+                value={form.twitter_handle}
+                onInput={(e) => updateField('twitter_handle', (e.target as HTMLInputElement).value)}
+              />
+            </div>
+
+            {/* The opt-in is a HORIZONTAL field, i.e. the checkbox and its label
+                as SIBLINGS. Nesting the input inside the label is the other
+                shape Basecoat supports, and Lyra skins that one as a bordered,
+                tinted "checkbox card" (`.field > label:has(input[type=checkbox])`
+                gets `border` + `p-2` + `has-[:checked]:bg-primary/5`), which is
+                not what this row is. */}
+            <div className="field waitlist-consent" data-orientation="horizontal">
+              <input
+                className="input"
+                type="checkbox"
+                id="wl-updates"
+                checked={form.agreed_to_updates}
+                onChange={(e) =>
+                  updateField('agreed_to_updates', (e.target as HTMLInputElement).checked)
+                }
+              />
+              <label className="label" htmlFor="wl-updates">
+                I agree to receive updates about CoralGPT and $CRLAI
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-marketing waitlist-submit"
+              data-variant="outline"
+              data-tone="coral"
+              disabled={loading}
             >
-              <option value="">Select...</option>
-              {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="waitlist-field">
-            <label htmlFor="wl-org">Organization (optional)</label>
-            <input
-              id="wl-org"
-              value={form.organization}
-              onInput={(e) => updateField('organization', (e.target as HTMLInputElement).value)}
-            />
-          </div>
-
-          <div className="waitlist-field">
-            <label htmlFor="wl-use-case">What would you use CoralGPT for? *</label>
-            <textarea
-              id="wl-use-case"
-              required
-              value={form.use_case}
-              onInput={(e) => updateField('use_case', (e.target as HTMLTextAreaElement).value)}
-            />
-          </div>
-
-          <div className="waitlist-field">
-            <label htmlFor="wl-referral">How did you hear about us?</label>
-            <input
-              id="wl-referral"
-              placeholder="Twitter / Friend / Event..."
-              value={form.referral_source}
-              onInput={(e) => updateField('referral_source', (e.target as HTMLInputElement).value)}
-            />
-          </div>
-
-          <div className="waitlist-field">
-            <label htmlFor="wl-twitter">X / Twitter handle (optional)</label>
-            <input
-              id="wl-twitter"
-              placeholder="@"
-              value={form.twitter_handle}
-              onInput={(e) => updateField('twitter_handle', (e.target as HTMLInputElement).value)}
-            />
-          </div>
-
-          <label className="waitlist-checkbox">
-            <input
-              type="checkbox"
-              checked={form.agreed_to_updates}
-              onChange={(e) =>
-                updateField('agreed_to_updates', (e.target as HTMLInputElement).checked)
-              }
-            />
-            <span>I agree to receive updates about CoralGPT and $CRLAI</span>
-          </label>
-
-          <button
-            type="submit"
-            className="btn btn-marketing"
-            data-variant="outline"
-            data-tone="coral"
-            disabled={loading}
-            style={{ width: '100%' }}
-          >
-            {loading ? 'Submitting...' : 'Join Waitlist'}
-          </button>
+              {loading ? 'Submitting...' : 'Join Waitlist'}
+            </button>
+          </section>
         </form>
       )}
     </Modal>

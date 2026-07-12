@@ -651,105 +651,173 @@ body.coralgpt-scroll {
 
 /* ---------------------------------------------------------------------------
  * Waitlist modal
+ *
+ * BASECOAT ALL THE WAY DOWN NOW. The shell was already Lyra's `.dialog` (see
+ * `ui/Modal.tsx`); the FORM inside it was the last hand-written thing the user
+ * still meets on this page. It is gone:
+ *
+ *   `.waitlist-form`  / `.waitlist-success`  -> `.card` (+ the marketing box below)
+ *   `.waitlist-field` + its label + control  -> `.field` / `.label` / `.input`
+ *                                               / `.textarea` / `select.select`
+ *   the opt-in checkbox                      -> `.input[type=checkbox]` in a
+ *                                               horizontal `.field`
+ *   `.waitlist-error`                        -> `.alert` + `data-tone="danger"`
+ *   `.waitlist-form-subtitle`                -> the `.card > header > p` Lyra
+ *                                               already inks `--muted-foreground`
+ *
+ * What survives here is LAYOUT and SCALE only. It paints no color at all — every
+ * fill, ink, hairline and focus ring comes from Lyra plus the tokens, which is
+ * what makes the modal follow the theme now that the pin has been narrowed to
+ * `.landing-hero`.
+ *
+ * THE PANEL CANNOT BE THE CARD. `.ui-modal__panel` is deliberately a transparent
+ * structural shell (see block 3 of `ui.css`), so the modal's CONTENT has to paint
+ * its own surface. `.card` on the form is that surface — and there is no
+ * card-in-card hazard, because the panel it sits in paints nothing.
+ *
+ * NO FOOTER, on either card. Lyra's `.card > footer` is `border-t p-4` — a ruled
+ * action bar. Neither of these has a row of actions to divide off: the form has a
+ * single full-width submit that reads as the end of the stack, and the success
+ * card has one button under its own message. Both live in the `> section`, where
+ * they inherit the stack's gap and no divider is drawn.
  * ------------------------------------------------------------------------- */
 
-.waitlist-form {
-  padding: 32px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+/* MARKETING BOX. Lyra's card is a 16px app-dense one (`py-4`, and `px-4` on each
+   slot). Identical call to `.landing-card` above, and to `.btn-marketing`: the
+   pack's scale is an APP scale, and this dialog is the product's front door. */
+.waitlist-form,
+.waitlist-success {
+  padding-block: 32px;
 }
 
-.waitlist-form h2 {
+/* IT MUST NOT SHRINK, and this is not defensive — it was measured. Lyra's `.card`
+   carries `overflow-hidden` (it is what lets a full-bleed image reach the box's
+   corners), and an `overflow` other than `visible` computes a flex item's
+   `min-height: auto` to ZERO. The card is a flex item: `.dialog > *` is a flex
+   column with `max-h-[calc(100%-2rem)]`. So on a viewport shorter than the form,
+   the card SHRANK to the panel's height and clipped its own last four fields
+   instead of overflowing them — and because the panel then had nothing to scroll
+   (`scrollHeight === clientHeight`), the `overflow-y: auto` that `ui.css` adds for
+   exactly this case could not save it. Rendered at 900x600 in Chromium: the form
+   ended at "What would you use CoralGPT for?", with no scrollbar and no way to
+   reach the submit button.
+
+   The old `.waitlist-form` was a plain block and never had the problem. This is
+   the one thing Lyra's card costs here, and it costs one line. */
+.waitlist-form,
+.waitlist-success {
+  flex-shrink: 0;
+}
+
+.waitlist-form > header,
+.waitlist-form > section,
+.waitlist-success > header,
+.waitlist-success > section {
+  padding-inline: 32px;
+}
+
+/* Lyra inks and sizes the card's title `text-sm font-medium` — an app card's
+   title. Marketing keeps the size it had. The right padding clears the dialog's
+   own close button, which is anchored to the panel's top-right corner. */
+.waitlist-form > header > h2 {
   font-size: 1.5rem;
-  margin-bottom: 8px;
+  line-height: 1.3;
   padding-right: 32px;
 }
 
-.waitlist-form-subtitle {
-  color: var(--text-secondary);
-  margin-bottom: 24px;
+.waitlist-form > header > p {
+  font-size: 1rem;
   line-height: 1.6;
 }
 
-.waitlist-field {
-  margin-bottom: 16px;
-}
-
-.waitlist-field label {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  color: var(--text-secondary);
-}
-
-.waitlist-field input,
-.waitlist-field select,
-.waitlist-field textarea {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: inherit;
-}
-
-.waitlist-field textarea {
-  min-height: 80px;
-  resize: vertical;
-}
-
-/* The house focus ring, not a coral border. A recolored 1px border is not a
-   focus indicator: it moves the boundary's contrast around instead of adding
-   one, and `#ff6b6b` on the field's own fill is 2.49:1 in light — under the 3:1
-   floor for a non-text indicator. Every other focusable control in this app
-   already uses this exact pair. */
-.waitlist-field input:focus-visible,
-.waitlist-field select:focus-visible,
-.waitlist-field textarea:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-.waitlist-checkbox {
+/* THE FIELD STACK. Lyra's `.card > section` is padding only — it does not lay its
+   children out — and a `.field` supplies the label-to-control gap but not the gap
+   BETWEEN fields. That gap was `.waitlist-field { margin-bottom: 16px }`; it is
+   the same 16px, moved onto the stack that owns it. The error alert and the
+   submit button are in the stack too, so they take the rhythm for free. */
+.waitlist-form > section {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 20px 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Lyra's control scale is `h-8` / `text-xs` — see `.btn-marketing` for the same
+   argument, made for the same reason, one component over. Nine of these stacked
+   at 32px is an admin form, not a front door. Height is `min-height` + `height:
+   auto` so a control that grows (the textarea's `field-sizing: content`) is not
+   pinned. The select's `padding-inline-end` is left alone: Lyra reserves `pe-8`
+   there for the chevron it paints as a background image. */
+.waitlist-form .input:not([type="checkbox"]),
+.waitlist-form .textarea,
+.waitlist-form select.select {
+  height: auto;
+  min-height: 40px;
+  padding-block: 10px;
+  padding-inline-start: 12px;
+  font-size: 14px;
+}
+
+.waitlist-form .input:not([type="checkbox"]),
+.waitlist-form .textarea {
+  padding-inline-end: 12px;
+}
+
+.waitlist-form .label {
   font-size: 13px;
-  color: var(--text-secondary);
 }
 
-.waitlist-checkbox input {
-  margin-top: 3px;
+/* Lyra floors the textarea at `min-h-16` and lets `field-sizing: content` grow
+   it. This one invites a paragraph, so it opens taller. Same override, same
+   reason, as `.admin-dialog .textarea`. */
+.waitlist-form .textarea {
+  min-height: 80px;
 }
 
-.waitlist-error {
-  color: var(--error-color);
-  font-size: 13px;
-  margin-bottom: 12px;
+/* The consent row is a horizontal `.field`, so Lyra centers the box and its
+   label on one line. The extra breathing room above it separates the opt-in from
+   the eight fields it is NOT one of. */
+.waitlist-consent {
+  margin-top: 4px;
 }
 
+.waitlist-consent > .label {
+  font-weight: 400;
+}
+
+/* The submit spans the dialog. `.btn` is `w-fit` by default. */
+.waitlist-submit {
+  width: 100%;
+}
+
+/* The success panel is a `.card`, NOT Lyra's `.empty`. `.empty` is the
+   nothing-here-yet state: a TRANSPARENT, dashed box. Inside a dialog panel that
+   deliberately paints nothing, a transparent `.empty` would leave the message
+   floating on the scrim with no surface under it at all — and its dashed hairline
+   reads "placeholder", which is the opposite of a confirmed submission. The
+   centering is the only thing the card does not give: `.card > header` is a grid,
+   so the items are centered along the inline axis rather than with `text-align`
+   alone. */
 .waitlist-success {
-  padding: 48px 32px;
   text-align: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
 }
 
-.waitlist-success h2 {
+.waitlist-success > header {
+  justify-items: center;
+}
+
+.waitlist-success > header > h2 {
   font-size: 1.5rem;
-  margin-bottom: 12px;
+  line-height: 1.3;
 }
 
-.waitlist-success p {
-  color: var(--text-secondary);
-  margin-bottom: 24px;
+.waitlist-success > header > p {
+  font-size: 1rem;
   line-height: 1.6;
+}
+
+.waitlist-success > section {
+  display: flex;
+  justify-content: center;
 }
 
 /* ---------------------------------------------------------------------------
