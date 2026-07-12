@@ -325,30 +325,12 @@
   gap: 8px;
   flex-shrink: 0;
 }
-.evidence-lightbox__btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  font-size: 13px;
-  border-radius: 6px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  cursor: pointer;
-}
-.evidence-lightbox__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.evidence-lightbox__btn--primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
-.evidence-lightbox__btn--primary:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
+/* The lightbox footer actions are Basecoat's `.btn` now:
+ *   .evidence-lightbox__btn          -> data-variant="outline"
+ *   .evidence-lightbox__btn--primary -> data-variant="primary"  ("Open in tab")
+ * buttons.css supplies the opaque `--primary-hover` step and the focus ring.
+ * Neither class needs any CSS of its own.
+ */
 .evidence-lightbox__loading,
 .evidence-lightbox__error {
   flex: 1;
@@ -432,17 +414,8 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.viewer-page__back {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  cursor: pointer;
-  font-size: 13px;
-}
+/* `.viewer-page__back` is `.btn[data-variant="outline"][data-size="sm"]`; no CSS
+ * of its own. */
 .viewer-page__title {
   font-size: 15px;
   font-weight: 600;
@@ -492,20 +465,24 @@
   flex-direction: column;
   gap: 4px;
 }
-.viewer-page__sidebar button {
+/* Was `.viewer-page__sidebar button` — a (0,1,1) DESCENDANT selector, and this
+ * app's CSS is unlayered while Basecoat's is not, so it beat `.btn` (0,1,0)
+ * outright. Deleted. The sidebar's table/figure/claim jump targets are
+ * `.btn[data-variant="outline"][data-size="sm"]` and carry the class directly.
+ *
+ * They are full-width, left-aligned list rows rather than centered chips, which
+ * is the one thing Lyra does not model — so that, and only that, stays here.
+ */
+.viewer-page__sidebar .btn {
   width: 100%;
+  justify-content: flex-start;
   text-align: left;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
+  height: auto;
+  min-height: 28px;
+  padding-block: 4px;
+  white-space: normal;
 }
-.viewer-page__sidebar button:hover {
-  background: var(--bg-hover);
-}
+
 .viewer-page__sidebar-empty {
   font-size: 12px;
   color: var(--muted-foreground);

@@ -384,7 +384,9 @@ export function EvidenceLightbox({
               <>
                 <button
                   type="button"
-                  className="evidence-lightbox__btn"
+                  className="btn evidence-lightbox__btn"
+                  data-variant="outline"
+                  data-size="sm"
                   onClick={() => handleOpenImage(figureImageUrl)}
                   aria-label="Open figure image in new tab"
                 >
@@ -393,7 +395,9 @@ export function EvidenceLightbox({
                 {downloadFilename ? (
                   <button
                     type="button"
-                    className="evidence-lightbox__btn"
+                    className="btn evidence-lightbox__btn"
+                    data-variant="outline"
+                    data-size="sm"
                     onClick={() =>
                       handleDownloadImage(
                         figureImageUrl,
@@ -411,7 +415,9 @@ export function EvidenceLightbox({
             <button
               ref={openInTabRef}
               type="button"
-              className="evidence-lightbox__btn evidence-lightbox__btn--primary"
+              className="btn evidence-lightbox__btn"
+              data-variant="primary"
+              data-size="sm"
               onClick={handleOpenInTab}
               disabled={!data?.sourceId}
               aria-label="Open in dedicated viewer tab"
@@ -420,7 +426,9 @@ export function EvidenceLightbox({
             </button>
             <button
               type="button"
-              className="evidence-lightbox__btn"
+              className="btn evidence-lightbox__btn"
+              data-variant="outline"
+              data-size="sm"
               onClick={onClose}
               aria-label="Close evidence lightbox"
             >

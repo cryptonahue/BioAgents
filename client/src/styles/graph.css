@@ -68,26 +68,16 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* The compound/species/etc. filter row. The box is Basecoat's
+ * `.btn[data-variant="outline"][data-size="sm"]`; only the `flex` growth and the
+ * SELECTED state survive here.
+ *
+ * Selected is `data-tone="info"` (see buttons.css) — the app's evidence blue,
+ * which is what this button already painted (`--info-subtle` / `--info`). It is
+ * driven by the attribute now rather than by an `.active` class, so it reads the
+ * same way as every other toned control. */
 .graph-kind-btn {
   flex: 1 1 auto;
-  background: var(--muted);
-  border: 1px solid var(--border-strong);
-  color: var(--muted-foreground);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.graph-kind-btn:hover {
-  color: var(--foreground);
-}
-
-.graph-kind-btn.active {
-  background: var(--info-subtle);
-  border-color: var(--info);
-  color: var(--info-subtle-foreground);
 }
 
 .graph-search-form {
@@ -104,21 +94,11 @@
   flex: 1;
 }
 
-.graph-search-submit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: 6px;
-  padding: 6px 8px;
-  cursor: pointer;
-}
-
-.graph-search-submit:hover {
-  background: var(--primary-hover);
-}
+/* `.graph-search-submit` is `.btn[data-variant="primary"][data-size="icon-sm"]`.
+ * buttons.css supplies the opaque `--primary-hover` step (Lyra's own
+ * `hover:bg-primary/80` is an ALPHA hover, which fails AA in both themes) and the
+ * focus ring. No CSS of its own.
+ */
 
 .graph-results {
   overflow-y: auto;
@@ -261,19 +241,10 @@
   max-width: 360px;
 }
 
+/* `.graph-retry-btn` is Basecoat's `.btn[data-variant="outline"]` now; only the
+ * spacing it needs from the error text above it is left. */
 .graph-retry-btn {
   margin-top: 8px;
-  background: var(--muted);
-  border: 1px solid var(--border-strong);
-  color: var(--foreground);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.graph-retry-btn:hover {
-  background: var(--bg-hover);
 }
 
 /* ---- Edge-type legend / filter ------------------------------------------*/
@@ -451,20 +422,10 @@
 }
 
 /* "Evidence" button on a linked fact — opens the inline EvidenceLightbox. */
-.graph-evidence-btn {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--info);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.graph-evidence-btn:hover {
-  background: var(--info-subtle);
-  border-color: var(--info);
-}
-
+/* `.graph-evidence-btn` is `.btn[data-variant="outline"][data-size="xs"]` with
+ * `data-tone="info"` — it was already the evidence blue, and buttons.css now owns
+ * that tone. No CSS of its own is left.
+ */
 .graph-tag-row {
   display: flex;
   flex-wrap: wrap;

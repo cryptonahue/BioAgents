@@ -42,24 +42,15 @@
   max-width: 60%;
 }
 
-.library-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
-
-.library-link-btn:hover {
-  background: var(--bg-hover);
-}
+/* `.library-link-btn` is `.btn[data-variant="outline"]` now and needs no CSS of
+ * its own — the class survives only as a call-site marker.
+ *
+ * It is worn by three different ELEMENTS: a <button> (Retry / Re-extract), an
+ * <a> (the paper download link) and a <label> (the upload control, which wraps a
+ * hidden file input). `.btn` is a class, so all three work — but <a> and <label>
+ * need the Preflight normalization Basecoat assumes, which is why buttons.css
+ * now resets them too.
+ */
 
 .library-main {
   flex: 1;
@@ -112,26 +103,12 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
 }
-.library-view-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 28px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.library-view-btn:hover {
-  color: var(--text-primary);
-}
-.library-view-btn.active {
-  background: var(--bg-hover);
-  color: var(--accent-ink);
-}
+/* The list/card view toggle. Basecoat's `.btn[data-variant="ghost"]` at
+ * `data-size="icon-sm"` — 28px, the exact box this skin declared. The SELECTED
+ * state is `data-tone="brand"` (buttons.css), the same accent pair badges.css
+ * uses, so it follows the teal sub-brand theme.css scopes to `.library-page`.
+ * No CSS of its own.
+ */
 
 /* ---- List view (rows) ---- */
 .library-list {
@@ -371,84 +348,37 @@
   border-top: 1px solid var(--border-color);
 }
 
+/* The paper card's action row. All three buttons are Basecoat's `.btn` now:
+ *
+ *   .paper-action--primary   -> data-variant="primary"   TEAL. This is the
+ *      library, where theme.css scopes the teal sub-brand, so `--primary` and the
+ *      `--accent-color` this button already painted are the same family.
+ *      buttons.css supplies the opaque `--primary-hover` step.
+ *   .paper-action--secondary -> data-variant="outline"
+ *   .paper-action-delete     -> data-variant="outline" + the hover below
+ *
+ * The three hand-written `:focus-visible` box-shadow rings are gone: buttons.css
+ * gives every `.btn` the app-wide `outline: 2px solid var(--ring)`, which was
+ * measured on every surface a ring can land on and which every other focusable
+ * control here already uses.
+ */
 .paper-action {
   flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease;
 }
 
-.paper-action--primary {
-  background: var(--accent-color);
-  color: var(--accent-color-foreground);
-}
-
-.paper-action--primary:hover {
-  background: var(--accent-hover);
-}
-
-.paper-action--secondary {
-  background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-}
-
-.paper-action--secondary:hover {
-  border-color: var(--accent-border);
-  color: var(--accent-ink);
-  background: var(--accent-light);
-}
-
-.paper-action:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-border);
-}
-
-/* ---- Subtle destructive action (delete paper) ----
-   Muted by default so it never competes with Chat/Evidence; turns red on
-   hover/focus. Icon-only, does not flex-grow (unlike .paper-action). */
+/* Deliberately NOT `data-variant="destructive"`. This button is muted at rest so
+   it never competes with Chat / Evidence, and only turns red when you reach for
+   it — an intent the always-tinted destructive variant would erase. The hover
+   step uses the same measured tokens that variant does. Unlayered, so it beats
+   Lyra's layered outline hover. */
 .paper-action-delete {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-radius: 9px;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease;
 }
 
 .paper-action-delete:hover:not(:disabled) {
-  color: var(--error-color);
-  border-color: var(--error-color);
   background: var(--destructive-subtle);
-}
-
-.paper-action-delete:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.paper-action-delete:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--destructive-border);
+  border-color: var(--destructive-border);
+  color: var(--destructive-subtle-foreground);
 }
 
 /* ---- Paper page split ---- */
@@ -504,17 +434,10 @@
   letter-spacing: 0.04em;
 }
 
-.paper-evidence-focus-header button {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-}
+/* Was `.paper-evidence-focus-header button` — a (0,1,1) descendant selector that
+ * would have beaten `.btn` (0,1,0), because this app's CSS is unlayered and
+ * Basecoat's is not. Deleted; the close button carries `.btn` directly.
+ */
 
 .paper-evidence-focus-claim {
   margin: 10px 0 8px;
@@ -720,21 +643,16 @@
   flex: 1;
 }
 
+/* The paper-chat send button. Basecoat's `.btn[data-variant="primary"]` — TEAL,
+ * and `--accent-color` inside `.library-page` IS the teal sub-brand theme.css
+ * scopes there, so this is the same fill it already painted. Lyra's `disabled:`
+ * rules replace the hand-written disabled state. Only the width the composer's
+ * flex row needs survives.
+ */
 .paper-send-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 42px;
-  border-radius: 10px;
-  border: none;
-  background: var(--accent-color);
-  color: var(--accent-color-foreground);
-  cursor: pointer;
-}
-
-.paper-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  height: auto;
+  align-self: stretch;
 }
 
 .paper-typing {
@@ -882,11 +800,17 @@
  * hand-counted `auto minmax(0,1fr) 42px` track list is exactly what the flex
  * component does for free. */
 
-.brain-search-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-}
+/* `.brain-search-btn` is `.btn[data-variant="primary"]` with NO `data-size`, and
+ * that is deliberate. It sits inside the `.input-group` above, and Lyra models
+ * an icon-only button in that position itself:
+ *
+ *   .input-group > button:has(> svg):not(:has(> :not(svg))) { size-6 }   (0,3,1)
+ *
+ * which outranks `.btn[data-size='icon-lg']` (0,2,0) inside the same `components`
+ * layer. Passing a `data-size` there is a silent no-op, so none is passed. The
+ * button lands at Lyra's 24px, down from the hand-written 34px — the group is
+ * `h-8` (32px) now, and a 34px button would not fit inside it anyway. Verified in
+ * Chromium: 24x24, teal fill, ink 5.07:1 light / 5.61:1 dark on its own fill. */
 
 .brain-filter-row {
   display: grid;
@@ -1024,24 +948,12 @@
   justify-content: flex-end;
 }
 
-.brain-bulk-actions button {
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 6px 9px;
-}
-
-.brain-bulk-actions button:hover {
-  background: var(--accent-light);
-}
-
-.brain-bulk-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
-}
+/* `.brain-bulk-actions button` was a (0,1,1) DESCENDANT selector. Unlayered, it
+ * beat Basecoat's `.btn` (0,1,0) outright — the same trap slice 3 found on a bare
+ * `textarea {}` and slice 4 found on five `.parent span` selectors. It is deleted
+ * rather than left to fight `.btn`; the buttons in this row are
+ * `.btn[data-variant="outline"][data-size="sm"]`.
+ */
 
 .brain-evidence-grid {
   display: grid;
@@ -1244,24 +1156,10 @@
   text-transform: none;
 }
 
+/* `.brain-entity-save` is `.btn[data-variant="outline"][data-size="xs"]`; only the
+ * grid alignment survives. */
 .brain-entity-save {
   justify-self: start;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 6px 9px;
-}
-
-.brain-entity-save:hover {
-  background: var(--accent-light);
-}
-
-.brain-entity-save:disabled {
-  cursor: wait;
-  opacity: 0.55;
 }
 
 .brain-review-note-editor {
@@ -1297,24 +1195,10 @@
   border-top: 1px dashed var(--border-color);
 }
 
-.brain-review-actions button {
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 5px 8px;
-}
-
-.brain-review-actions button:hover {
-  background: var(--accent-light);
-}
-
-.brain-review-actions button:disabled {
-  cursor: wait;
-  opacity: 0.55;
-}
+/* Same (0,1,1) DESCENDANT trap as `.brain-bulk-actions button`: unlayered, it beat
+ * Basecoat's `.btn` (0,1,0) outright. Deleted. The per-fact review buttons are
+ * `.btn[data-variant="outline"][data-size="xs"]`.
+ */
 
 .brain-evidence-side {
   display: grid;

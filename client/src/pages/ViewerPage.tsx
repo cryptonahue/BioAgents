@@ -131,7 +131,12 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     return (
       <div className="viewer-page__empty">
         <p>No source id in URL.</p>
-        <button type="button" onClick={() => history.back()}>
+        <button
+          type="button"
+          className="btn"
+          data-variant="outline"
+          onClick={() => history.back()}
+        >
           Go back
         </button>
       </div>
@@ -146,7 +151,9 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
       <header className="viewer-page__topbar">
         <button
           type="button"
-          className="viewer-page__back"
+          className="btn viewer-page__back"
+          data-variant="outline"
+          data-size="sm"
           onClick={() => {
             if (window.history.length > 1) {
               history.back();
@@ -193,7 +200,9 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                     <li key={c.id} className="viewer-page__claim">
                       <button
                         type="button"
-                        className="viewer-page__claim-btn"
+                        className="btn viewer-page__claim-btn"
+                        data-variant="outline"
+                        data-size="sm"
                         disabled={!canHighlight}
                         onClick={() => {
                           if (searchText) {
@@ -237,6 +246,9 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                     <li key={t.id}>
                       <button
                         type="button"
+                        className="btn"
+                        data-variant="outline"
+                        data-size="sm"
                         onClick={() =>
                           highlightStored(t.page, "table", t.bbox ?? null)
                         }
@@ -258,6 +270,9 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                   <li key={f.id}>
                     <button
                       type="button"
+                      className="btn"
+                      data-variant="outline"
+                      data-size="sm"
                       onClick={() =>
                         highlightStored(f.page, "figure", f.bbox ?? null)
                       }

@@ -69,7 +69,9 @@ export function ChainPager({
       </span>
       <button
         type="button"
-        className="chain-pager__btn"
+        className="btn chain-pager__btn"
+        data-variant="outline"
+        data-size="xs"
         onClick={() => prev && goTo(prev)}
         disabled={!prev}
         aria-label="Previous chain fragment"
@@ -78,7 +80,9 @@ export function ChainPager({
       </button>
       <button
         type="button"
-        className="chain-pager__btn"
+        className="btn chain-pager__btn"
+        data-variant="outline"
+        data-size="xs"
         onClick={() => next && goTo(next)}
         disabled={!next}
         aria-label="Next chain fragment"
@@ -87,7 +91,10 @@ export function ChainPager({
       </button>
       <button
         type="button"
-        className={`chain-pager__follow ${follow ? "is-on" : ""}`}
+        className="btn chain-pager__follow"
+        data-variant="outline"
+        data-size="xs"
+        data-tone={follow ? "brand" : undefined}
         onClick={() => setFollow((f) => !f)}
         aria-pressed={follow}
         title={

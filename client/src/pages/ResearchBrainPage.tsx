@@ -1,6 +1,7 @@
 import { route } from "preact-router";
 import { useState } from "preact/hooks";
 import { Icon } from "../components/icons";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import { CompoundAuthorityBadge } from "../components/CompoundAuthorityBadge";
 import { openProvenanceLightbox } from "../utils/provenanceTrigger";
@@ -345,8 +346,8 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               agent uses it as the first source of truth.
             </p>
           </div>
-          <label className="library-link-btn brain-upload-btn">
-            <Icon name="upload" size={16} />
+          <label className="btn library-link-btn brain-upload-btn" data-variant="outline">
+            <Icon name="upload" size={16} className={BUTTON_ICON_CLASS} />
             <span>{isUploading ? "Loading…" : "Upload paper"}</span>
             <input
               type="file"
@@ -395,10 +396,12 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   placeholder="Search species, compound, bioactivity, or condition"
                 />
                 <button
-                  className="paper-send-btn brain-search-btn"
+                  className="btn brain-search-btn"
+                  data-variant="primary"
                   type="submit"
+                  aria-label="Search evidence"
                 >
-                  <Icon name="chevronRight" size={18} />
+                  <Icon name="chevronRight" size={18} className={BUTTON_ICON_CLASS} />
                 </button>
               </div>
               <div className="brain-filter-row">
@@ -594,24 +597,36 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                   />
                   <div className="brain-bulk-actions">
                     <button
+                      className="btn"
+                      data-variant="outline"
+                      data-size="sm"
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("verified")}
                     >
                       Verify
                     </button>
                     <button
+                      className="btn"
+                      data-variant="outline"
+                      data-size="sm"
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("needs_review")}
                     >
                       Review
                     </button>
                     <button
+                      className="btn"
+                      data-variant="outline"
+                      data-size="sm"
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("incorrect")}
                     >
                       Incorrect
                     </button>
                     <button
+                      className="btn"
+                      data-variant="outline"
+                      data-size="sm"
                       disabled={selectedVisibleCount === 0 || isBulkReviewing}
                       onClick={() => handleBulkReview("quarantined")}
                     >
@@ -861,7 +876,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             ))}
                           </div>
                           <button
-                            className="brain-entity-save"
+                            className="btn brain-entity-save"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={updatingEntityFactId === fact.id}
                             onClick={() => handleSaveEntities(fact)}
                           >
@@ -892,6 +909,9 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
 
                         <div className="brain-review-actions">
                           <button
+                            className="btn"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={reviewingFactId === fact.id}
                             onClick={() =>
                               handleReviewFact(
@@ -903,12 +923,18 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             Save note
                           </button>
                           <button
+                            className="btn"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={reviewingFactId === fact.id}
                             onClick={() => handleReviewFact(fact, "verified")}
                           >
                             Verify
                           </button>
                           <button
+                            className="btn"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={reviewingFactId === fact.id}
                             onClick={() =>
                               handleReviewFact(fact, "needs_review")
@@ -917,12 +943,18 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             Review
                           </button>
                           <button
+                            className="btn"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={reviewingFactId === fact.id}
                             onClick={() => handleReviewFact(fact, "incorrect")}
                           >
                             Incorrect
                           </button>
                           <button
+                            className="btn"
+                            data-variant="outline"
+                            data-size="xs"
                             disabled={reviewingFactId === fact.id}
                             onClick={() =>
                               handleReviewFact(fact, "quarantined")
@@ -1024,10 +1056,11 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                           </p>
                         </div>
                         <button
-                          className="library-link-btn"
+                          className="btn library-link-btn"
+                          data-variant="outline"
                           onClick={handleExtract}
                         >
-                          <Icon name="refresh" size={16} />
+                          <Icon name="refresh" size={16} className={BUTTON_ICON_CLASS} />
                           <span>Re-extract</span>
                         </button>
                       </div>

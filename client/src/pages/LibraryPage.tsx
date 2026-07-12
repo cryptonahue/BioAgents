@@ -4,6 +4,7 @@ import { useLibraryList } from "../hooks";
 import type { LibraryPaper } from "../hooks/useLibrary";
 import { fetchPaperAbstract, deleteLibraryPaper } from "../hooks/useLibrary";
 import { Icon } from "../components/icons";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { uploadResearchBrainSource } from "../hooks/useResearchBrain";
 
@@ -109,7 +110,9 @@ function DeletePaperButton({
     <>
       <button
         type="button"
-        className="paper-action-delete"
+        className="btn paper-action-delete"
+        data-variant="outline"
+        data-size="icon"
         onClick={(e) => {
           e.stopPropagation();
           setConfirmOpen(true);
@@ -117,7 +120,7 @@ function DeletePaperButton({
         title={`Delete "${title}"`}
         aria-label={`Delete ${title}`}
       >
-        <Icon name="trash" size={15} />
+        <Icon name="trash" size={15} className={BUTTON_ICON_CLASS} />
       </button>
       <ConfirmDialog
         open={confirmOpen}
@@ -267,18 +270,20 @@ function PaperCard({
         */}
         <div className="paper-card-actions">
           <button
-            className="paper-action paper-action--primary"
+            className="btn paper-action"
+            data-variant="primary"
             onClick={() => route(`/library/${paper.docId}`)}
           >
-            <Icon name="messageSquare" size={15} />
+            <Icon name="messageSquare" size={15} className={BUTTON_ICON_CLASS} />
             <span>Chat with paper</span>
           </button>
           <button
-            className="paper-action paper-action--secondary"
+            className="btn paper-action"
+            data-variant="outline"
             aria-label={`View evidence for ${paper.title || "paper"}`}
             onClick={() => route(`/library/${paper.docId}/viewer`)}
           >
-            <Icon name="microscope" size={15} />
+            <Icon name="microscope" size={15} className={BUTTON_ICON_CLASS} />
             <span>View evidence</span>
           </button>
           <DeletePaperButton
@@ -360,20 +365,22 @@ function PaperRow({
       </div>
       <div className="paper-row-actions">
         <button
-          className="paper-action paper-action--primary"
+          className="btn paper-action"
+          data-variant="primary"
           onClick={() => route(`/library/${paper.docId}`)}
           title="Chat with paper"
         >
-          <Icon name="messageSquare" size={15} />
+          <Icon name="messageSquare" size={15} className={BUTTON_ICON_CLASS} />
           <span>Chat</span>
         </button>
         <button
-          className="paper-action paper-action--secondary"
+          className="btn paper-action"
+          data-variant="outline"
           aria-label={`View evidence for ${paper.title || "paper"}`}
           onClick={() => route(`/library/${paper.docId}/viewer`)}
           title="View evidence"
         >
-          <Icon name="microscope" size={15} />
+          <Icon name="microscope" size={15} className={BUTTON_ICON_CLASS} />
           <span>Evidence</span>
         </button>
         <DeletePaperButton
@@ -440,8 +447,8 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
         </div>
 
         <div className="brain-upload-row">
-          <label className="library-link-btn brain-upload-btn">
-            <Icon name="upload" size={16} />
+          <label className="btn library-link-btn brain-upload-btn" data-variant="outline">
+            <Icon name="upload" size={16} className={BUTTON_ICON_CLASS} />
             <span>{isUploading ? "Loading…" : "Upload paper"}</span>
             <input
               type="file"
@@ -455,22 +462,28 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
           {uploadError && <span className="brain-error">{uploadError}</span>}
           <div className="library-view-toggle">
             <button
-              className={`library-view-btn${viewMode === "list" ? " active" : ""}`}
+              className="btn library-view-btn"
+              data-variant="ghost"
+              data-size="icon-sm"
+              data-tone={viewMode === "list" ? "brand" : undefined}
               onClick={() => setView("list")}
               title="List view"
               aria-label="List view"
               aria-pressed={viewMode === "list"}
             >
-              <Icon name="list" size={16} />
+              <Icon name="list" size={16} className={BUTTON_ICON_CLASS} />
             </button>
             <button
-              className={`library-view-btn${viewMode === "grid" ? " active" : ""}`}
+              className="btn library-view-btn"
+              data-variant="ghost"
+              data-size="icon-sm"
+              data-tone={viewMode === "grid" ? "brand" : undefined}
               onClick={() => setView("grid")}
               title="Card view"
               aria-label="Card view"
               aria-pressed={viewMode === "grid"}
             >
-              <Icon name="grid" size={16} />
+              <Icon name="grid" size={16} className={BUTTON_ICON_CLASS} />
             </button>
           </div>
         </div>
@@ -486,8 +499,12 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
         {error && !isLoading && (
           <div className="library-state library-state-error">
             <p>{error}</p>
-            <button className="library-link-btn" onClick={() => refetch()}>
-              <Icon name="refresh" size={16} />
+            <button
+              className="btn library-link-btn"
+              data-variant="outline"
+              onClick={() => refetch()}
+            >
+              <Icon name="refresh" size={16} className={BUTTON_ICON_CLASS} />
               <span>Retry</span>
             </button>
           </div>

@@ -46,6 +46,20 @@
         color: inherit;
         font-family: inherit;
     }
+
+    /*
+     * `.btn` is a CLASS, so it is not always worn by a <button>. The library's
+     * "Upload paper" control is a <label> wrapping a hidden file input, and the
+     * paper's "Download" is an <a>. Preflight would have reset both
+     * (`a { color: inherit; text-decoration: inherit }`); without it, the anchor
+     * arrives underlined and link-colored, and neither element gets a pointer.
+     * Same leak as the <button> reset above, different elements.
+     */
+    a.btn,
+    label.btn {
+        text-decoration: none;
+        cursor: pointer;
+    }
 }
 
 /*

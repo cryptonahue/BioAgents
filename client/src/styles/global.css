@@ -1646,53 +1646,27 @@ textarea:not(.textarea)::placeholder {
   border-top: 1px solid var(--border-color);
 }
 
-.input-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: "Inter", inherit;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.input-action-btn:hover:not(:disabled) {
-  background: var(--accent-light);
-  color: var(--accent-color);
-}
-
-.input-action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.input-action-btn-disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  color: var(--text-tertiary);
-}
-
-.input-action-btn-disabled:hover {
-  background: transparent !important;
-  color: var(--text-tertiary) !important;
-}
-
-.input-action-btn-active {
-  background: var(--accent-light);
-  color: var(--accent-color);
-}
-
-.input-action-btn-active:hover:not(:disabled) {
-  background: var(--accent-color);
-  color: var(--bg-primary);
+/*
+ * COMPOSER BUTTONS.
+ *
+ * Slice 3 deliberately left the chat composer unmigrated: Lyra's `.input-group`
+ * would have squared the box, shrunk it, and killed the brand-green focus glow.
+ * That verdict still stands for the BOX — `.input-box` keeps its hand-written
+ * skin and its `:focus-within` glow, and it does NOT carry `.input-group`.
+ *
+ * Its BUTTONS are a different question, and the answer is that they migrate
+ * cleanly. Lyra only re-sizes a button inside an `.input-group` (its
+ * `> button:has(> svg)` rule forces `size-6`), and `.input-box` is not one — so
+ * `.btn[data-variant="ghost"]` reaches them with nothing in the way. The glow is
+ * painted by `.input-box:focus-within`, which fires for any focused descendant
+ * and is entirely indifferent to what class that descendant wears. Verified in
+ * Chromium: the glow still fires on both the textarea and the buttons.
+ *
+ * `.input-action-btn-active` and `.input-action-btn-disabled` are deleted
+ * outright — neither had a call site anywhere in the client.
+ */
+.input-send-btn {
+  margin-left: auto;
 }
 
 /* Mode Switcher - Segmented Control */
@@ -1836,23 +1810,8 @@ textarea:not(.textarea)::placeholder {
   white-space: nowrap;
 }
 
-.file-remove-inline {
-  background: transparent;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.file-remove-inline:hover {
-  background: var(--bg-hover);
-  color: var(--accent-color);
-}
+/* `.file-remove-inline` is `.btn[data-variant="ghost"][data-size="icon-xs"]` — no
+ * CSS of its own. */
 
 /* Enhanced file upload styles */
 .file-preview-inline {

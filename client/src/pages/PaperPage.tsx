@@ -4,6 +4,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { askPaper, getPaperHistory, usePaperMeta, type AskSource } from "../hooks";
 import { Icon } from "../components/icons";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { useResearchBrainChunk, useResearchBrainClaims } from "../hooks/useResearchBrain";
 
 interface PaperPageProps {
@@ -213,7 +214,8 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
               <div className="library-state">
                 <p>The embedded preview is not available for this file type.</p>
                 <a
-                  className="library-link-btn"
+                  className="btn library-link-btn"
+                  data-variant="outline"
                   href={meta.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -402,10 +404,13 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
                 />
                 <button
                   type="submit"
-                  className="paper-send-btn"
+                  className="btn paper-send-btn"
+                  data-variant="primary"
+                  data-size="icon-lg"
                   disabled={isAsking || !input.trim()}
+                  aria-label="Send"
                 >
-                  <Icon name="send" size={16} />
+                  <Icon name="send" size={16} className={BUTTON_ICON_CLASS} />
                 </button>
               </div>
             </form>

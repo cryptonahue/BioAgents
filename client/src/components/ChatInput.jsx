@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "preact/hooks";
 import { useAutoResize } from "../hooks";
 import { Icon } from "./icons";
+import { BUTTON_ICON_CLASS } from "./ui/Button";
 
 export function ChatInput({
   value,
@@ -244,7 +245,9 @@ export function ChatInput({
                     <span className="file-size">{formatSize(file.size)}</span>
                     <button
                       onClick={() => onFileRemove(index)}
-                      className="file-remove-inline"
+                      className="btn file-remove-inline"
+                      data-variant="ghost"
+                      data-size="icon-xs"
                       title="Remove file"
                     >
                       <Icon name="close" size={12} />
@@ -260,12 +263,13 @@ export function ChatInput({
               <button
                 onClick={() => setShowUploadMenu(!showUploadMenu)}
                 disabled={disabled}
-                className="input-action-btn"
+                className="btn input-action-btn"
+                data-variant="ghost"
                 title="Add files or folder"
               >
-                <Icon name="plus" size={16} />
+                <Icon name="plus" size={16} className={BUTTON_ICON_CLASS} />
                 <span>Add</span>
-                <Icon name="chevronDown" size={12} />
+                <Icon name="chevronDown" size={12} className={BUTTON_ICON_CLASS} />
               </button>
               {showUploadMenu && (
                 <div className="upload-menu">
@@ -313,10 +317,11 @@ export function ChatInput({
             <button
               onClick={() => onSend(mode)}
               disabled={disabled || (!value.trim() && !hasFiles)}
-              className="input-send-btn"
+              className="btn input-send-btn"
+              data-variant="ghost"
               title="Send message"
             >
-              <Icon name="send" size={16} />
+              <Icon name="send" size={16} className={BUTTON_ICON_CLASS} />
               <span>{mode === "deep" ? "Start Research" : "Send"}</span>
             </button>
           </div>

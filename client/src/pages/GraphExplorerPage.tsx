@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "preact/hooks";
 import { Icon } from "../components/icons";
+import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import {
   EDGE_LABEL,
   EDGE_STROKE,
@@ -459,9 +460,11 @@ export function GraphExplorerPage(_props: Props) {
               {KIND_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
-                  class={`graph-kind-btn ${
-                    selectedKind === opt.key ? "active" : ""
-                  }`}
+                  class="btn graph-kind-btn"
+                  data-variant="outline"
+                  data-size="sm"
+                  data-tone={selectedKind === opt.key ? "info" : undefined}
+                  aria-pressed={selectedKind === opt.key}
                   onClick={() => setSelectedKind(opt.key)}
                 >
                   {opt.label}
@@ -481,8 +484,14 @@ export function GraphExplorerPage(_props: Props) {
                 }
                 onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
               />
-              <button type="submit" class="graph-search-submit">
-                <Icon name="chevronRight" size={18} />
+              <button
+                type="submit"
+                class="btn graph-search-submit"
+                data-variant="primary"
+                data-size="icon-sm"
+                aria-label="Search"
+              >
+                <Icon name="chevronRight" size={18} className={BUTTON_ICON_CLASS} />
               </button>
             </form>
 
@@ -580,7 +589,8 @@ export function GraphExplorerPage(_props: Props) {
                   <span>{graphError}</span>
                   <button
                     type="button"
-                    class="graph-retry-btn"
+                    class="btn graph-retry-btn"
+                    data-variant="outline"
                     onClick={retryFocus}
                   >
                     Retry
@@ -686,7 +696,10 @@ function DetailCard({
                   )}
                   <button
                     type="button"
-                    class="graph-evidence-btn"
+                    class="btn graph-evidence-btn"
+                    data-variant="outline"
+                    data-size="xs"
+                    data-tone="info"
                     onClick={() => openProvenanceLightbox(f.id, f.source_id)}
                     title="Open this fact's evidence"
                   >
@@ -802,7 +815,10 @@ function DetailCard({
         <div class="graph-detail-section">
           <button
             type="button"
-            class="graph-evidence-btn"
+            class="btn graph-evidence-btn"
+            data-variant="outline"
+            data-size="xs"
+            data-tone="info"
             onClick={() => openSourceViewer(source.id)}
             title="Open source in the evidence viewer"
           >
