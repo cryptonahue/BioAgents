@@ -44,6 +44,16 @@
  */
 
 :root {
+  /* The counterpart of Basecoat's `.dark { color-scheme: dark }` (base.css), and
+     the reason it has to be spelled out rather than left to the UA's implicit
+     `normal`: `color-scheme` is what resolves the `Canvas` / `CanvasText` system
+     colors that Basecoat's `native-select.css` gives every `<option>`, and what
+     paints native checkboxes and scrollbars. Under `normal` those come from the
+     UA's own default, which is not necessarily this theme. Saying `light` here
+     makes the light theme declare its side of the pair, exactly as `.dark`
+     declares its own. */
+  color-scheme: light;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);
   --card: oklch(1 0 0);
@@ -117,6 +127,18 @@
 .dark,
 .landing-page,
 .access-pending-page {
+  /* MUST BE RE-DECLARED HERE, and this is not symmetry for its own sake.
+     Basecoat's base.css already says `.dark { color-scheme: dark }`, but the
+     `color-scheme: light` this file now puts on `:root` has the SAME specificity
+     (0,1,0) and `theme.css` is imported AFTER Basecoat — so on `<html class="dark">`
+     the later `:root` rule wins and the whole page reverts to the LIGHT system
+     colors. Measured in Chromium: with only the `:root` half added,
+     `getComputedStyle(document.documentElement).colorScheme` came back `light`
+     under `html.dark`, taking every `<option>` and native checkbox with it.
+     Declaring the dark side here puts it after `:root` in the cascade, where it
+     belongs. Do not delete one half of this pair without deleting the other. */
+  color-scheme: dark;
+
   --background: oklch(0.148 0.004 228.8);
   --foreground: oklch(0.987 0.002 197.1);
   --card: oklch(0.218 0.008 223.9);
