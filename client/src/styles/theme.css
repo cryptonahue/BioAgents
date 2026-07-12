@@ -308,6 +308,126 @@
 }
 
 /**
+ * RE-ANCHORING THE BRIDGE ON THE PINNED-DARK ROOTS.
+ *
+ * THIS BLOCK IS NOT REDUNDANT. Deleting it makes the waitlist modal render
+ * WHITE-ON-BLACK inside the dark landing page whenever the app is in light mode.
+ *
+ * A custom property whose value is a `var()` is substituted at the point of
+ * DECLARATION, not at the point of use. `--bg-secondary: var(--card)` is
+ * declared on `:root`, so it resolves against `:root`'s `--card` and then
+ * inherits DOWN already-resolved. Re-declaring `--card` further down the tree
+ * does NOT retroactively re-resolve an alias that was computed above it.
+ *
+ * That is exactly what the pinned-dark mechanism does: `.landing-page` /
+ * `.access-pending-page` re-declare the Basecoat tokens (`--card`, `--muted`,
+ * `--foreground`, …), but every bridge alias pointing AT those tokens was
+ * already frozen to `:root`'s light value. Measured in Chromium with `<html>` in
+ * light mode, ALL TWELVE aliases below resolved to their light values inside
+ * `.landing-page` — `--bg-secondary` came back `oklch(1 0 0)`, pure white, which
+ * is `.waitlist-form`'s background (`coralgpt.css`).
+ *
+ * `.dark` is NOT in this selector list, and must not be added to it. `.dark`
+ * sits on `<html>`, the SAME element `:root` matches, so there the alias and its
+ * referent resolve on one element and the cascade already picks the dark value.
+ * Verified: all twelve are correct under `.dark` today. Only a DESCENDANT root
+ * that re-declares tokens — which is what these two marketing surfaces are —
+ * breaks the bridge.
+ *
+ * The rule for anyone adding a scoped token override in the future: if your
+ * block re-declares a token that some `var()` alias points at, you must
+ * re-declare the alias too. The Library sub-brand block at the bottom of this
+ * file is safe from this precisely because it only overrides `--accent-*`, which
+ * are LITERALS that nothing aliases.
+ */
+.landing-page,
+.access-pending-page {
+  /* Basecoat's own `.dark` block ends with `color-scheme: dark`, and the pinned
+     roots never picked it up. It is not a token, so no amount of re-aliasing
+     reaches it — but it is what tells the UA to paint native controls dark, and
+     the landing has a real `<input type="checkbox">` in the waitlist form. In
+     light mode that checkbox rendered as a WHITE box on the dark card. It also
+     governs the `Canvas` / `CanvasText` system colors that Basecoat's
+     `native-select.css` gives every `<option>`, so a dark-pinned surface without
+     it would drop a white dropdown out of a dark select. */
+  color-scheme: dark;
+
+  --bg-primary: var(--background);
+  --bg-secondary: var(--card);
+  --bg-tertiary: var(--muted);
+
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-muted: var(--text-tertiary);
+
+  --border-color: var(--border);
+
+  --user-msg-bg: var(--bg-hover);
+  --card-hover: var(--bg-hover);
+
+  --error-color: var(--destructive);
+
+  /* Declared further down the file, but the trap is identical: both alias a
+     token this surface re-declares. */
+  --primary-ink: var(--primary);
+  --graph-node-stroke: var(--card);
+
+  /**
+   * TAILWIND'S OWN THEME LAYER HAS THE SAME BUG, AND IT IS THE WORSE HALF.
+   *
+   * Basecoat's components do not read `--card` / `--foreground` directly. They
+   * read Tailwind's theme keys — `var(--color-card)`, `var(--color-foreground)`
+   * — and Tailwind's `@theme` block emits those as a SECOND alias layer:
+   *
+   *     @layer theme { :root, :host { --color-card: var(--card); … } }
+   *
+   * `:root` again. So the aliases freeze against the LIGHT token set exactly as
+   * the legacy bridge above did, and the pinned-dark re-declarations never reach
+   * any Basecoat component. Caught by rendering the real modal markup: with the
+   * bridge fixed but this block absent, `.waitlist-form` sat on a correctly dark
+   * card while Basecoat's `.dialog` painted its text `oklch(0.148 …)` — the
+   * light ink — because `.dialog` colors itself from `var(--color-popover-
+   * foreground)`.
+   *
+   * This is why the block matters more than the bridge: it governs `.dialog`,
+   * `.btn`, `.input`, `.textarea` and `select.select` — every Basecoat class the
+   * migration puts on these surfaces. Without it the pinned-dark mechanism only
+   * pins the hand-written CSS, and anything wearing a Basecoat class defects to
+   * the light theme in the middle of a dark page.
+   *
+   * These 24 names are Tailwind's, not ours, and they are re-declared verbatim —
+   * same name, same referent, different element. Nothing is being redefined; the
+   * alias is simply being re-resolved where the tokens actually changed. The list
+   * is every `--color-*` key Tailwind emits for this build (checked against the
+   * compiled bundle); if a token is added to `@theme`, it must be added here too.
+   */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/**
  * Semantic vocabulary.
  *
  * Everything below is additive: new names that the hand-written CSS converts
