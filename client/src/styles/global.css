@@ -24,30 +24,54 @@
 @import "./wallet.css";
 
 /*
- * DO NOT DELETE, and DO NOT move this into an @layer.
+ * The app's reset. Tailwind Preflight is deliberately not loaded (see
+ * basecoat.css), so this stands in for it.
  *
- * This is the app's reset (Tailwind Preflight is deliberately not loaded — see
- * basecoat.css). It is also, unintentionally, the only thing neutralising a live
- * Basecoat rule:
+ * IT LIVES IN `@layer base`, AND THE LAYER IS LOAD-BEARING. Unlayered CSS beats
+ * every @layer regardless of specificity — even at (0,0,0). Basecoat declares
+ * its component geometry in `@layer components`, so while this reset was
+ * unlayered its `padding: 0` silently zeroed the padding of EVERY Basecoat
+ * component in the app: `.btn`, `.badge`, `[role=tab]`, `[role=tablist]`, `th`
+ * and `td` all computed `padding: 0px`, and the buttons and badges shipped
+ * visibly cramped. Layering the reset puts it UNDER Basecoat, which is the only
+ * ordering in which Lyra's own geometry survives.
+ *
+ * It was unlayered for a real reason, and that reason is now dead. `margin: 0`
+ * used to be the only thing neutralising Basecoat's
  *
  *   @media (min-width: 48rem) {
  *     .sidebar:not([data-side]) + * { margin-left: var(--sidebar-width) }
  *   }
  *
- * Basecoat's sidebar component claims the bare `.sidebar` class, which
- * Sidebar.jsx also uses, and `.app-content` is its adjacent sibling — so that
- * selector DOES match. Basecoat ships inside @layer components; this rule is
- * unlayered, and unlayered CSS beats every layer regardless of specificity, so
- * `margin: 0` wins.
+ * which matched because the app's own sidebar wore the bare `sidebar` class that
+ * Basecoat's sidebar COMPONENT claims. That was a namespace collision, not a
+ * cascade problem, and it is fixed at the source: the app's sidebar is
+ * `.app-sidebar` now (see its rule below), so the selector matches nothing.
  *
- * Verified in Chromium against the built bundle: with this rule present
- * `.app-content` computes margin-left: 0px; with it removed, 260px. Deleting it
- * shifts the whole app right on every desktop viewport.
+ * Verified in Chromium against the built bundle, on all 9 pages:
+ * `document.querySelectorAll('.sidebar:not([data-side]) + *')` returns 0 nodes,
+ * and `.app-content` / `.main-content` compute `margin-left: 0px` at ≥768px
+ * because no rule reaches them — not because one out-cascades another.
+ *
+ * Do NOT reintroduce the bare `sidebar` class, and do NOT move this reset back
+ * out of the layer.
+ *
+ * ONE THING LAYERING DOES *NOT* COST, because it is natural to assume otherwise:
+ * the UA defaults do NOT come back. `@layer` only orders rules WITHIN an origin,
+ * and the user-agent stylesheet is a separate, weaker ORIGIN — every author
+ * declaration outranks it, layered or not. So this reset still flattens `<ul>`'s
+ * `padding-inline-start`, `<body>`'s 8px margin and the heading/`<p>` margins
+ * exactly as it did while unlayered. Measured both ways in Chromium, on bare
+ * `<ul>/<ol>/<h1>/<p>/<blockquote>` injected into a real page: 0px before, 0px
+ * after. The ONLY thing the layer changes is that Basecoat's `@layer components`
+ * now outranks the reset — which is the entire point.
  */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 /*
