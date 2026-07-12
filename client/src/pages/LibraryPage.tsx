@@ -3,6 +3,7 @@ import { route } from "preact-router";
 import { useLibraryList } from "../hooks";
 import type { LibraryPaper } from "../hooks/useLibrary";
 import { fetchPaperAbstract, deleteLibraryPaper } from "../hooks/useLibrary";
+import { ExternalLink } from "../utils/externalLinks";
 import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -219,15 +220,14 @@ function PaperCard({
               <span title={`${paper.size} bytes`}>{formatSize(paper.size)}</span>
             ) : null}
             {paper.doiUrl && (
-              <a
+              <ExternalLink
                 className="paper-doi-link"
                 href={paper.doiUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                label={`DOI for ${displayTitle(paper)}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 DOI
-              </a>
+              </ExternalLink>
             )}
           </div>
         </div>
@@ -355,15 +355,14 @@ function PaperRow({
             </span>
           )}
           {paper.doiUrl && (
-            <a
+            <ExternalLink
               className="paper-doi-link"
               href={paper.doiUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              label={`DOI for ${displayTitle(paper)}`}
               onClick={(e) => e.stopPropagation()}
             >
               DOI
-            </a>
+            </ExternalLink>
           )}
         </div>
       </section>

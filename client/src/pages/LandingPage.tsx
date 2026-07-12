@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { usePrivy } from '@privy-io/react-auth';
 import { WaitlistModal } from '../components/WaitlistModal';
+import { ExternalLink } from '../utils/externalLinks';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../hooks';
 import { useLandingScroll } from '../hooks/useLandingScroll';
@@ -314,25 +315,23 @@ export function LandingPage() {
             researchers, data contributors, and the agent network behind it.
           </p>
           <div className="landing-token-actions">
-            <a
+            <ExternalLink
               href="https://bioagents.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
               className="btn btn-marketing"
               data-variant="outline"
               data-tone="teal"
+              label="Learn about $CRLAI on bioagents.xyz"
             >
               Learn about $CRLAI
-            </a>
-            <a
+            </ExternalLink>
+            <ExternalLink
               href="https://bioagents.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
               className="btn btn-marketing"
               data-variant="outline"
+              label="View on bioagents.xyz"
             >
               View on BioAgents
-            </a>
+            </ExternalLink>
           </div>
         </div>
       </section>
@@ -386,13 +385,9 @@ export function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-footer-legal">
           © 2026 CoralGPT · BioAgent powered by $CRLAI ·{' '}
-          <a
-            href="https://bioagents.xyz"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <ExternalLink href="https://bioagents.xyz" label="BioAgents">
             BioAgents
-          </a>
+          </ExternalLink>
         </div>
         {/* The toggle only became meaningful once the pin was narrowed off the
             page root — before that it would have flipped the rest of the app

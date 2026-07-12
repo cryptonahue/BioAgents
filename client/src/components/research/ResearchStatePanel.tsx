@@ -1,5 +1,6 @@
 import { useState, useEffect } from "preact/hooks";
 import { Icon } from "../icons";
+import { ExternalLink, isExternalHref } from "../../utils/externalLinks";
 import { ArtifactViewer } from "./ArtifactViewer";
 import {
   EvidenceBySourcePanel,
@@ -209,21 +210,27 @@ export function ResearchStatePanel({
 
   const renderCitationText = (text: string) => {
     const parts = parseCitationText(text);
-    return parts.map((part, i) =>
-      part.type === "link" ? (
-        <a
+    return parts.map((part, i) => {
+      if (part.type !== "link") return <span key={i}>{part.content}</span>;
+      // NOT every citation in a discovery or an insight is external. The agent emits
+      // in-app URLs (`/library/…`) alongside DOIs, and this used to open BOTH in a
+      // new tab — a second copy of the SPA for an internal route. `isExternalHref`
+      // is the whole test: absolute http(s) AND a different origin.
+      return isExternalHref(part.url!) ? (
+        <ExternalLink
           key={i}
-          href={part.url}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={part.url!}
           className="research-citation-link"
+          label={part.text!}
         >
           {part.text}
-        </a>
+        </ExternalLink>
       ) : (
-        <span key={i}>{part.content}</span>
-      ),
-    );
+        <a key={i} href={part.url} className="research-citation-link">
+          {part.text}
+        </a>
+      );
+    });
   };
 
   const completedSteps = state?.plan?.filter((step) => step.end) || [];

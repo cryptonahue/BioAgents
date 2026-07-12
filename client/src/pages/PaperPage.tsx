@@ -6,6 +6,7 @@ import { askPaper, getPaperHistory, usePaperMeta, type AskSource } from "../hook
 import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { useResearchBrainChunk, useResearchBrainClaims } from "../hooks/useResearchBrain";
+import { decorateExternalLinks, ExternalLink } from "../utils/externalLinks";
 
 interface PaperPageProps {
   path?: string;
@@ -57,6 +58,13 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
     error: focusedChunkError,
   } = useResearchBrainChunk(meta?.researchSourceId, focusedFragment);
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  // `marked` emits a bare <a href> with no target and no rel, so a DOI the model
+  // cited in a paper answer navigated the SPA away from the paper. Runs after every
+  // turn lands; the decoration is idempotent. See utils/externalLinks.
+  useEffect(() => {
+    decorateExternalLinks(messagesRef.current);
+  }, [turns]);
 
   // Load persisted history for this paper on open.
   useEffect(() => {
@@ -215,16 +223,14 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
             {!isLoading && meta && !canEmbed && (
               <div className="library-state">
                 <p>The embedded preview is not available for this file type.</p>
-                <a
+                <ExternalLink
                   className="btn library-link-btn"
-                  data-variant="outline"
                   href={meta.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  label="Open file"
                 >
                   <Icon name="download" size={16} />
                   <span>Open file</span>
-                </a>
+                </ExternalLink>
               </div>
             )}
           </section>
@@ -234,15 +240,14 @@ export function PaperPage({ docId, coralGptMode = false }: PaperPageProps) {
             <div className="paper-chat-header">
               <div className="paper-chat-meta">
                 {meta?.doi && (
-                  <a
+                  <ExternalLink
                     className="paper-doi"
                     href={meta.doiUrl || `https://doi.org/${meta.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    label={`DOI ${meta.doi}`}
                     title="Open DOI"
                   >
                     DOI: {meta.doi}
-                  </a>
+                  </ExternalLink>
                 )}
                 {meta?.estTokens != null && (
                   <span className="paper-tokens">

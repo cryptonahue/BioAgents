@@ -4,6 +4,7 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { parseCitationsFromText, extractDomainName } from '../utils/parseCitations';
 import { openProvenanceLightbox, openProvenanceInTab } from '../utils/provenanceTrigger';
+import { decorateExternalLinks, ExternalLink, isExternalHref } from '../utils/externalLinks';
 import { Icon } from './icons';
 
 /**
@@ -316,22 +317,19 @@ function Citation({ citation }) {
               http(s) source leaves the app and must, with `noopener` (without it
               the opened page gets a handle on this window) and a visible icon
               saying so. */}
-          {url.startsWith('/') ? (
-            <a className="btn citation-preview-open" data-variant="outline" data-size="xs" href={url}>
-              Open in library
-            </a>
-          ) : (
-            <a
+          {isExternalHref(url) ? (
+            <ExternalLink
               className="btn citation-preview-open"
               data-variant="outline"
               data-size="xs"
               href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open source ${citation.index} in a new tab`}
+              label={`Open source ${citation.index}`}
             >
               Open source
-              <Icon name="externalLink" size={12} />
+            </ExternalLink>
+          ) : (
+            <a className="btn citation-preview-open" data-variant="outline" data-size="xs" href={url}>
+              Open in library
             </a>
           )}
         </div>
@@ -393,7 +391,12 @@ export function InlineCitationText({ content }) {
    * inside it, including the close timer, get to run their teardown).
    */
   useEffect(() => {
-    if (!contentRef.current || citations.length === 0) return;
+    if (!contentRef.current) return;
+    // `marked` emits a bare <a href> with no target and no rel, so an external link
+    // inside an answer navigated the SPA away from the conversation. See
+    // utils/externalLinks.
+    decorateExternalLinks(contentRef.current);
+    if (citations.length === 0) return;
     const anchors = [];
 
     citations.forEach((citation) => {
@@ -411,11 +414,15 @@ export function InlineCitationText({ content }) {
     };
   }, [citations, contentWithAnchors]);
 
-  // No citations: render the cleaned content and nothing else.
+  // No citations: render the cleaned content and nothing else — but KEEP the ref,
+  // because the external-link decoration in the effect above needs the same root.
+  // (The old code returned a ref-less <div> here, which is why a message without
+  // citations could not have been decorated at all.)
   if (citations.length === 0) {
     const { textWithoutCitations } = parseCitationsFromText(content);
     return (
       <div
+        ref={contentRef}
         className="message-content"
         dangerouslySetInnerHTML={{ __html: renderMarkdown(textWithoutCitations) }}
       />

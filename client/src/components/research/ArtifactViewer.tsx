@@ -130,7 +130,10 @@ export function ArtifactViewer({ results, defaultExpanded = true }: Props) {
           artifact.path,
         );
         if (url) {
-          window.open(url, "_blank");
+          // `noopener` is not optional: without it the presigned-URL tab we open
+          // keeps a live `window.opener` handle on this window and can navigate it.
+          // This was the one window.open in the client that lacked it.
+          window.open(url, "_blank", "noopener,noreferrer");
           return;
         }
       }

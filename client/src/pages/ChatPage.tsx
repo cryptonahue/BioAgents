@@ -14,6 +14,7 @@ import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { WelcomeScreen } from "../components/WelcomeScreen";
 import { ConversationProvider } from "../providers/ConversationProvider";
+import { ExternalLink } from "../utils/externalLinks";
 
 // Custom hooks
 import {
@@ -935,14 +936,13 @@ export function ChatPage({
               <div style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
                 <div>
                   <strong>Transaction:</strong>{" "}
-                  <a
+                  <ExternalLink
                     href={`https://sepolia.basescan.org/tx/${paymentTxHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    label="View the transaction on Basescan"
                     className="payment-status__link"
                   >
                     {paymentTxHash.slice(0, 10)}...{paymentTxHash.slice(-8)}
-                  </a>
+                  </ExternalLink>
                 </div>
               </div>
             </div>

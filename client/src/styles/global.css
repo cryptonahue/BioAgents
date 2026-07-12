@@ -2298,6 +2298,34 @@ textarea:not(.textarea)::placeholder {
 }
 
 /* ============================================
+   External links
+   ============================================
+
+   Every link that leaves the app carries this glyph. It is the WCAG 3.2.5 warning
+   that a new tab is about to open — an affordance the app had NOWHERE, including on
+   the links it already opened in a tab. The glyph is `aria-hidden`; the words go in
+   the anchor's `aria-label` instead, because `.sr-only` is NOT usable in this build:
+   with no Tailwind Preflight, the utility compiles to a lone `width: auto` and
+   hides nothing.
+
+   `inline-flex` keeps the SVG off the text baseline (an inline SVG sits ON it and
+   hangs a couple of pixels low), and the icon takes `currentColor`, so a DOI link,
+   a marketing `.btn` and a citation in an answer each tint their own. */
+.external-link-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline-start: 3px;
+  vertical-align: -0.1em;
+  opacity: 0.75;
+}
+
+a:hover > .external-link-icon,
+a:focus-visible > .external-link-icon {
+  opacity: 1;
+}
+
+/* ============================================
    Inline Citations
    ============================================
 

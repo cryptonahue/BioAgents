@@ -2,6 +2,7 @@ import { route } from "preact-router";
 import { useState } from "preact/hooks";
 import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
+import { ExternalLink } from "../utils/externalLinks";
 import { TabList, TabPanel, Tabs, type TabItem } from "../components/ui/Tabs";
 import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import { CompoundAuthorityBadge } from "../components/CompoundAuthorityBadge";
@@ -861,13 +862,12 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                             }}
                           />
                           {fact.doiUrl && (
-                            <a
+                            <ExternalLink
                               href={fact.doiUrl}
-                              target="_blank"
-                              rel="noreferrer"
+                              label={`DOI for this fact`}
                             >
                               DOI
-                            </a>
+                            </ExternalLink>
                           )}
                           {fact.evidenceUrl && (
                             <button

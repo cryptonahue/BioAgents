@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "preact/hooks";
 import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
+import { ExternalLink } from "../utils/externalLinks";
 import {
   EDGE_LABEL,
   EDGE_STROKE,
@@ -702,9 +703,9 @@ function DetailCard({
                 <div class="graph-fact-meta">
                   {f.page != null && <span>p. {f.page}</span>}
                   {f.doi && (
-                    <a href={doiHref(f.doi)} target="_blank" rel="noreferrer">
+                    <ExternalLink href={doiHref(f.doi)} label={`DOI ${f.doi}`}>
                       DOI
-                    </a>
+                    </ExternalLink>
                   )}
                   <button
                     type="button"
@@ -741,9 +742,9 @@ function DetailCard({
                   {s.doi && (
                     <>
                       {" · "}
-                      <a href={doiHref(s.doi)} target="_blank" rel="noreferrer">
+                      <ExternalLink href={doiHref(s.doi)} label={`DOI ${s.doi}`}>
                         DOI
-                      </a>
+                      </ExternalLink>
                     </>
                   )}
                 </span>
@@ -817,9 +818,9 @@ function DetailCard({
           <div class="graph-detail-stats">
             <span>{source.factCount} facts</span>
             {source.doi && (
-              <a href={doiHref(source.doi)} target="_blank" rel="noreferrer">
+              <ExternalLink href={doiHref(source.doi)} label={`DOI ${source.doi}`}>
                 DOI
-              </a>
+              </ExternalLink>
             )}
           </div>
         </header>
