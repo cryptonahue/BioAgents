@@ -84,6 +84,80 @@
   gap: 16px;
 }
 
+/* ---------------------------------------------------------------------------
+ * THE TOOLBAR — search, upload, view toggle.
+ *
+ * The search box is Basecoat's `.input-group` and declares NO skin here: the
+ * box, the border, the borderless `flex: 1` input, the leading icon slot and
+ * the `:focus-within` ring are all the pack's (forms.css restores the 2px
+ * `--ring` outline on the GROUP). Only how much of the row it takes is layout,
+ * and layout stays at the call site.
+ * ------------------------------------------------------------------------- */
+.library-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.library-search {
+  flex: 1;
+  min-width: 240px;
+}
+
+/* ---------------------------------------------------------------------------
+ * THE FILTER ROW.
+ *
+ * Five native selects (organism, region, year, trust, sort). Each is wrapped in
+ * a `<label>` carrying the uppercase micro-caption, exactly like
+ * `.brain-filter-row` — and it needs the same two INHERITANCE RESETS on the
+ * control, for the same reason: `text-transform` and `letter-spacing` both
+ * inherit, and Chromium's UA stylesheet happens to declare them on the control
+ * itself, which masks the bug there but is not guaranteed cross-engine. See the
+ * long note at `.brain-filter-row input, .brain-filter-row select`.
+ *
+ * `width: 100%` is load-bearing: Lyra sizes `select.select` `w-fit`, so each
+ * would otherwise shrink to its widest option and the row would jitter as the
+ * facet vocabulary loaded in.
+ * ------------------------------------------------------------------------- */
+.library-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.library-filter {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 220px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.library-filter select {
+  width: 100%;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Sits on the baseline of the selects, not of their captions. */
+.library-clear {
+  flex-shrink: 0;
+}
+
+.library-count {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 /* ---- View toggle (list / card) ---- */
 .library-view-toggle {
   display: inline-flex;
@@ -106,12 +180,14 @@
   flex-direction: column;
   gap: 8px;
 }
-/* The list-view row is Basecoat's `.item[data-variant="outline"]` — icon,
- * body, actions is that component's `> figure` / `> section` / `> aside`
- * contract exactly, and Lyra supplies the flex row, the 1px border, the 12px
- * box and the `text-xs` ramp. `.paper-row-icon` and `.paper-row-main` are gone
- * with the skin: `> figure` is already `shrink-0 flex items-center` and
- * `> section` is already `flex-1 flex-col`.
+/* The list-view row is Basecoat's `.item[data-variant="outline"]`, and its
+ * three columns ARE that component's slots: `> section` (the title column,
+ * already `flex-1 flex-col`), `> section + section` (the signal rail, already
+ * `flex-none`) and `> aside` (the actions, already `flex items-center`). Lyra
+ * supplies the flex row, the 1px border, the 12px box and the `text-xs` ramp.
+ *
+ * There is no `> figure` any more. The row's fourth slot held a book icon that
+ * was identical on every row — see the note on `.paper-row-icon` below.
  *
  * Two things Lyra does not give it:
  *
@@ -126,6 +202,7 @@
  *   a literal, is what carries that through. */
 .paper-row {
   background: var(--card);
+  gap: 14px;
   transition:
     border-color 0.15s,
     background 0.15s;
@@ -134,46 +211,193 @@
   border-color: var(--accent-color);
   background: var(--card-hover);
 }
-.paper-row-icon {
-  color: var(--accent-ink);
-}
-.paper-row-titleline {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+
+/* `.paper-row-icon` IS GONE, AND IS NOT COMING BACK.
+ *
+ * It was a book glyph on every row of a list of papers: the same mark, in the
+ * same place, on every line. It carried no information — nothing distinguished
+ * one row's icon from the next — and it held the row's visual anchor, the
+ * left-most, first-read position, which belongs to the only field that
+ * identifies the paper. THE TITLE TAKES THAT ANCHOR. Signals moved right, into
+ * `.paper-row-signals`. */
+
+.paper-row-main {
   min-width: 0;
+  gap: 4px;
 }
+
+/* THE ANCHOR. Lyra clamps any `h3` inside an `.item` to ONE line
+ * (`.item :is(h2,h3,h4) { line-clamp-1 }`) and sizes it `w-fit`, which is
+ * exactly right here — one row, one line, ellipsis, full text on hover — but
+ * `w-fit` alone would let a long title push the signal rail off the row, so the
+ * clamp is paired with `min-width: 0` on the column above. The 15px step (up
+ * from Lyra's `text-sm`) is what makes it read as the anchor rather than as one
+ * more piece of metadata. */
 .paper-row-title {
-  font-size: 14px;
+  display: block;
+  width: 100%;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.paper-row-sub {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
+
+/* THE PROVENANCE LINE — year · publisher · type · fragments · size · DOI.
+ * Deliberately typographic, not chips: this is context, and if it were badged
+ * it would compete with the signal rail, which is the part that decides
+ * anything. Muted, one size down, separated by rules rather than by boxes. */
 .paper-row-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 8px;
   font-size: 12px;
   color: var(--text-secondary);
 }
+
+.paper-row-meta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--text-tertiary);
+}
+
+.paper-tag-plain {
+  letter-spacing: 0.04em;
+}
+
+/* THE SIGNAL RAIL — "can I use this?" in one column.
+ *
+ * Lyra's `.item > section + section` is already `flex-none`, so the rail does
+ * not fight the title column for width; it takes what its chips need and no
+ * more. Right-aligned, because the eye lands on the title and flicks RIGHT to
+ * triage. Evidence is first in DOM order, so it is first for a screen reader
+ * too — not just visually. */
+.paper-row-signals {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 45%;
+}
+
 .paper-row-actions {
   flex-shrink: 0;
   display: flex;
   gap: 8px;
 }
+
+@media (max-width: 860px) {
+  /* Below this the three-column row cannot hold: the rail wraps under the
+     title and the actions take the full width, which keeps the scan path
+     (title -> signals -> actions) intact, just vertically. */
+  .paper-row-signals {
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 640px) {
   .paper-row-actions {
     width: 100%;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * LOADING — skeleton rows.
+ *
+ * Basecoat's `.skeleton` is `@apply animate-pulse` and LITERALLY NOTHING ELSE:
+ * no size, no fill, no radius. It is the ANIMATION, and the shape is the call
+ * site's. So the boxes below are ours; the pulse is the pack's.
+ *
+ * Rows rather than a spinner, sized to the real row, so the list holds its
+ * shape while it loads and nothing jumps when the papers arrive.
+ * ------------------------------------------------------------------------- */
+.paper-row--skeleton {
+  background: var(--card);
+  pointer-events: none;
+}
+
+.skeleton-line {
+  height: 12px;
+  background: var(--surface-sunken);
+}
+
+.skeleton-line--title {
+  height: 15px;
+  width: min(60%, 420px);
+}
+
+.skeleton-line--meta {
+  width: min(35%, 260px);
+}
+
+.skeleton-chip {
+  width: 74px;
+  height: 20px;
+  background: var(--surface-sunken);
+}
+
+/* Lyra's `.empty` is `flex-1`, and it is the only child of a scrolling column
+ * here, so it would stretch to the full height of the viewport and float its
+ * message in the middle of nowhere. It is a state in a list, not a page. */
+.library-empty {
+  flex: none;
+  padding: 48px 20px;
+  gap: 16px;
+  border: 1px dashed var(--border-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * PAGINATION.
+ *
+ * Basecoat does NOT ship a `.pagination` — its component list runs accordion,
+ * alert, avatar, badge, breadcrumb, button, button-group, card, chart, checkbox,
+ * collapsible, combobox, command, dialog, drawer, dropdown-menu, empty, field,
+ * form, input, input-group, item, kbd, label, native-select, popover, progress,
+ * radio, range, scrollbar, select, sidebar, skeleton, switch, table, tabs,
+ * textarea, toast, tooltip. No pagination.
+ *
+ * So it is `.button-group` + `.btn`, which is the Basecoat way of building one:
+ * the group is `isolate inline-flex items-stretch`, collapses the shared borders
+ * itself (`> *:not(:first-child) { border-s-0 }`) and lifts the focused child to
+ * `z-10` so a focus ring is never clipped by its neighbour. Nothing here
+ * re-declares any of that — only where the control sits, and the gap glyph,
+ * which is not a button and therefore has no `.btn` to inherit from.
+ * ------------------------------------------------------------------------- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* The current page is `.btn[data-variant="outline"][data-tone="brand"]`. The
+ * variant is NOT optional: Lyra's default rule is `.btn:not([data-variant])`,
+ * which lands at a higher specificity than any tone hover, so a toned button
+ * with no variant looks right at rest and then turns primary-teal under the
+ * cursor. `data-tone` always rides with a `data-variant` — see buttons.css. */
+.pagination-page {
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The gap is a glyph, not a control: `aria-hidden`, unfocusable, and it must
+ * still sit on the group's baseline between two buttons. */
+.pagination-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  border: 1px solid var(--border-color);
+  border-left: 0;
+  background: var(--card);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  user-select: none;
 }
 
 /* The grid-view card is Basecoat's `.card`. Lyra supplies the surface
@@ -720,6 +944,27 @@
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+/* THE UPLOAD CONTROL'S FOCUS RING GOES ON THE LABEL, NOT ON THE INPUT.
+ *
+ * The control is a `<label class="btn">` with an `<input type="file">` stretched
+ * across it at `opacity: 0`. The INPUT is what the browser focuses — so Chromium
+ * drew its UA `outline: 1px auto` on an element nobody can see, and the button
+ * announced focus with nothing at all.
+ *
+ * Caught by tab-walking the Library toolbar in both themes, after letting Lyra's
+ * `transition-all` settle: every other stop (search group, view toggles, all five
+ * selects, the row actions, the pagination) computed the house
+ * `2px solid var(--ring)` at `outline-offset: 2px`; this one computed
+ * `1px auto` — the UA default — on the invisible input. It was the only hole in
+ * the walk.
+ *
+ * `:has()` moves the ring to the box the user actually perceives. The Research
+ * Brain's upload control wears the same class and gains the same fix. */
+.brain-upload-btn:has(input:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* `.brain-error` is gone — `.alert[data-tone="danger"]`. */

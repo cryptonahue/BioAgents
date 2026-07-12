@@ -29,7 +29,13 @@ export {
   useAdminStats,
   isContradictionOpen,
 } from './useAdminReview';
-export { useLibraryList, usePaperMeta, askPaper, getPaperHistory } from './useLibrary';
+export {
+  useLibraryList,
+  useLibraryFacets,
+  usePaperMeta,
+  askPaper,
+  getPaperHistory,
+} from './useLibrary';
 export type { LibraryPaper, PaperMeta, AskResult, AskSource, AskHistoryItem } from './useLibrary';
 
 export type { Message, Session, UseSessionsReturn } from './useSessions';
