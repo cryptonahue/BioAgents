@@ -153,8 +153,29 @@ body {
   height: 44px;
 }
 
-/* Sidebar */
-.sidebar {
+/*
+ * Sidebar.
+ *
+ * The class is `app-sidebar`, NOT `sidebar`. `sidebar` is the class Basecoat's
+ * own sidebar COMPONENT claims, and this element is not one: it is a plain
+ * flex column of divs, with no <nav>, no [data-side] and no
+ * [data-sidebar-initialized]. While it wore the bare class it silently
+ * collected Basecoat's sidebar rules (@layer components):
+ *
+ *   .sidebar:not([data-side]) + *  → margin-left: var(--sidebar-width)
+ *   .sidebar:not([data-sidebar-initialized])  → display: none below 48rem
+ *   .sidebar:not([aria-hidden])  → a fixed, inset-0, black/50 overlay below 48rem
+ *
+ * The first one is the reason the universal reset in this file had to stay
+ * unlayered for so long — `* { margin: 0 }` was the only thing neutralising it.
+ * Renaming the class means none of those selectors can match, so the reset is
+ * free to be layered (see its header above) and the whole class of collision is
+ * gone rather than merely out-cascaded.
+ *
+ * The DESCENDANT classes (`sidebar-header`, `sidebar-library-btn`, …) keep their
+ * names — they are distinct classes and Basecoat claims none of them.
+ */
+.app-sidebar {
   width: var(--sidebar-width);
   background: var(--bg-primary);
   border-right: 1px solid var(--border-color);
@@ -164,7 +185,7 @@ body {
   flex-shrink: 0;
 }
 
-.sidebar.collapsed {
+.app-sidebar.collapsed {
   width: 60px;
 }
 
@@ -308,18 +329,18 @@ body {
    app surface") and lands at 5.68:1 light / 6.96:1 dark.
 
    Unlayered, so it beats Lyra's layered `.btn[data-variant='ghost']:hover`. */
-.sidebar .sidebar-library-btn,
-.sidebar .sidebar-admin-btn {
+.app-sidebar .sidebar-library-btn,
+.app-sidebar .sidebar-admin-btn {
   width: 100%;
   justify-content: flex-start;
 }
-.sidebar .sidebar-library-btn.active,
-.sidebar .sidebar-admin-btn.active {
+.app-sidebar .sidebar-library-btn.active,
+.app-sidebar .sidebar-admin-btn.active {
   background: var(--accent-light);
   color: var(--accent-ink);
 }
-.sidebar .sidebar-library-btn.active svg,
-.sidebar .sidebar-admin-btn.active svg {
+.app-sidebar .sidebar-library-btn.active svg,
+.app-sidebar .sidebar-admin-btn.active svg {
   color: var(--accent-ink);
 }
 
@@ -2154,7 +2175,7 @@ textarea:not(.textarea)::placeholder {
   }
 
   /* Sidebar slide-in from left */
-  .sidebar {
+  .app-sidebar {
     position: fixed;
     left: 0;
     top: 0;
@@ -2165,17 +2186,17 @@ textarea:not(.textarea)::placeholder {
     box-shadow: var(--shadow);
   }
 
-  .sidebar.open {
+  .app-sidebar.open {
     transform: translateX(0);
   }
 
   /* Don't allow collapse on mobile */
-  .sidebar.collapsed {
+  .app-sidebar.collapsed {
     width: var(--sidebar-width);
     transform: translateX(-100%);
   }
 
-  .sidebar.collapsed.open {
+  .app-sidebar.collapsed.open {
     transform: translateX(0);
   }
 

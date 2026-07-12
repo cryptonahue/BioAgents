@@ -117,7 +117,13 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
   const { today, yesterday, older } = groupSessions();
 
   return (
-    <div className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'open' : ''}`}>
+    // `app-sidebar`, NOT `sidebar`. The bare `sidebar` class is Basecoat's own
+    // sidebar COMPONENT (@layer components), and this div is not one — it has no
+    // <nav>, no [data-side] and no [data-sidebar-initialized]. Wearing that class
+    // pulled Basecoat's sidebar rules onto this element, most damagingly
+    // `.sidebar:not([data-side]) + * { margin-left: var(--sidebar-width) }`, which
+    // pushed the adjacent content pane 260px to the right. See global.css.
+    <div className={`app-sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
         {!isCollapsed && (
           <>
