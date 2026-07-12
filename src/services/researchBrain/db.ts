@@ -2000,95 +2000,17 @@ function normalizeMeasurementDirection(value: unknown): string | null {
   return null;
 }
 
-/**
- * Count extracted research claims per source, keyed by source title.
- * `research_sources.title` equals the Library paper title (both are the
- * document filename), so the Library list maps counts by title. Uses a
- * single embedded-aggregate query (no N+1, no migration).
+/*
+ * `getClaimCountsByTitle()`, `listSourceEnrichment()` and
+ * `getBioprospectingTaxaBySource()` lived here to enrich the Library list. All
+ * three were whole-table reads (every source row, every bioprospecting fact
+ * row) that the route then joined in memory against an equally whole-table
+ * chunk scan. The Library list is aggregated in Postgres now
+ * (`public.library_papers`, see
+ * supabase/migrations/20260712000000_library_papers_view.sql), which computes
+ * the same three things as part of the paged query, so they are deleted rather
+ * than left as a tempting O(corpus) shortcut.
  */
-export async function getClaimCountsByTitle(): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from("research_sources")
-    .select("title, research_claims(count)");
-  if (error) throw error;
-  const counts: Record<string, number> = {};
-  for (const row of (data as any[]) || []) {
-    const title = row?.title;
-    if (!title) continue;
-    const count = Number(row?.research_claims?.[0]?.count ?? 0);
-    counts[title] = (counts[title] || 0) + count;
-  }
-  return counts;
-}
-
-/**
- * Lightweight enrichment row for the Library list. One row per
- * `research_sources` record, carrying only the columns the Library card
- * needs. Fetched in a SINGLE query (no per-paper lookup) so the list
- * endpoint stays O(1) in query count regardless of paper count.
- */
-export interface LibrarySourceEnrichment {
-  id: string;
-  title: string | null;
-  file_path: string | null;
-  doi: string | null;
-  trust_tier: ResearchTrustTier | null;
-  bioprospecting_fact_count: number | null;
-  metadata: Record<string, unknown> | null;
-}
-
-/**
- * Fetch enrichment columns for ALL research sources in one query. The
- * Library list maps these onto papers by title (falling back to file_path).
- */
-export async function listSourceEnrichment(): Promise<LibrarySourceEnrichment[]> {
-  const { data, error } = await supabase
-    .from("research_sources")
-    .select(
-      "id, title, file_path, doi, trust_tier, bioprospecting_fact_count, metadata",
-    );
-  if (error) throw error;
-  return (data as LibrarySourceEnrichment[]) || [];
-}
-
-/**
- * Aggregate distinct taxa (species preferred, else genus) and geography per
- * source, in a SINGLE query scoped to the given source ids. Groups in JS to
- * avoid an N+1 pattern. Taxa are capped per source to keep chips compact.
- */
-export async function getBioprospectingTaxaBySource(
-  sourceIds: string[],
-  maxTaxaPerSource = 4,
-): Promise<Record<string, { taxa: string[]; geography: string[] }>> {
-  const out: Record<string, { taxa: string[]; geography: string[] }> = {};
-  if (sourceIds.length === 0) return out;
-
-  const { data, error } = await supabase
-    .from("research_bioprospecting_facts")
-    .select("source_id, species, genus, geography")
-    .in("source_id", sourceIds);
-  if (error) throw error;
-
-  const taxaSets: Record<string, Set<string>> = {};
-  const geoSets: Record<string, Set<string>> = {};
-  for (const row of (data as any[]) || []) {
-    const sid = row?.source_id as string | undefined;
-    if (!sid) continue;
-    const taxon = String(row?.species || row?.genus || "").trim();
-    const geo = String(row?.geography || "").trim();
-    if (taxon) (taxaSets[sid] ||= new Set()).add(taxon);
-    if (geo) (geoSets[sid] ||= new Set()).add(geo);
-  }
-
-  const ids = new Set([...Object.keys(taxaSets), ...Object.keys(geoSets)]);
-  for (const sid of ids) {
-    out[sid] = {
-      taxa: Array.from(taxaSets[sid] || []).slice(0, maxTaxaPerSource),
-      geography: Array.from(geoSets[sid] || []),
-    };
-  }
-  return out;
-}
 
 export async function listSources(): Promise<ResearchSource[]> {
   const { data, error } = await supabase

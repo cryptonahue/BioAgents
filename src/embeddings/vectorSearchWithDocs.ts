@@ -414,73 +414,23 @@ export class VectorSearchWithDocuments extends VectorSearchWithReranker {
     };
   }
 
-  /**
-   * Lists every distinct document (paper) in the store, aggregated by title.
-   * Returns lightweight metadata suitable for a library listing.
+  /*
+   * `listDocuments()` IS GONE, AND MUST NOT COME BACK.
+   *
+   * It was the Library list's source of paper rows, and it did not list
+   * documents — it read EVERY CHUNK ROW in the corpus (paging in 1000-row
+   * ranges around PostgREST's `db-max-rows` cap) and reconstructed the paper
+   * list in memory by grouping them by title. That is O(CHUNKS), not
+   * O(PAPERS): a 1000-paper corpus dragged tens of thousands of rows across
+   * the wire to render 25 of them, and no amount of pagination on top could
+   * fix it, because the transfer happened FIRST.
+   *
+   * The aggregation now lives in Postgres, as `public.library_papers` and the
+   * `library_list_papers()` / `library_facets()` RPCs — see
+   * supabase/migrations/20260712000000_library_papers_view.sql and
+   * src/services/library/db.ts. If you need a paper list, read one page from
+   * there. Do not re-add a whole-table scan here.
    */
-  async listDocuments(): Promise<
-    Array<{
-      title: string;
-      chunkCount: number;
-      type?: string;
-      size?: number;
-      filePath?: string;
-      lastModified?: string;
-    }>
-  > {
-    // Paginate: PostgREST caps every response at the project's
-    // `db-max-rows` (1000 by default), so a plain `.limit(50000)` only
-    // returns the first 1000 chunk rows — silently dropping every paper
-    // whose chunks fall past that boundary (this hid ~6 papers once the
-    // corpus grew beyond 1000 total chunks). Fetch in ranges until a
-    // short page signals the end.
-    const PAGE = 1000;
-    const data: Array<{ title: string; metadata: any }> = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data: page, error } = await supabase
-        .from("documents")
-        .select("title, metadata")
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      if (!page || page.length === 0) break;
-      data.push(...(page as Array<{ title: string; metadata: any }>));
-      if (page.length < PAGE) break;
-    }
-
-    const byTitle = new Map<
-      string,
-      {
-        title: string;
-        chunkCount: number;
-        type?: string;
-        size?: number;
-        filePath?: string;
-        lastModified?: string;
-      }
-    >();
-
-    for (const row of data || []) {
-      const title = (row as any).title as string;
-      const meta = ((row as any).metadata || {}) as any;
-      const existing = byTitle.get(title);
-      if (existing) {
-        existing.chunkCount += 1;
-      } else {
-        byTitle.set(title, {
-          title,
-          chunkCount: 1,
-          type: meta.type,
-          size: meta.size,
-          filePath: meta.filePath,
-          lastModified: meta.lastModified,
-        });
-      }
-    }
-
-    return Array.from(byTitle.values()).sort((a, b) =>
-      a.title.localeCompare(b.title),
-    );
-  }
 
   /**
    * Deletes every `documents` (vector chunk) row for a paper, matched by

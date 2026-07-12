@@ -115,11 +115,41 @@ All Library endpoints use `authResolver({ required: false })`, so they respond t
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/library` | List papers, aggregated by title (`listDocuments`). Returns `docId`, title, type, size, chunk count, last modified. |
+| `GET /api/library` | ONE PAGE of papers, searched/filtered/sorted in Postgres. See the contract below. |
+| `GET /api/library/facets` | The filter vocabulary: `{ taxa, geography, years, trustTiers }`, each `{ value, count }`. Global (not cross-filtered), so the client fetches it once per page load. |
 | `GET /api/library/:docId` | Single-paper metadata: reconstructs full text from chunks, estimates tokens (`len / 4`), regex-scrapes a DOI from the first 20k chars, uses the first 600 chars as an abstract. |
 | `GET /api/library/:docId/file` | Streams the original file for the iframe PDF viewer. Path-traversal guarded by `resolveDocFilePath` (basename + root-prefix check). Overrides `X-Frame-Options` to `SAMEORIGIN` so the SPA viewer can embed it. |
 | `POST /api/library/:docId/ask` | RAG core (grounded Q&A). See modes below. |
 | `GET /api/library/:docId/history` | Per-user persisted chat for a paper. |
+
+### `GET /api/library` — the paged list
+
+```
+GET /api/library
+  ?q=          free text; token-AND across title, structured title, publisher, taxa, geography
+  &taxon=      exact organism   (values from /api/library/facets)
+  &geography=  exact place      (values from /api/library/facets)
+  &year=       exact publication year
+  &trustTier=  exact trust tier
+  &sort=       year | evidence | title     (default: year)
+  &dir=        asc | desc                  (default: desc)
+  &page=       1-based                     (default: 1)
+  &pageSize=   1-100                       (default: 25)
+
+200 -> {
+  papers: [{ docId, title, type, size, chunkCount, evidenceCount, researchSourceId,
+             doi, doiUrl, year, publisher, metaTitle, trustTier,
+             bioprospectingFactCount, taxa[], geography[] }],
+  total, page, pageSize, totalPages,
+  query: { q, taxon, geography, year, trustTier, sort, dir }   // what the server ACTUALLY ran
+}
+```
+
+Optional fields are **omitted, not nulled**. `evidenceCount: 0` is a real, meaningful state: the paper is ingested but the Research Brain extracted no citable claim from it, so the agent cannot cite it. The UI renders that differently from a rich paper.
+
+**The aggregation is in the database.** `GET /api/library` used to call `VectorSearchWithDocuments.listDocuments()`, which read **every chunk row in the corpus** (paging around PostgREST's 1000-row `db-max-rows` cap) and rebuilt the paper list in memory, then read every `research_sources` and `research_bioprospecting_facts` row to enrich it — O(chunks), not O(papers). A 1000-paper corpus moved tens of thousands of rows to render 25.
+
+It now reads one page of `public.library_papers`, a live view with one row per paper (chunk aggregate ⋈ research source ⋈ claim count ⋈ bioprospecting taxa/geography), through the `library_list_papers()` RPC. See `supabase/migrations/20260712000000_library_papers_view.sql` and `src/services/library/db.ts`. The view is **live, not materialized**, deliberately: a matview would need a refresh hook on every ingest / upload / extract / delete path, and missing one would hide a freshly uploaded paper. If the corpus outgrows the live aggregate, promote it to a matview with a refresh hook (precedent: `research_graph_compound_aggregates`) — the JSON contract does not change.
 
 ### `POST /api/library/:docId/ask` modes
 

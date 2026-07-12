@@ -6,18 +6,20 @@ import { rateLimitMiddleware } from "../middleware/rateLimiter";
 import { getServiceClient } from "../db/client";
 import logger from "../utils/logger";
 import { resolveLLM } from "../chat-agent/llm-config";
+import { deleteSource } from "../services/researchBrain/db";
 import {
-  getClaimCountsByTitle,
-  listSourceEnrichment,
-  getBioprospectingTaxaBySource,
-  deleteSource,
-} from "../services/researchBrain/db";
+  getLibraryFacets,
+  listLibraryPapers,
+  normalizeLibraryQuery,
+  type LibraryPaperRow,
+} from "../services/library/db";
 
 /**
  * Library Route - Paper library + per-paper grounded Q&A.
  *
  * Endpoints:
- * - GET  /api/library                 -> list ingested papers (aggregated by title)
+ * - GET  /api/library                 -> ONE PAGE of papers (search/filter/sort/paginate)
+ * - GET  /api/library/facets          -> the filter vocabulary (taxa, geography, years, tiers)
  * - GET  /api/library/:docId          -> metadata for a single paper (DOI, size, tokens)
  * - GET  /api/library/:docId/file     -> serve the original file from disk (inline, for the viewer)
  * - POST /api/library/:docId/ask      -> grounded Q&A about one paper (RAG by default, optional full context)
@@ -42,53 +44,44 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 /**
- * Parse a publication year and publisher hint from a document filename.
+ * Shape one `library_papers` row into the JSON the client consumes.
  *
- * Startup-ingested papers often carry a trailing metadata segment such as
- * `..._2018_Springer-New-York-LLC-....pdf`. This extracts a plausible
- * 4-digit year (1900–2099) and the first token of the publisher segment
- * that follows it. Everything is best-effort: unknown parts return null so
- * the card simply omits them.
+ * The filename parsing (year, publisher) and the display title that used to
+ * happen here now happen in SQL — see
+ * `supabase/migrations/20260712000000_library_papers_view.sql`. This function
+ * only renames columns and drops empty ones.
+ *
+ * OPTIONAL FIELDS ARE OMITTED, NOT NULLED, and that is load-bearing for two of
+ * them: the client hides the evidence pill when `evidenceCount` is absent
+ * rather than rendering a misleading "0", and the same for the fact count. A
+ * paper with GENUINELY zero evidence gets `evidenceCount: 0` (the view
+ * COALESCEs it), which is a real, visible state — not a missing one.
  */
-function parseFilenameMeta(filename: string): {
-  year: number | null;
-  publisher: string | null;
-} {
-  const base = filename.replace(/\.[a-z0-9]+$/i, "");
-  let year: number | null = null;
-  let publisher: string | null = null;
-
-  const yearMatch = base.match(/(?:^|[_\-\s])((?:19|20)\d{2})(?=[_\-\s]|$)/);
-  if (yearMatch) {
-    const y = parseInt(yearMatch[1], 10);
-    if (y >= 1900 && y <= 2099) year = y;
-
-    // Publisher: the segment immediately after the year, first word only.
-    const after = base.slice((yearMatch.index ?? 0) + yearMatch[0].length);
-    const seg = after.split(/[_]/)[0] || "";
-    const firstWord = seg.split(/[\-\s]/).find((w) => /[A-Za-z]{2,}/.test(w));
-    if (firstWord) publisher = firstWord;
-  }
-
-  return { year, publisher };
-}
-
-/** Read a non-empty string field from a JSONB metadata blob, if present. */
-function metaString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-): string | null {
-  const v = metadata?.[key];
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
-
-/** Read a plausible publication year from a JSONB metadata blob, if present. */
-function metaYear(
-  metadata: Record<string, unknown> | null | undefined,
-): number | null {
-  const v = metadata?.year;
-  const n = typeof v === "number" ? v : typeof v === "string" ? parseInt(v, 10) : NaN;
-  return Number.isFinite(n) && n >= 1900 && n <= 2099 ? n : null;
+function toLibraryPaper(row: LibraryPaperRow) {
+  return {
+    docId: encodeDocId(row.title),
+    title: row.title,
+    ...(row.type ? { type: row.type } : {}),
+    ...(row.size != null ? { size: Number(row.size) } : {}),
+    ...(row.chunk_count != null ? { chunkCount: Number(row.chunk_count) } : {}),
+    ...(row.last_modified ? { lastModified: row.last_modified } : {}),
+    ...(row.evidence_count != null
+      ? { evidenceCount: Number(row.evidence_count) }
+      : {}),
+    ...(row.research_source_id
+      ? { researchSourceId: row.research_source_id }
+      : {}),
+    ...(row.doi ? { doi: row.doi, doiUrl: `https://doi.org/${row.doi}` } : {}),
+    ...(row.year != null ? { year: Number(row.year) } : {}),
+    ...(row.publisher ? { publisher: row.publisher } : {}),
+    ...(row.meta_title ? { metaTitle: row.meta_title } : {}),
+    ...(row.trust_tier ? { trustTier: row.trust_tier } : {}),
+    ...(row.bioprospecting_fact_count != null
+      ? { bioprospectingFactCount: Number(row.bioprospecting_fact_count) }
+      : {}),
+    ...(row.taxa?.length ? { taxa: row.taxa } : {}),
+    ...(row.geography?.length ? { geography: row.geography } : {}),
+  };
 }
 
 function encodeDocId(title: string): string {
@@ -288,105 +281,82 @@ function resolveLibraryLLM(): { providerName: string; apiKey: string; model: str
 
 export const libraryRoute = new Elysia()
   // -------------------------------------------------------------------------
-  // List papers
+  // List papers — ONE PAGE, searched, filtered and sorted IN POSTGRES.
+  //
+  //   GET /api/library
+  //     ?q=          free text; token-AND across title, structured title,
+  //                  publisher, taxa and geography ("caribbean coral")
+  //     &taxon=      exact organism (from /api/library/facets)
+  //     &geography=  exact place   (from /api/library/facets)
+  //     &year=       exact publication year
+  //     &trustTier=  exact tier
+  //     &sort=       year | evidence | title      (default: year)
+  //     &dir=        asc | desc                   (default: desc)
+  //     &page=       1-based                      (default: 1)
+  //     &pageSize=   1-100                        (default: 25)
+  //
+  //   200 -> { papers[], total, page, pageSize, totalPages, query }
+  //
+  // `query` echoes back what the server ACTUALLY ran after clamping and
+  // allowlisting, so the UI can never drift from the result it is rendering.
+  //
+  // This used to read the whole corpus (every chunk row, every source row,
+  // every bioprospecting fact) and group it in memory. It now reads one page.
+  // The aggregation lives in `public.library_papers` — see
+  // supabase/migrations/20260712000000_library_papers_view.sql.
   // -------------------------------------------------------------------------
   .get(
     "/api/library",
-    async ({ set }) => {
+    async ({ query, set }) => {
+      const normalized = normalizeLibraryQuery(
+        query as Record<string, unknown> | undefined,
+      );
+
       try {
-        const vs = await getVectorSearch();
-        const docs = await vs.listDocuments();
-
-        // Enrich with the count of Research Brain claims per paper (joined by
-        // title). Non-fatal: if this fails, the field is omitted so the client
-        // hides the evidence pill rather than showing a misleading "0".
-        let evidenceCounts: Record<string, number> | null = null;
-        try {
-          evidenceCounts = await getClaimCountsByTitle();
-        } catch (e: any) {
-          logger.warn({ err: e }, "library_evidence_counts_failed");
-        }
-
-        // ONE query: fetch enrichment columns for every research source, then
-        // index by title and file_path so each paper can be matched cheaply.
-        // Non-fatal: on failure the per-source enrichment is simply omitted.
-        const sourceByTitle = new Map<string, any>();
-        const sourceByPath = new Map<string, any>();
-        let taxaBySource: Record<
-          string,
-          { taxa: string[]; geography: string[] }
-        > = {};
-        try {
-          const sources = await listSourceEnrichment();
-          for (const s of sources) {
-            if (s.title) sourceByTitle.set(s.title, s);
-            if (s.file_path) sourceByPath.set(s.file_path, s);
-          }
-          // ONE query: aggregate taxa + geography for all matched sources.
-          const ids = sources.map((s) => s.id).filter(Boolean);
-          try {
-            taxaBySource = await getBioprospectingTaxaBySource(ids);
-          } catch (e: any) {
-            logger.warn({ err: e }, "library_taxa_aggregation_failed");
-          }
-        } catch (e: any) {
-          logger.warn({ err: e }, "library_source_enrichment_failed");
-        }
+        const { papers, total } = await listLibraryPapers(normalized);
 
         return {
-          papers: docs.map((d: any) => {
-            const src =
-              sourceByTitle.get(d.title) ||
-              (d.filePath ? sourceByPath.get(d.filePath) : undefined);
-
-            const { year: fnYear, publisher: fnPublisher } = parseFilenameMeta(
-              d.title || "",
-            );
-            const metadata = (src?.metadata as Record<string, unknown>) || null;
-
-            // Prefer structured metadata, fall back to filename parsing.
-            const year = metaYear(metadata) ?? fnYear;
-            const publisher =
-              metaString(metadata, "journal") ??
-              metaString(metadata, "publisher") ??
-              fnPublisher;
-            const metaTitle = metaString(metadata, "title");
-
-            const doi = src?.doi || null;
-            const agg = src?.id ? taxaBySource[src.id] : undefined;
-
-            return {
-              docId: encodeDocId(d.title),
-              title: d.title,
-              type: d.type,
-              size: d.size,
-              chunkCount: d.chunkCount,
-              lastModified: d.lastModified,
-              ...(evidenceCounts
-                ? { evidenceCount: evidenceCounts[d.title] ?? 0 }
-                : {}),
-              ...(src?.id ? { researchSourceId: src.id } : {}),
-              ...(doi ? { doi, doiUrl: `https://doi.org/${doi}` } : {}),
-              ...(year != null ? { year } : {}),
-              ...(publisher ? { publisher } : {}),
-              ...(metaTitle ? { metaTitle } : {}),
-              ...(typeof src?.trust_tier === "string"
-                ? { trustTier: src.trust_tier }
-                : {}),
-              ...(typeof src?.bioprospecting_fact_count === "number"
-                ? { bioprospectingFactCount: src.bioprospecting_fact_count }
-                : {}),
-              ...(agg && agg.taxa.length ? { taxa: agg.taxa } : {}),
-              ...(agg && agg.geography.length
-                ? { geography: agg.geography }
-                : {}),
-            };
-          }),
+          papers: papers.map(toLibraryPaper),
+          total,
+          page: normalized.page,
+          pageSize: normalized.pageSize,
+          totalPages: Math.max(1, Math.ceil(total / normalized.pageSize)),
+          query: {
+            q: normalized.search,
+            taxon: normalized.taxon,
+            geography: normalized.geography,
+            year: normalized.year,
+            trustTier: normalized.trustTier,
+            sort: normalized.sort,
+            dir: normalized.dir,
+          },
         };
       } catch (error: any) {
-        logger.error({ err: error }, "library_list_failed");
+        logger.error({ err: error, query: normalized }, "library_list_failed");
         set.status = 500;
         return { error: "Failed to list library", message: error?.message };
+      }
+    },
+    { beforeHandle: authResolver({ required: false }) },
+  )
+
+  // -------------------------------------------------------------------------
+  // Filter vocabulary. Declared BEFORE `/api/library/:docId` so the static
+  // segment is never swallowed by the dynamic one.
+  //
+  // Facets are GLOBAL (they do not narrow as other filters are applied) and
+  // change only when the corpus does, so the client fetches them once per page
+  // load rather than on every keystroke.
+  // -------------------------------------------------------------------------
+  .get(
+    "/api/library/facets",
+    async ({ set }) => {
+      try {
+        return await getLibraryFacets();
+      } catch (error: any) {
+        logger.error({ err: error }, "library_facets_failed");
+        set.status = 500;
+        return { error: "Failed to load library facets", message: error?.message };
       }
     },
     { beforeHandle: authResolver({ required: false }) },
