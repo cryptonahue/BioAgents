@@ -35,7 +35,7 @@ import logger from "./utils/logger";
 import { isJobQueueEnabled, closeConnections } from "./services/queue/connection";
 import { websocketHandler, cleanupDeadConnections } from "./services/websocket/handler";
 import { startRedisSubscription, stopRedisSubscription } from "./services/websocket/subscribe";
-import { waitlistRoute } from "./routes/waitlist";
+import { accessRequestRoute } from "./routes/access-request";
 import { createQueueDashboard } from "./routes/admin/queue-dashboard";
 import { adminJobsRoute } from "./routes/admin/jobs";
 import { costTotalsRoute } from "./routes/admin/cost-totals";
@@ -158,7 +158,10 @@ const app = new Elysia()
 
   // Mount auth routes (no protection needed for auth endpoints)
   .use(authRoute)
-  .use(waitlistRoute)
+  // Replaces the old public `/api/waitlist`, which wrote a row nobody read.
+  // The request form is now POST-auth, so this route is Privy-gated — see the
+  // header of `routes/access-request.ts` for why it is NOT behind authResolver.
+  .use(accessRequestRoute)
 
   // Note: We always serve UI files regardless of auth status
   // The frontend (useAuth hook) will check /api/auth/status and show login screen if needed

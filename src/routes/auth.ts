@@ -8,6 +8,7 @@ import {
   verifyPrivyAccessToken,
 } from "../services/privy-auth";
 import { verifyJWT } from "../services/jwt";
+import { findRequestForUser } from "./access-request";
 
 const UI_PASSWORD = process.env.UI_PASSWORD || "";
 const JWT_EXPIRATION = 24 * 60 * 60; // 24 hours in seconds
@@ -114,11 +115,33 @@ export const authRoute = new Elysia({ prefix: "/api/auth" })
         const isWhitelisted = user.access_type === "whitelisted" || isAdmin;
 
         if (!isWhitelisted) {
+          // NOT a dead end any more, and NOT a token. The 403 stands — no JWT
+          // is minted for an un-approved user, because `authResolver` accepts
+          // any JWT that verifies and one issued here would open every guarded
+          // route in the app (see the header of `routes/access-request.ts`).
+          //
+          // What the response now carries is the CONTEXT the client needs to
+          // decide what to render: has this user already asked, and what does
+          // Privy know about them (so the request form can be prefilled rather
+          // than making them retype an address we already hold).
+          let hasRequest = false;
+          try {
+            hasRequest = (await findRequestForUser(user.id)) !== null;
+          } catch {
+            // A lookup failure must not turn a pending user away at the door.
+            // Fall through as "no request" — the submit path is idempotent and
+            // reports `alreadyRequested` rather than duplicating a row, so the
+            // worst case is that the user is shown a form they did not need.
+            hasRequest = false;
+          }
+
           set.status = 403;
           return {
             success: false,
             whitelisted: false,
+            hasRequest,
             email: email || null,
+            walletAddress: walletAddress || null,
             message: "Access pending approval",
           };
         }
