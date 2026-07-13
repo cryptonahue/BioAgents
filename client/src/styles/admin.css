@@ -334,6 +334,80 @@
   text-decoration: underline;
 }
 
+/* ----------------- Whitelist: the access request ----------------- */
+
+/* The user id moved under the email so the Request column could have the width
+   it needs. It is a secondary identifier, not a heading. */
+.admin-whitelist-id {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* A user an admin whitelisted directly, who never filled the form. A named
+   state, not an empty cell. */
+.admin-request-none {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* A native <details>. NOT Basecoat's `.accordion`: that skin is written for a
+   stack of sibling panels and its `summary` is `py-2.5 px-0`, which assumes a
+   wrapping card supplies the horizontal padding — inside a table cell there is
+   no such card, so it would under-pad. This is one disclosure in one cell, so it
+   gets its own box.
+
+   No border-radius: `--radius` is inert and the app is square. */
+.admin-request > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 500;
+  color: var(--text-primary);
+  /* The marker is the browser's; we only stop it from being clipped. */
+  list-style-position: inside;
+}
+
+/* Lyra kills focus rings globally; the house restores them. `outline-offset`
+   paints OUTSIDE the border box, against the row's fill. */
+.admin-request > summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.admin-request > summary:hover {
+  color: var(--text-secondary);
+}
+
+/* A <dl>, because this genuinely IS a term/description list — the label names
+   the field and the value answers it. Grid rather than the default float mess.
+   `min-width: 0` on the <dd> is what lets a long use case WRAP instead of forcing
+   the table wider: a grid item's default `min-width: auto` refuses to shrink
+   below its content. */
+.admin-request-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 12px;
+  max-width: 420px;
+}
+
+.admin-request-body dt {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.admin-request-body dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
 /* ----------------- Mobile ----------------- */
 
 /* The table's mobile step-down (`font-size: 12px`, `padding: 6px 8px`) is gone

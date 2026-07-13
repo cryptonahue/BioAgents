@@ -27,6 +27,22 @@ async function jsonOrError(res: Response, fallback: string): Promise<any> {
   return data;
 }
 
+/**
+ * The access request behind a pending user — the REASON to approve them.
+ * `null` for a user the admin whitelisted directly, who never filled the form.
+ */
+export interface AccessRequest {
+  fullName: string | null;
+  email: string | null;
+  role: string | null;
+  organization: string | null;
+  useCase: string | null;
+  referralSource: string | null;
+  twitterHandle: string | null;
+  status: string;
+  requestedAt: string | null;
+}
+
 export interface WhitelistUser {
   id: string;
   email: string | null;
@@ -36,6 +52,13 @@ export interface WhitelistUser {
   whitelisted: boolean;
   isAdmin: boolean;
   createdAt: string | null;
+  request: AccessRequest | null;
+}
+
+/** What became of the approval email. `null` on a revoke — none is sent. */
+export interface EmailOutcome {
+  sent: boolean;
+  reason?: string;
 }
 
 export interface WhitelistUsersResponse {
@@ -86,15 +109,23 @@ export function useWhitelistUsers(params: UseWhitelistUsersParams) {
 }
 
 /**
- * Grant / revoke. Resolves to the updated row so the caller can patch it into
- * the list without a full refetch.
+ * Grant / revoke. Resolves to the updated row AND what became of the approval
+ * email, so the panel can tell the admin the truth about the notification
+ * instead of leaving them to assume it went out.
+ *
+ * The email NEVER fails the grant (see `src/routes/admin/whitelist.ts`), so a
+ * resolved promise here means access was granted — `email.sent === false` is a
+ * report, not an error.
  */
 export function useSetWhitelistAccess() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const mutate = useCallback(
-    async (userId: string, whitelisted: boolean): Promise<WhitelistUser> => {
+    async (
+      userId: string,
+      whitelisted: boolean,
+    ): Promise<{ user: WhitelistUser; email: EmailOutcome | null }> => {
       setIsLoading(true);
       setError("");
       try {
@@ -108,7 +139,10 @@ export function useSetWhitelistAccess() {
           body: JSON.stringify({ whitelisted }),
         });
         const data = await jsonOrError(res, "Failed to update access");
-        return data.user as WhitelistUser;
+        return {
+          user: data.user as WhitelistUser,
+          email: (data.email ?? null) as EmailOutcome | null,
+        };
       } catch (err: any) {
         setError(err?.message || "Failed to update access");
         throw err;

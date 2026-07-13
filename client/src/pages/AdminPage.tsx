@@ -13,6 +13,7 @@ import {
   useSetWhitelistAccess,
   useUnmergeFact,
   useWhitelistUsers,
+  type AccessRequest,
   type AdminContradiction,
   type AdminContradictionStatus,
   type DedupEventWindow,
@@ -804,6 +805,52 @@ function StatsTile(props: { label: string; value: number; highlight?: boolean })
  * The row's control is disabled for the signed-in admin so the user does not
  * have to discover that by hitting the error.
  */
+/**
+ * The request context — WHY this person should be approved.
+ *
+ * A native <details>, not a hand-rolled disclosure: the browser owns the
+ * expanded state, the role, and Enter/Space. Same reasoning as the landing FAQ.
+ * It is NOT Basecoat's `.accordion` — that skin is for a stack of sibling
+ * panels, and this is one disclosure nested inside a table cell.
+ */
+function RequestDetails({ request }: { request: AccessRequest }) {
+  return (
+    <details class="admin-request">
+      <summary>
+        {request.role || "Role not given"}
+        {request.organization ? ` · ${request.organization}` : ""}
+      </summary>
+      <dl class="admin-request-body">
+        <dt>Use case</dt>
+        <dd>{request.useCase || "—"}</dd>
+
+        <dt>Name</dt>
+        <dd>{request.fullName || "—"}</dd>
+
+        <dt>Contact</dt>
+        <dd>{request.email || "—"}</dd>
+
+        {request.twitterHandle && (
+          <>
+            <dt>X / Twitter</dt>
+            <dd>{request.twitterHandle}</dd>
+          </>
+        )}
+
+        {request.referralSource && (
+          <>
+            <dt>Heard via</dt>
+            <dd>{request.referralSource}</dd>
+          </>
+        )}
+
+        <dt>Requested</dt>
+        <dd>{formatTimestamp(request.requestedAt)}</dd>
+      </dl>
+    </details>
+  );
+}
+
 function WhitelistTab() {
   const { userId: selfId } = useAdmin();
   const [search, setSearch] = useState("");
@@ -831,12 +878,38 @@ function WhitelistTab() {
     setActionMessage("");
     setBusyId(user.id);
     try {
-      const updated = await setAccess(user.id, !user.whitelisted);
-      setActionMessage(
-        updated.whitelisted
-          ? `Granted access to ${updated.email || updated.id}`
-          : `Revoked access for ${updated.email || updated.id}`,
+      const { user: updated, email } = await setAccess(
+        user.id,
+        !user.whitelisted,
       );
+
+      if (!updated.whitelisted) {
+        setActionMessage(`Revoked access for ${updated.email || updated.id}`);
+      } else {
+        // The grant ALWAYS succeeded by the time we get here — the email is a
+        // side effect of a committed write and can never fail it. So this says
+        // what happened to the NOTIFICATION, and never implies the approval
+        // itself is in doubt.
+        const who = updated.email || updated.id;
+        if (email?.sent) {
+          setActionMessage(`Granted access to ${who}. Approval email sent.`);
+        } else if (email?.reason === "not_configured") {
+          setActionMessage(
+            `Granted access to ${who}. No email sent (mail is not configured) — tell them yourself.`,
+          );
+        } else if (email?.reason === "no_address") {
+          setActionMessage(
+            `Granted access to ${who}. No email sent (no address on file) — tell them yourself.`,
+          );
+        } else if (email) {
+          setActionMessage(
+            `Granted access to ${who}. The approval email FAILED to send — tell them yourself.`,
+          );
+        } else {
+          setActionMessage(`Granted access to ${who}.`);
+        }
+      }
+
       await refetch();
     } catch (err: any) {
       setActionMessage(err?.message || "Failed to update access");
@@ -898,7 +971,7 @@ function WhitelistTab() {
             <thead>
               <tr>
                 <th>User</th>
-                <th>ID</th>
+                <th>Request</th>
                 <th>Access</th>
                 <th>Joined</th>
                 <th style={{ width: 160 }}>Actions</th>
@@ -919,9 +992,20 @@ function WhitelistTab() {
                           </span>
                         </>
                       )}
+                      <div class="admin-whitelist-id">
+                        <code>{shortId(user.id)}</code>
+                      </div>
                     </td>
                     <td>
-                      <code>{shortId(user.id)}</code>
+                      {/* The reason to approve. A user with no request was
+                          whitelisted directly by an admin and never asked —
+                          which is a meaningful state, so it is named rather
+                          than left as an empty cell. */}
+                      {user.request ? (
+                        <RequestDetails request={user.request} />
+                      ) : (
+                        <span class="admin-request-none">No request on file</span>
+                      )}
                     </td>
                     <td>
                       <span

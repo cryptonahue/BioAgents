@@ -120,6 +120,39 @@ interface UserRow {
   created_at: string | null;
 }
 
+/**
+ * The `waitlist_leads` row behind a pending user — i.e. WHY they should be
+ * approved. Without this the panel showed an opaque wallet address and no reason
+ * to act on it, which is not a decision, it is a coin flip.
+ */
+interface AccessRequest {
+  fullName: string | null;
+  email: string | null;
+  role: string | null;
+  organization: string | null;
+  useCase: string | null;
+  referralSource: string | null;
+  twitterHandle: string | null;
+  status: string;
+  requestedAt: string | null;
+}
+
+interface LeadRow {
+  user_id: string | null;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  organization: string | null;
+  use_case: string | null;
+  referral_source: string | null;
+  twitter_handle: string | null;
+  status: string | null;
+  created_at: string | null;
+}
+
+const LEAD_COLS =
+  "user_id, full_name, email, role, organization, use_case, referral_source, twitter_handle, status, created_at";
+
 interface WhitelistUser {
   id: string;
   email: string | null;
@@ -129,9 +162,28 @@ interface WhitelistUser {
   whitelisted: boolean;
   isAdmin: boolean;
   createdAt: string | null;
+  /** `null` for a user the admin whitelisted directly, who never asked. */
+  request: AccessRequest | null;
 }
 
-function toWhitelistUser(row: UserRow): WhitelistUser {
+function toAccessRequest(row: LeadRow): AccessRequest {
+  return {
+    fullName: row.full_name,
+    email: row.email,
+    role: row.role,
+    organization: row.organization,
+    useCase: row.use_case,
+    referralSource: row.referral_source,
+    twitterHandle: row.twitter_handle,
+    status: row.status ?? "pending",
+    requestedAt: row.created_at,
+  };
+}
+
+function toWhitelistUser(
+  row: UserRow,
+  request: AccessRequest | null = null,
+): WhitelistUser {
   return {
     id: row.id,
     email: row.email,
@@ -141,7 +193,54 @@ function toWhitelistUser(row: UserRow): WhitelistUser {
     whitelisted: row.access_type === WHITELISTED,
     isAdmin: row.role === "admin",
     createdAt: row.created_at,
+    request,
   };
+}
+
+/**
+ * Fetch the request rows for exactly the users on THIS page.
+ *
+ * A separate `.in()` query rather than a PostgREST embedded join: `waitlist_leads`
+ * has no declared FK relationship name that PostgREST would resolve from `users`
+ * (the FK points the other way), and one extra round trip for <=100 ids is
+ * cheaper than reasoning about an embed that silently returns nothing.
+ *
+ * BEST EFFORT. If this fails, the roster still renders — every user simply shows
+ * `request: null`. Losing the context is a degraded panel; losing the LIST would
+ * be a broken one.
+ */
+async function fetchRequests(
+  userIds: string[],
+): Promise<Map<string, AccessRequest>> {
+  const byUser = new Map<string, AccessRequest>();
+  if (userIds.length === 0) return byUser;
+
+  try {
+    const supabase = getServiceClient();
+    const { data, error } = await supabase
+      .from("waitlist_leads")
+      .select(LEAD_COLS)
+      .in("user_id", userIds);
+
+    if (error) {
+      logger.warn(
+        { err: error, event: "admin_whitelist_requests_failed" },
+        "failed to load access requests; the roster renders without them",
+      );
+      return byUser;
+    }
+
+    for (const row of (data ?? []) as LeadRow[]) {
+      if (row.user_id) byUser.set(row.user_id, toAccessRequest(row));
+    }
+  } catch (err) {
+    logger.warn(
+      { err, event: "admin_whitelist_requests_failed" },
+      "access request lookup threw; the roster renders without them",
+    );
+  }
+
+  return byUser;
 }
 
 /**
@@ -308,7 +407,15 @@ export const whitelistRoute = new Elysia()
           return { error: "Failed to query users" };
         }
 
-        const rows = ((data ?? []) as UserRow[]).map(toWhitelistUser);
+        const userRows = (data ?? []) as UserRow[];
+
+        // The REASON to approve. An admin looking at a bare wallet address has
+        // nothing to decide on; the request row is what makes the toggle a
+        // judgement rather than a guess.
+        const requests = await fetchRequests(userRows.map((r) => r.id));
+        const rows = userRows.map((r) =>
+          toWhitelistUser(r, requests.get(r.id) ?? null),
+        );
 
         logger.info(
           {

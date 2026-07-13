@@ -34,6 +34,8 @@ export type {
   WhitelistUser,
   WhitelistUsersResponse,
   UseWhitelistUsersParams,
+  AccessRequest,
+  EmailOutcome,
 } from './useWhitelist';
 export {
   useLibraryList,

@@ -280,6 +280,72 @@ describe("admin whitelist route — behavior", () => {
     expect(body.total).toBe(2);
   });
 
+  it("attaches each user's access request — the REASON to approve them", async () => {
+    const { client } = scriptedClient([
+      // 1) the users page
+      { data: [row({ id: USER_ID, access_type: null })], error: null, count: 1 },
+      // 2) the waitlist_leads rows for those users
+      {
+        data: [
+          {
+            user_id: USER_ID,
+            full_name: "Ada Lovelace",
+            email: "ada@lab.org",
+            role: "Researcher",
+            organization: "Reef Institute",
+            use_case: "Symbiont genomics.",
+            referral_source: null,
+            twitter_handle: null,
+            status: "pending",
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        ],
+        error: null,
+      },
+    ]);
+    setClient(() => client);
+
+    const res = await list(adminToken);
+    const body = (await res.json()) as { users: any[] };
+
+    expect(body.users[0].request).toMatchObject({
+      fullName: "Ada Lovelace",
+      role: "Researcher",
+      organization: "Reef Institute",
+      useCase: "Symbiont genomics.",
+      status: "pending",
+      requestedAt: "2026-07-01T00:00:00Z",
+    });
+  });
+
+  it("renders the roster even when the request lookup FAILS", async () => {
+    const { client } = scriptedClient([
+      { data: [row()], error: null, count: 1 },
+      { data: null, error: { message: "leads table exploded" } },
+    ]);
+    setClient(() => client);
+
+    // Losing the context degrades the panel. Losing the LIST would break it.
+    const res = await list(adminToken);
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as { users: any[] };
+    expect(body.users).toHaveLength(1);
+    expect(body.users[0].request).toBeNull();
+  });
+
+  it("a user with no request on file reports request: null", async () => {
+    const { client } = scriptedClient([
+      { data: [row({ access_type: "whitelisted" })], error: null, count: 1 },
+      { data: [], error: null },
+    ]);
+    setClient(() => client);
+
+    const res = await list(adminToken);
+    const body = (await res.json()) as { users: any[] };
+    expect(body.users[0].request).toBeNull();
+  });
+
   it("surfaces admins in the list so the UI can mark them", async () => {
     const { client } = scriptedClient([
       { data: [row({ role: "admin" })], error: null, count: 1 },
