@@ -31,7 +31,7 @@ function claimToEvidencePackClaim(claim: ResearchClaim): EvidencePackClaim {
     : null;
   const evidenceUrl =
     paperUrl && claim.chunk?.chunk_index != null
-      ? `${paperUrl}?fragmento=${claim.chunk.chunk_index}`
+      ? `${paperUrl}?fragment=${claim.chunk.chunk_index}`
       : paperUrl;
   return {
     id: claim.id,
@@ -69,7 +69,7 @@ function factToEvidencePackFact(
     fact.chunk?.chunk_index ?? readNumberMetadata(fact, "chunkIndex");
   const evidenceUrl =
     paperUrl && chunkIndex != null
-      ? `${paperUrl}?fragmento=${chunkIndex}`
+      ? `${paperUrl}?fragment=${chunkIndex}`
       : paperUrl;
   const classification = classifyBioprospectingFact(fact, queryProfile);
 
@@ -296,7 +296,7 @@ export async function researchBrainSearch(params: {
     pack.openQuestions.push({
       id: "generated-open-question",
       claim:
-        "No encuentro evidencia suficiente en los papers cargados para responder esta pregunta como hecho científico.",
+        "I cannot find enough evidence in the loaded papers to answer this question as a scientific fact.",
       claimType: "open_question",
       status: "open_question",
       confidence: "high",

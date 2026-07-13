@@ -3,7 +3,7 @@ import { formatEvidencePackForPrompt } from "./search";
 import type { EvidencePack } from "./types";
 
 const NO_EVIDENCE_MESSAGE =
-  "No encuentro evidencia suficiente en los papers cargados para responder esta pregunta como hecho científico.";
+  "I cannot find enough evidence in the loaded papers to answer this question as a scientific fact.";
 
 const NO_EVIDENCE_HYPOTHESIS_MESSAGE = `## Hypothesis
 
@@ -155,8 +155,8 @@ Rules:
 - If contradictions exist, state them without resolving them as consensus.
 - If a claim in the draft is unsupported, remove it.
 - Include compact inline provenance using source title and DOI when available.
-- Always include a final short section titled "Evidencia usada" when evidence exists. For each key claim, list source title, DOI as a clickable inline citation using [DOI]{https://doi.org/...}, internal fragment link using citation format [fragmento N]{/library/...?...}, fragment/page when available, and a short quoted snippet from the evidence pack.
-- Use "fragmento" in Spanish user-facing answers, not "chunk". Prefer the internal fragment link for claim-level citations and the DOI link for the public paper reference.
+- Always include a final short section titled "Evidence used" when evidence exists. For each key claim, list source title, DOI as a clickable inline citation using [DOI]{https://doi.org/...}, internal fragment link using citation format [fragment N]{/library/...?...}, fragment/page when available, and a short quoted snippet from the evidence pack.
+- Use "fragment" in user-facing answers, not "chunk". Prefer the internal fragment link for claim-level citations and the DOI link for the public paper reference.
 - Do not invent snippets, chunks, pages, paper links, DOI links, or citations; use only the evidence pack.
 - Answer in the same language as the user's question.
 
@@ -183,7 +183,7 @@ ${params.draft}`;
 
 function appendEvidenceNotice(draft: string, pack: EvidencePack): string {
   if (pack.contradictions.length > 0) {
-    return `${draft}\n\nNota de evidencia: hay claims contradictorios en Research Brain; tratá esta respuesta como síntesis provisional.`;
+    return `${draft}\n\nEvidence note: Research Brain holds contradictory claims; treat this answer as a provisional synthesis.`;
   }
   const hasSupportedEvidence =
     pack.supportedClaims.length > 0 ||
@@ -195,7 +195,7 @@ function appendEvidenceNotice(draft: string, pack: EvidencePack): string {
     );
 
   if (hasPartialEvidence && !hasSupportedEvidence) {
-    return `${draft}\n\nNota de evidencia: el soporte encontrado es parcial o hipotético, no concluyente.`;
+    return `${draft}\n\nEvidence note: the support found is partial or hypothetical, not conclusive.`;
   }
   return draft;
 }

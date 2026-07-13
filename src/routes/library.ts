@@ -571,7 +571,7 @@ export const libraryRoute = new Elysia()
               mode,
               tooLarge,
               answer:
-                "No encontré secciones relevantes en este paper para responder esa pregunta.",
+                "I could not find any relevant sections in this paper to answer that question.",
               sources: [],
             };
           }
@@ -585,7 +585,7 @@ export const libraryRoute = new Elysia()
           contextText = results
             .map(
               (r: any, i: number) =>
-                `[${i + 1}] (fragmento ${Number(r.metadata?.chunkIndex ?? i)})\n${r.content}`,
+                `[${i + 1}] (fragment ${Number(r.metadata?.chunkIndex ?? i)})\n${r.content}`,
             )
             .join("\n\n---\n\n");
         }
@@ -593,25 +593,25 @@ export const libraryRoute = new Elysia()
         // Build grounded prompt.
         const citationGuidance =
           mode === "rag"
-            ? "Cada fragmento está numerado como [n]. Cuando uses información de un fragmento, cítalo inline con su número, por ejemplo [1]."
-            : "Cuando hagas una afirmación basada en el paper, indícalo claramente (por ejemplo, citando la sección).";
+            ? "Each fragment is numbered as [n]. When you use information from a fragment, cite it inline with its number, for example [1]."
+            : "When you make a claim based on the paper, state that clearly (for example, by citing the section).";
 
-        const systemInstruction = `Eres un asistente de investigación que responde preguntas EXCLUSIVAMENTE sobre un único paper científico titulado "${title}".
+        const systemInstruction = `You are a research assistant that answers questions EXCLUSIVELY about a single scientific paper titled "${title}".
 
-Reglas estrictas:
-- Usa SOLO el contenido del paper provisto como fuente de verdad.
-- Si la respuesta no está contenida en el contenido provisto, dilo explícitamente ("No encuentro esa información en este paper.") y no inventes.
-- No uses conocimiento externo ni inventes citas, DOIs ni referencias.
-- Responde en el mismo idioma que la pregunta del usuario.
-- Sé conciso y preciso.
+Strict rules:
+- Use ONLY the provided paper content as the source of truth.
+- If the answer is not contained in the provided content, say so explicitly ("I cannot find that information in this paper.") and do not make anything up.
+- Do not use external knowledge and do not invent citations, DOIs, or references.
+- Answer in the same language as the user's question.
+- Be concise and precise.
 - ${citationGuidance}`;
 
-        const userContent = `TÍTULO DEL PAPER: ${title}
+        const userContent = `PAPER TITLE: ${title}
 
-CONTENIDO DEL PAPER (${mode === "full" ? "texto completo" : "fragmentos recuperados"}):
+PAPER CONTENT (${mode === "full" ? "full text" : "retrieved fragments"}):
 ${contextText}
 
-PREGUNTA: ${question.trim()}`;
+QUESTION: ${question.trim()}`;
 
         const { LLM } = await import("../llm/provider");
         const { providerName, apiKey, model } = resolveLibraryLLM();
@@ -621,7 +621,7 @@ PREGUNTA: ${question.trim()}`;
           return {
             error: "LLM not configured",
             message:
-              "No hay API key configurada para el proveedor de LLM (ANTHROPIC_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY).",
+              "No API key is configured for the LLM provider (ANTHROPIC_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY).",
           };
         }
 
