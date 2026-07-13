@@ -222,6 +222,21 @@ body.coralgpt-scroll {
   gap: 16px;
 }
 
+/* "Private beta — we approve researchers individually." The gate is declared
+   BEFORE the click, so "Get started" is not the broken promise "Test Agent" was.
+
+   `--text-secondary` is the SAME token `.landing-hero-subtitle` above uses, and
+   inside the hero it resolves to the DARK ink in both themes: `theme.css` pins
+   `.landing-hero` alongside `.dark` and re-declares the token set on it (the hero
+   is a scoped dark island over the video). So this needs no special-casing — it
+   inherits the exact treatment the subtitle it sits under already has. There is
+   no `--hero-*` token family; do not invent one. */
+.landing-hero-gate {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
 /* The CTA's own boundary against the PHOTOGRAPH. No border color can guarantee
    3:1 against an arbitrary image — the coral fill drops to 2.2:1 over a specular
    highlight — so the button carries a dark 1px ring of its own, which does. The
@@ -656,7 +671,7 @@ body.coralgpt-scroll {
  * `ui/Modal.tsx`); the FORM inside it was the last hand-written thing the user
  * still meets on this page. It is gone:
  *
- *   `.waitlist-form`  / `.waitlist-success`  -> `.card` (+ the marketing box below)
+ *   `.waitlist-form`  / `.access-pending-card`  -> `.card` (+ the marketing box below)
  *   `.waitlist-field` + its label + control  -> `.field` / `.label` / `.input`
  *                                               / `.textarea` / `select.select`
  *   the opt-in checkbox                      -> `.input[type=checkbox]` in a
@@ -686,33 +701,38 @@ body.coralgpt-scroll {
    slot). Identical call to `.landing-card` above, and to `.btn-marketing`: the
    pack's scale is an APP scale, and this dialog is the product's front door. */
 .waitlist-form,
-.waitlist-success {
+.access-pending-card {
   padding-block: 32px;
 }
 
-/* IT MUST NOT SHRINK, and this is not defensive — it was measured. Lyra's `.card`
-   carries `overflow-hidden` (it is what lets a full-bleed image reach the box's
-   corners), and an `overflow` other than `visible` computes a flex item's
-   `min-height: auto` to ZERO. The card is a flex item: `.dialog > *` is a flex
-   column with `max-h-[calc(100%-2rem)]`. So on a viewport shorter than the form,
-   the card SHRANK to the panel's height and clipped its own last four fields
-   instead of overflowing them — and because the panel then had nothing to scroll
-   (`scrollHeight === clientHeight`), the `overflow-y: auto` that `ui.css` adds for
-   exactly this case could not save it. Rendered at 900x600 in Chromium: the form
-   ended at "What would you use CoralGPT for?", with no scrollbar and no way to
-   reach the submit button.
+/* IT MUST NOT SHRINK. Lyra's `.card` carries `overflow-hidden` (it is what lets a
+   full-bleed image reach the box's corners), and an `overflow` other than
+   `visible` computes a flex item's `min-height: auto` to ZERO. Both of these ARE
+   flex items — `.access-pending-content` is a flex column — so without this a
+   short viewport would let the card shrink and CLIP its own last fields rather
+   than overflow them, with no scrollbar to escape by.
 
-   The old `.waitlist-form` was a plain block and never had the problem. This is
-   the one thing Lyra's card costs here, and it costs one line. */
+   This was measured, not guessed: it already happened once, when the form lived
+   inside `.dialog` (whose `> *` is a flex column with `max-h-[calc(100%-2rem)]`).
+   At 900x600 the form ended at "What would you use CoralGPT for?" with no way to
+   reach the submit button. Moving the form out of the dialog removed THAT
+   instance, but the card is still a flex item in a flex column, so the guard
+   stays. One line. Do not reintroduce the bug by deleting it. */
 .waitlist-form,
-.waitlist-success {
+.access-pending-card {
   flex-shrink: 0;
+  /* The form is the page's content now, not a dialog's. It gets the column's
+     full width instead of shrink-wrapping its own text. */
+  width: 100%;
+  /* `.access-pending-content` centers its text; the form's fields must not
+     inherit that — a centered label over a left-aligned input reads as broken. */
+  text-align: left;
 }
 
 .waitlist-form > header,
 .waitlist-form > section,
-.waitlist-success > header,
-.waitlist-success > section {
+.access-pending-card > header,
+.access-pending-card > section {
   padding-inline: 32px;
 }
 
@@ -845,6 +865,15 @@ body.coralgpt-scroll {
   color: var(--text-secondary);
 }
 
+/* "We will email you here when your access is approved." Email is REQUIRED now
+   even for a wallet-only user, because it is the notification channel — so the
+   field says WHY rather than leaving that as a surprise. */
+.waitlist-field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 /* Back + Continue. Back is absent on step 1, so the row is `flex-end`-anchored
    and the submit keeps the full width it had when it was the only control. */
 .waitlist-actions {
@@ -870,25 +899,25 @@ body.coralgpt-scroll {
    centering is the only thing the card does not give: `.card > header` is a grid,
    so the items are centered along the inline axis rather than with `text-align`
    alone. */
-.waitlist-success {
+.access-pending-card {
   text-align: center;
 }
 
-.waitlist-success > header {
+.access-pending-card > header {
   justify-items: center;
 }
 
-.waitlist-success > header > h2 {
+.access-pending-card > header > h2 {
   font-size: 1.5rem;
   line-height: 1.3;
 }
 
-.waitlist-success > header > p {
+.access-pending-card > header > p {
   font-size: 1rem;
   line-height: 1.6;
 }
 
-.waitlist-success > section {
+.access-pending-card > section {
   display: flex;
   justify-content: center;
 }
@@ -910,6 +939,10 @@ body.coralgpt-scroll {
   color: var(--text-primary);
 }
 
+/* 560px, not 520: this column now holds the 3-step REQUEST FORM, not just a
+   two-line notice. It is the same width the form had inside the dialog
+   (`maxWidth="520px"` on the panel, plus the card's own box), so the form is not
+   re-flowed by the move out of the modal — only re-parented. */
 .access-pending-content {
   flex: 1;
   display: flex;
@@ -918,8 +951,15 @@ body.coralgpt-scroll {
   justify-content: center;
   padding: 48px 24px;
   text-align: center;
-  max-width: 520px;
+  max-width: 560px;
+  width: 100%;
   margin: 0 auto;
+}
+
+/* The brief moment before the server says whether this user has already asked.
+   A line of text, not a spinner: it resolves in one round trip. */
+.access-pending-checking {
+  color: var(--text-secondary);
 }
 
 .access-pending-icon {
@@ -946,12 +986,24 @@ body.coralgpt-scroll {
   margin-bottom: 8px;
 }
 
-.access-pending-actions {
+/* The icon now sits inside the card's `<header>`, which is a grid — so it is
+   centered by `justify-items` there rather than needing its own margin auto. */
+.access-pending-card > header > .access-pending-icon {
+  margin-bottom: 8px;
+}
+
+/* Two buttons side by side. This one DOES earn Lyra's ruled `.card > footer`
+   (`border-t p-4`): unlike the old success card's single button, it is a genuine
+   action row and the rule divides it from the message above. */
+.access-pending-card > footer {
   display: flex;
   gap: 12px;
-  margin-top: 32px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.access-pending-note {
+  font-size: 14px;
 }
 
 .access-pending-support {

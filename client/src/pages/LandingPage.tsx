@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { usePrivy } from '@privy-io/react-auth';
-import { WaitlistModal } from '../components/WaitlistModal';
 import { ExternalLink } from '../utils/externalLinks';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../hooks';
@@ -78,6 +77,21 @@ const TRUST = [
   },
 ];
 
+const AUDIENCE = [
+  {
+    title: 'Reef scientists',
+    body: 'Coral biologists, ecologists, and microbiologists who need answers they can cite — and check — rather than a confident summary of nothing in particular.',
+  },
+  {
+    title: 'Bioprospectors',
+    body: 'Anyone hunting marine natural products, who wants the organisms, compounds, and locations already extracted from the literature instead of read out of it by hand.',
+  },
+  {
+    title: 'Conservation teams',
+    body: 'Restoration and policy work that has to stand on evidence, with every claim traceable back to the paper it came from.',
+  },
+];
+
 const FAQ = [
   {
     q: 'What is CoralGPT?',
@@ -88,8 +102,12 @@ const FAQ = [
     a: 'Every extracted claim links to the exact passage, table, or figure in the original PDF and is marked SUPPORTED or REFUTED. You can open the provenance viewer and check the evidence yourself, to the pixel.',
   },
   {
-    q: 'Who can access the Test Agent?',
-    a: 'Test Agent is available to whitelisted early-access users. Everyone else can join the waitlist to be notified when access expands.',
+    q: 'Why is access limited?',
+    a: 'CoralGPT is in private beta. Every answer is grounded in a curated corpus of peer-reviewed papers, and each research cycle runs real literature and analysis work — so we grow the user base deliberately, keeping the corpus and the answers good rather than opening the doors and degrading both. Access is approved individually.',
+  },
+  {
+    q: 'How long does approval take?',
+    a: 'We review requests by hand, usually within a few days. Sign in, tell us who you are and what you would use CoralGPT for, and we will email you as soon as your access is ready. You do not need to do anything else in the meantime.',
   },
   {
     q: 'How does Deep Research work?',
@@ -102,13 +120,33 @@ const heroVideoUrl =
     (import.meta as any).env?.CORALGPT_HERO_VIDEO_URL) ||
   DEFAULT_HERO_VIDEO;
 
+/**
+ * ONE DOOR.
+ *
+ * There used to be two entry points that promised different things and delivered
+ * the same nothing: a hero CTA reading "Test Agent" — which ran Privy, created a
+ * user with `access_type = null`, and returned 403 "Access pending approval", a
+ * broken promise on the very first click — and a "Join Waitlist" form that wrote
+ * to a table NOTHING read.
+ *
+ * Both are gone. There is now one CTA, "Get started", in the hero and in the
+ * header. It runs Privy, and THE SYSTEM DECIDES WHAT YOU SEE: whitelisted users
+ * land in `/chat`, everyone else lands on `/access-pending`, which is now the
+ * request form (prefilled from the Privy identity) or the "under review" notice.
+ *
+ * There is deliberately no separate "Sign in" button. After Privy resolves, the
+ * system already knows your state — asking the user to self-select between "sign
+ * in" and "request access" would be asking them to guess it for us.
+ *
+ * The beta is declared as CLOSED before auth (the line under the CTA), so the
+ * click is not a surprise. NO COUNTER — the queue size is deliberately not shown.
+ */
 export function LandingPage() {
   useLandingScroll();
   const { login, authenticated, ready, getAccessToken } = usePrivy();
   const { exchangePrivyToken, isAuthenticated } = useAuth();
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [testingAgent, setTestingAgent] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [pendingLogin, setPendingLogin] = useState(false);
 
   useEffect(() => {
@@ -124,7 +162,7 @@ export function LandingPage() {
   }, [pendingLogin, ready, authenticated]);
 
   const handleExchange = async () => {
-    setTestingAgent(true);
+    setConnecting(true);
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
@@ -132,19 +170,18 @@ export function LandingPage() {
         return;
       }
 
+      // Whitelisted -> the app. Everyone else -> the request form / the notice.
+      // `/access-pending` re-asks the server for its own state, so it does not
+      // matter that we do not forward `hasRequest` here.
       const result = await exchangePrivyToken(accessToken);
-      if (result.whitelisted) {
-        route('/chat', true);
-      } else {
-        route('/access-pending', true);
-      }
+      route(result.whitelisted ? '/chat' : '/access-pending', true);
     } finally {
-      setTestingAgent(false);
+      setConnecting(false);
       setPendingLogin(false);
     }
   };
 
-  const handleTestAgent = async () => {
+  const handleGetStarted = async () => {
     if (isAuthenticated) {
       route('/chat', true);
       return;
@@ -174,13 +211,15 @@ export function LandingPage() {
           </span>
         </a>
         <div className="landing-nav-actions">
+          {/* The ONE door, again. Not a second, different promise. */}
           <button
             type="button"
             className="btn btn-marketing"
             data-variant="outline"
-            onClick={() => setWaitlistOpen(true)}
+            onClick={handleGetStarted}
+            disabled={connecting}
           >
-            Join Waitlist
+            {connecting ? 'Connecting...' : 'Get started'}
           </button>
         </div>
       </header>
@@ -216,10 +255,10 @@ export function LandingPage() {
               data-variant="outline"
               data-tone="coral"
               data-size="lg"
-              onClick={handleTestAgent}
-              disabled={testingAgent}
+              onClick={handleGetStarted}
+              disabled={connecting}
             >
-              {testingAgent ? 'Connecting...' : 'Test Agent'}
+              {connecting ? 'Connecting...' : 'Get started'}
             </button>
             {/* `data-tone` MUST carry an explicit `data-variant`: Lyra's default
                 is `.btn:not([data-variant])` -> the teal primary fill, at a
@@ -228,6 +267,12 @@ export function LandingPage() {
               Powered by $CRLAI
             </span>
           </div>
+          {/* The beta is declared CLOSED before the click, so "Get started" is
+              not the broken promise "Test Agent" was. NO COUNTER — the queue
+              size is deliberately not shown. */}
+          <p className="landing-hero-gate">
+            Private beta — we approve researchers individually.
+          </p>
         </div>
       </section>
 
@@ -282,6 +327,23 @@ export function LandingPage() {
                 <div className="landing-step-num">{step.num}</div>
                 <h3 className="landing-step-title">{step.title}</h3>
                 <p className="landing-step-body">{step.body}</p>
+              </section>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-section">
+        <h2 className="landing-section-title">Who this is for</h2>
+        <p className="landing-section-lead">
+          Access is approved individually, so it helps to know who we build for.
+        </p>
+        <div className="landing-trust">
+          {AUDIENCE.map((item) => (
+            <div key={item.title} className="card landing-card">
+              <section>
+                <h3 className="landing-trust-title">{item.title}</h3>
+                <p className="landing-trust-body">{item.body}</p>
               </section>
             </div>
           ))}
@@ -396,15 +458,6 @@ export function LandingPage() {
             from ThemeToggle. */}
         <ThemeToggle />
       </footer>
-
-      <WaitlistModal
-        isOpen={waitlistOpen}
-        onClose={() => setWaitlistOpen(false)}
-        onTestAgent={() => {
-          setWaitlistOpen(false);
-          handleTestAgent();
-        }}
-      />
     </div>
   );
 }

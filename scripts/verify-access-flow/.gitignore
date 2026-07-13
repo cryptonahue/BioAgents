@@ -1,0 +1,3 @@
+# Build output and screenshots — regenerate with `bun harness.ts` + `bun drive.ts`.
+dist/
+shots/
