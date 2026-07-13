@@ -64,6 +64,33 @@
  * change.
  *
  * ---------------------------------------------------------------------------
+ * 4. THE APPROVAL EMAIL CANNOT FAIL THE APPROVAL
+ *
+ * Granting access does three things, IN THIS ORDER, and the order is the whole
+ * design:
+ *
+ *   1. UPDATE users SET access_type = 'whitelisted'   <- the grant. COMMITS.
+ *   2. UPDATE waitlist_leads SET status = 'approved'  <- derived state.
+ *   3. POST https://api.resend.com/emails             <- the notification.
+ *
+ * Steps 2 and 3 run AFTER step 1 has already committed and returned. Neither can
+ * roll it back, because there is no transaction spanning them — Supabase's REST
+ * client issues each as its own statement, so by the time we look at the email
+ * the user ALREADY HAS ACCESS. `sendApprovalEmail()` additionally never throws
+ * (see `services/mailer.ts`): an unconfigured key, a 429, a 500 or a DNS failure
+ * all come back as a value, not an exception.
+ *
+ * AN APPROVAL THAT ROLLS BACK BECAUSE A MAIL SERVER HICCUPED IS STRICTLY WORSE
+ * THAN AN APPROVAL WITH NO EMAIL. The grant is the thing the user is waiting
+ * for; the email is a courtesy on top of it. If the mail fails, the admin is
+ * TOLD (`email: { sent: false, reason }` in the response, rendered in the panel)
+ * so they can reach out by hand — rather than being left to assume it went out.
+ *
+ * With no RESEND_API_KEY configured the mailer degrades to a logged no-op and
+ * the grant still succeeds. Nothing about mail is required for this route, or
+ * for the app, to boot.
+ *
+ * ---------------------------------------------------------------------------
  * Semantics are lifted from `scripts/whitelist.ts` verbatim, not re-derived:
  * grant sets `access_type = "whitelisted"`, revoke sets it back to `null`.
  */
@@ -71,6 +98,7 @@
 import { Elysia } from "elysia";
 import { authResolver } from "../../middleware/authResolver";
 import { getServiceClient } from "../../db/client";
+import { sendApprovalEmail } from "../../services/mailer";
 import type { AuthContext } from "../../types/auth";
 import logger from "../../utils/logger";
 
@@ -123,6 +151,108 @@ function toWhitelistUser(row: UserRow): WhitelistUser {
  */
 function actorId(request: Request): string {
   return (request as Request & { auth?: AuthContext }).auth?.userId ?? "unknown";
+}
+
+/** What the admin sees about the notification. `null` when none was attempted. */
+type EmailOutcome =
+  | { sent: true }
+  | { sent: false; reason: string };
+
+/**
+ * Move the user's `waitlist_leads` row in step with the grant.
+ *
+ * BEST EFFORT, BY DESIGN. `users.access_type` is the ONLY thing the login gate
+ * reads (`routes/auth.ts`); `waitlist_leads.status` is derived state that exists
+ * so the admin list can be filtered without a join back through `users`. If this
+ * write fails, the user still HAS access — the request row just looks stale in
+ * the panel, which is a cosmetic bug, not a lockout. So it is logged and
+ * swallowed rather than allowed to fail an approval that already committed.
+ *
+ * Returns the request row (for the email's recipient and name), or `null` — a
+ * user granted access without ever filling in the form has no row, which is
+ * normal for anyone the admin whitelisted directly.
+ */
+async function syncRequestStatus(
+  targetId: string,
+  approved: boolean,
+): Promise<{ email: string | null; full_name: string | null } | null> {
+  try {
+    const supabase = getServiceClient();
+    const { data, error } = await supabase
+      .from("waitlist_leads")
+      .update({ status: approved ? "approved" : "pending" })
+      .eq("user_id", targetId)
+      .select("email, full_name")
+      .maybeSingle();
+
+    if (error) {
+      logger.warn(
+        {
+          err: error,
+          event: "admin_whitelist_request_sync_failed",
+          targetUserId: targetId,
+        },
+        "failed to sync the access request status; the grant itself stands",
+      );
+      return null;
+    }
+
+    return data ?? null;
+  } catch (err) {
+    logger.warn(
+      {
+        err,
+        event: "admin_whitelist_request_sync_failed",
+        targetUserId: targetId,
+      },
+      "access request status sync threw; the grant itself stands",
+    );
+    return null;
+  }
+}
+
+/**
+ * Tell the user their access is ready.
+ *
+ * THIS CANNOT FAIL THE APPROVAL. `sendApprovalEmail` never throws (see
+ * `services/mailer.ts`); the try/catch here is belt-and-braces against a future
+ * edit that breaks that promise. Either way the grant is already committed — we
+ * are past the point of no return, and the worst outcome is an approved user who
+ * has to be told by hand.
+ */
+async function notifyApproved(params: {
+  targetId: string;
+  to: string | null;
+  name: string | null;
+}): Promise<EmailOutcome> {
+  if (!params.to) {
+    // A wallet-only user who never filled in the form. Nothing to send to.
+    logger.info(
+      {
+        event: "admin_whitelist_email_skipped",
+        targetUserId: params.targetId,
+        reason: "no_address",
+      },
+      "approved user has no email address on file; no notification sent",
+    );
+    return { sent: false, reason: "no_address" };
+  }
+
+  try {
+    const result = await sendApprovalEmail({ to: params.to, name: params.name });
+    if (result.sent) return { sent: true };
+    return { sent: false, reason: result.reason };
+  } catch (err) {
+    logger.error(
+      {
+        err,
+        event: "admin_whitelist_email_failed",
+        targetUserId: params.targetId,
+      },
+      "approval email threw; the grant itself stands",
+    );
+    return { sent: false, reason: "send_failed" };
+  }
 }
 
 export const whitelistRoute = new Elysia()
@@ -317,9 +447,29 @@ export const whitelistRoute = new Elysia()
           "admin_whitelist_updated",
         );
 
+        // -------------------------------------------------------------------
+        // EVERYTHING BELOW THIS LINE IS A SIDE EFFECT OF AN ALREADY-COMMITTED
+        // GRANT. See note 4 in the header. Nothing here can fail the request.
+        // -------------------------------------------------------------------
+        const request = await syncRequestStatus(targetId, desired);
+
+        const emailResult = desired
+          ? await notifyApproved({
+              targetId,
+              // The address they gave us on the request form is the channel they
+              // asked to be reached on, and it is the only one a wallet-only user
+              // has. `users.email` is the fallback.
+              to: request?.email ?? (updated as UserRow).email,
+              name: request?.full_name ?? null,
+            })
+          : null;
+
         return {
           user: toWhitelistUser(updated as UserRow),
           changed: true,
+          // The admin is told the TRUTH about the notification rather than being
+          // left to assume it went out. `null` on a revoke — no email is sent.
+          email: emailResult,
         };
       } catch (err) {
         logger.error(

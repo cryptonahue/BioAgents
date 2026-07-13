@@ -95,15 +95,59 @@ There is no explicit `CORALGPT_ENABLED` flag. `isCoralGptEnabled()` is implicitl
 
 ---
 
-## Waitlist
+## Access flow — one door
 
-`POST /api/waitlist` (`src/routes/waitlist.ts`) is a public, unauthenticated endpoint for collecting access requests.
+There is ONE entry point. The landing's `Get started` runs Privy; the system then decides what you see. There is no separate "Sign in", and no pre-auth waitlist form.
 
-- Elysia schema validation requires `full_name`, `email` (must be `format: "email"`), `role`, and `use_case`. `agreed_to_updates` must be `true` (rejected with `400` otherwise). Optional fields: `wallet_address`, `organization`, `referral_source`, `twitter_handle`.
-- Email is trimmed and lowercased before insert.
-- Inserted via the service-role client into `waitlist_leads` (migration `20260520000001_create_waitlist_leads.sql`), which has a `lower(email)` unique index. A duplicate (Postgres error `23505`) is mapped to `409 "This email is already on the waitlist"`.
+```
+[Get started] -> Privy (email | wallet | google) -> users row (identity FIXED here)
+                                                          |
+                    +-------------------------------------+---------------------+
+               whitelisted?                        already requested?       no request
+                    |                                      |                     |
+                   YES                                    YES                   NO
+                    |                                      |                     |
+                  /chat                        "Request under review"     3-step request form,
+                                                                          PREFILLED from Privy
+                                                                                 |
+                                                                          waitlist_leads
+                                                                           (user_id FK)
+                                                                                 |
+                                                              Admin panel -> [Grant]
+                                                                                 |
+                                                                access_type='whitelisted'
+                                                                     + approval email
+```
 
-Note: there is currently no rate limiting or CAPTCHA on this endpoint.
+**Why identity comes first.** The old flow had two disconnected halves: a public form writing `waitlist_leads` (a table NOTHING read) and a Privy sign-in that 403'd into a dead end. Joining them after the fact would mean fuzzy-matching a typed email against a Privy email/wallet. Establishing identity BEFORE the form deletes that problem: the request hangs off a real `user_id` foreign key, and the form is prefilled from the Privy identity.
+
+### `POST /api/access-request`
+
+Replaces the old public `POST /api/waitlist`. Same nine form fields, plus an `accessToken`.
+
+**It is deliberately NOT behind `authResolver`.** A pending user holds no JWT — `/api/auth/privy` refuses to mint one for them. Issuing a limited "pending" JWT would be a privilege escalation: `authResolver({ required: true })` accepts ANY token that verifies against `BIOAGENTS_SECRET` and does not inspect a `type` claim, so such a token would be honoured by `/api/chat`, `/api/library` and every other guarded route. So the route verifies the **Privy token directly** (`verifyPrivyAccessToken`) — a cryptographic identity with no BioAgents session credential minted before approval. The user is resolved from the token and nothing else; a `userId` in the body is never read.
+
+**The duplicate-email case is handled by ADOPTION.** `waitlist_leads` still carries `UNIQUE INDEX ON (lower(email))`, so a user who filled the OLD pre-auth form and then signs in with the same address is a live collision. An orphan row (`user_id IS NULL`) with a matching email is CLAIMED onto the authenticated user via `UPDATE ... WHERE email = ? AND user_id IS NULL` — the `user_id IS NULL` predicate is what stops it stealing a row from another account. The row keeps its original `created_at`. A row owned by a *different* user is a `409`, never a `500`.
+
+`/api/auth/privy` reports `{ whitelisted: false, hasRequest, email, walletAddress }` on its 403, so the client knows in one call whether to render the form or the review notice.
+
+### Approval email
+
+Granting access does three things, in this order, and the order is the design:
+
+1. `UPDATE users SET access_type = 'whitelisted'` — the grant. **Commits.**
+2. `UPDATE waitlist_leads SET status = 'approved'` — derived state.
+3. `POST https://api.resend.com/emails` — the notification.
+
+Steps 2 and 3 run **after** step 1 has already committed. Neither can roll it back, and `sendApprovalEmail()` never throws (`src/services/mailer.ts`) — an unconfigured key, a 429, a 500, or a dead network all come back as a value. **An approval that rolls back because a mail server hiccuped is strictly worse than an approval with no email.** If the mail fails, the admin is told (`email: { sent: false, reason }` in the response, rendered in the panel) so they can follow up by hand.
+
+The mailer calls the Resend REST API with plain `fetch` — no SDK, no SMTP transport, and therefore no module-scope client to trip Bun's worker TDZ hazard. With `RESEND_API_KEY` unset it degrades to a logged no-op; nothing about mail is required for the app to boot.
+
+| Env var | Required | Purpose |
+|---------|----------|---------|
+| `RESEND_API_KEY` | no | **The feature switch.** Unset -> mailer disabled, every send is a logged no-op. Never logged. |
+| `RESEND_FROM` | no | The **verified** sender, e.g. `CoralGPT <no-reply@yourdomain>`. Resend rejects an unverified domain, so the mailer stays off until this is set too. |
+| `CORALGPT_APP_URL` | no | Sign-in link in the email. Defaults to `https://coralgpt.xyz`. |
 
 ---
 

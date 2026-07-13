@@ -23,7 +23,7 @@ process.env.AUTH_MODE = "jwt";
 process.env.BIOAGENTS_SECRET =
   process.env.BIOAGENTS_SECRET || "test-jwt-secret-for-whitelist-tests";
 
-import { describe, it, expect, beforeAll, beforeEach, mock } from "bun:test";
+import { describe, it, expect, afterEach, beforeAll, beforeEach, mock } from "bun:test";
 import * as jose from "jose";
 
 // ---------------------------------------------------------------------------
@@ -123,8 +123,17 @@ beforeAll(async () => {
     .sign(new TextEncoder().encode("not-the-real-bioagents-secret"));
 });
 
+/** The mail tests below replace global `fetch`. Restore it so they cannot leak. */
+const realFetch = globalThis.fetch;
+
 beforeEach(() => {
   globalThis.__whitelistTestClient = undefined;
+});
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  delete process.env.RESEND_API_KEY;
+  delete process.env.RESEND_FROM;
 });
 
 function setClient(factory: () => any) {
@@ -342,5 +351,166 @@ describe("admin whitelist route — behavior", () => {
 
     const res = await setAccess(adminToken, TARGET_ID, { whitelisted: "yes" });
     expect(res.status).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE APPROVAL EMAIL IS ISOLATED FROM THE GRANT
+//
+// This is the section that matters most in this file after the security block.
+// The grant is what the user is waiting for; the email is a courtesy on top of a
+// write that has ALREADY COMMITTED. If Resend is down, unconfigured, or angry,
+// the approval must still succeed and `access_type` must still be written.
+// ---------------------------------------------------------------------------
+
+/** Script for a successful grant: lookup (pending) -> update (whitelisted) -> lead sync. */
+function grantScript() {
+  return scriptedClient([
+    { data: row({ access_type: null }), error: null },
+    { data: row({ access_type: "whitelisted" }), error: null },
+    { data: { email: "target@example.com", full_name: "Ada" }, error: null },
+  ]);
+}
+
+describe("admin whitelist route — a mail failure never fails the approval", () => {
+  it("SMTP/API DOWN: the grant still succeeds and access_type is still written", async () => {
+    const { client, calls } = grantScript();
+    setClient(() => client);
+
+    // The mail server is dead. `fetch` rejects, exactly as it would against a
+    // black-holed host.
+    process.env.RESEND_API_KEY = "re_key";
+    process.env.RESEND_FROM = "CoralGPT <no-reply@coralgpt.xyz>";
+    globalThis.fetch = (async () => {
+      throw new TypeError("fetch failed: ECONNREFUSED");
+    }) as typeof fetch;
+
+    const res = await setAccess(adminToken, TARGET_ID, { whitelisted: true });
+
+    // The approval SUCCEEDED.
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      user: any;
+      changed: boolean;
+      email: { sent: boolean; reason?: string };
+    };
+    expect(body.changed).toBe(true);
+    expect(body.user.whitelisted).toBe(true);
+
+    // And the write really happened — not merely reported.
+    const update = calls.find(
+      (c) => c.method === "update" && (c.args[0] as any)?.access_type !== undefined,
+    );
+    expect(update?.args[0]).toEqual({ access_type: "whitelisted" });
+
+    // The admin is TOLD the email did not go out, rather than left to assume.
+    expect(body.email.sent).toBe(false);
+    expect(body.email.reason).toBe("network_error");
+  });
+
+  it("API returns 500: the grant still succeeds", async () => {
+    const { client, calls } = grantScript();
+    setClient(() => client);
+
+    process.env.RESEND_API_KEY = "re_key";
+    process.env.RESEND_FROM = "CoralGPT <no-reply@coralgpt.xyz>";
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ name: "application_error" }), {
+        status: 500,
+      })) as typeof fetch;
+
+    const res = await setAccess(adminToken, TARGET_ID, { whitelisted: true });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as { email: { sent: boolean; reason?: string } };
+    expect(body.email.sent).toBe(false);
+    expect(body.email.reason).toBe("api_error");
+
+    expect(
+      calls.find(
+        (c) => c.method === "update" && (c.args[0] as any)?.access_type !== undefined,
+      )?.args[0],
+    ).toEqual({ access_type: "whitelisted" });
+  });
+
+  it("NO KEY CONFIGURED: the grant succeeds, nothing is sent, nothing crashes", async () => {
+    const { client, calls } = grantScript();
+    setClient(() => client);
+
+    delete process.env.RESEND_API_KEY;
+    delete process.env.RESEND_FROM;
+    let fetched = false;
+    globalThis.fetch = (async () => {
+      fetched = true;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    const res = await setAccess(adminToken, TARGET_ID, { whitelisted: true });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as {
+      changed: boolean;
+      email: { sent: boolean; reason?: string };
+    };
+    expect(body.changed).toBe(true);
+    expect(body.email).toEqual({ sent: false, reason: "not_configured" });
+
+    // It did not even try to reach out.
+    expect(fetched).toBe(false);
+
+    expect(
+      calls.find(
+        (c) => c.method === "update" && (c.args[0] as any)?.access_type !== undefined,
+      )?.args[0],
+    ).toEqual({ access_type: "whitelisted" });
+  });
+
+  it("sends the approval email on a successful grant", async () => {
+    const { client } = grantScript();
+    setClient(() => client);
+
+    process.env.RESEND_API_KEY = "re_key";
+    process.env.RESEND_FROM = "CoralGPT <no-reply@coralgpt.xyz>";
+    const sent: any[] = [];
+    globalThis.fetch = (async (_url: any, init: any) => {
+      sent.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ id: "mail-1" }), { status: 200 });
+    }) as typeof fetch;
+
+    const res = await setAccess(adminToken, TARGET_ID, { whitelisted: true });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as { email: { sent: boolean } };
+    expect(body.email.sent).toBe(true);
+
+    expect(sent).toHaveLength(1);
+    // Addressed to the email on the REQUEST FORM — the channel they asked to be
+    // reached on, and the only one a wallet-only user has.
+    expect(sent[0].to).toEqual(["target@example.com"]);
+    expect(sent[0].subject).toBe("Your CoralGPT access is ready");
+  });
+
+  it("REVOKE sends no email at all", async () => {
+    const { client } = scriptedClient([
+      { data: row({ access_type: "whitelisted" }), error: null },
+      { data: row({ access_type: null }), error: null },
+      { data: { email: "target@example.com", full_name: "Ada" }, error: null },
+    ]);
+    setClient(() => client);
+
+    process.env.RESEND_API_KEY = "re_key";
+    process.env.RESEND_FROM = "CoralGPT <no-reply@coralgpt.xyz>";
+    let fetched = false;
+    globalThis.fetch = (async () => {
+      fetched = true;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    const res = await setAccess(adminToken, TARGET_ID, { whitelisted: false });
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as { email: unknown };
+    expect(body.email).toBeNull();
+    expect(fetched).toBe(false);
   });
 });
