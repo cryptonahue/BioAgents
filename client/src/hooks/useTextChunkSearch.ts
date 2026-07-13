@@ -166,13 +166,21 @@ export function findAlnumMatchRuns(
 }
 
 /**
- * Union the bboxes of runs [startRun, endRun] and convert to PDF
- * point space (bottom-left origin). Pure over run geometry —
- * unit-testable. Returns null on degenerate geometry.
+ * Union the bboxes of runs [startRun, endRun] and convert to the
+ * viewer's bbox contract. Pure over run geometry — unit-testable.
+ * Returns null on degenerate geometry.
+ *
+ * COORDINATE CONTRACT — top-left origin, NOT bottom-left. `bboxToPixels`
+ * renders with `top = bbox.y * scale`, so `y` is the distance from the
+ * TOP of the page in PDF points. Do NOT flip through the page height:
+ * this code used to compute `pageHeight - y` (a bottom-left origin),
+ * which drew every text highlight mirrored vertically — a couple of
+ * lines off for mid-page text, and far off for text near an edge.
+ * Canvas run coordinates are already top-down, so the conversion is a
+ * plain divide by the render scale.
  */
 export function bboxFromRunRange(
   runs: TextRun[],
-  pageHeightPt: number,
   startRun: number,
   endRun: number,
   pageNum: number,
@@ -195,12 +203,10 @@ export function bboxFromRunRange(
   const x = minX / PDFJS_RENDER_SCALE;
   const w = (maxX - minX) / PDFJS_RENDER_SCALE;
   const h = (maxY - minY) / PDFJS_RENDER_SCALE;
-  // Canvas is top-left origin; the bbox contract is bottom-left in
-  // PDF points, with `y` the BOTTOM of the rect. Flip both edges and
-  // take the lower.
-  const yTopInPdf = pageHeightPt - maxY / PDFJS_RENDER_SCALE;
-  const yBottomInPdf = pageHeightPt - minY / PDFJS_RENDER_SCALE;
-  const y = Math.min(yTopInPdf, yBottomInPdf);
+  // Both the canvas runs and the bbox contract measure y downward from
+  // the top of the page, so `minY` (the top edge of the topmost run) is
+  // already the value the overlay wants — just scale it to points.
+  const y = minY / PDFJS_RENDER_SCALE;
   return { x, y, w, h, page: pageNum, units: "pt" };
 }
 
@@ -255,14 +261,7 @@ async function findSnippetOnPage(
   const match = findAlnumMatchRuns(runs, needleAlnum);
   if (!match) return null;
 
-  const pageHeightPt = pageProxy.view[3] - pageProxy.view[1];
-  return bboxFromRunRange(
-    runs,
-    pageHeightPt,
-    match.startRun,
-    match.endRun,
-    pageNum,
-  );
+  return bboxFromRunRange(runs, match.startRun, match.endRun, pageNum);
 }
 
 export function useTextChunkSearch({
