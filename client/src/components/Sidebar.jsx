@@ -273,18 +273,8 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
             >
               Graph
             </Button>
-            {isAdmin && (
-              <Button
-                variant="ghost"
-                size="lg"
-                icon="settings"
-                iconSize={16}
-                onClick={() => route('/admin')}
-                className={`sidebar-admin-btn${navActive('/admin')}`}
-              >
-                Admin
-              </Button>
-            )}
+            {/* Admin is no longer a nav rail button — it lives in the account
+                menu as "Admin panel". Corpus stays out here. */}
             {isAdmin && !coralGptMode && (
               <Button
                 variant="ghost"
@@ -487,6 +477,20 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                   {/* Closing is DropdownMenu's job — it also hands focus back to
                       the trigger, which routing away from here would otherwise
                       strand on a detached node. */}
+                  {/* A falsy branch renders nothing, so `role="menu"` keeps only
+                      `menuitem` children for a non-admin — the role's content
+                      model permits nothing else. The gate is a UI affordance
+                      ONLY: every admin route is independently authorized
+                      server-side by
+                      `authResolver({ required: true, role: 'admin' })`, which
+                      reads the role from the VERIFIED JWT and never from a
+                      client-supplied field. */}
+                  {isAdmin && (
+                    <MenuItem onClick={() => route('/admin')}>
+                      <Icon name="shield" size={16} />
+                      <span>Admin panel</span>
+                    </MenuItem>
+                  )}
                   <MenuItem onClick={() => route('/settings')}>
                     <Icon name="settings" size={16} />
                     <span>Settings</span>

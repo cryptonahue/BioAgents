@@ -343,8 +343,14 @@ body {
 }
 
 /* Sidebar section-nav buttons (Chat / Library / Research Brain /
-   Admin / Corpus): full-width, left-aligned, with an active-section
-   highlight.
+   Corpus): full-width, left-aligned, with an active-section highlight.
+
+   `.sidebar-admin-btn` is NOT dead. Admin moved into the account menu, but
+   Corpus is still rendered with this class (it is the other admin-gated rail
+   button), so both selectors below still have a live call site. Grep for the
+   TEMPLATE-LITERAL form — className={`sidebar-admin-btn${navActive(...)}`} —
+   before concluding otherwise; a plain className="sidebar-admin-btn" search
+   finds nothing and reads as dead.
 
    The active state is the BRAND GREEN accent, and it is deliberately NOT
    flattened to `--primary` (teal): this is a nav highlight, not a call to

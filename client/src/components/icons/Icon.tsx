@@ -74,6 +74,7 @@ import {
   Pulse,
   Robot,
   ShareNetwork,
+  ShieldCheck,
   SignOut,
   Sparkle,
   Spinner,
@@ -173,6 +174,11 @@ const iconMap: Record<string, any> = {
   messageSquare: Chat,
   brainCircuit: Brain,
   settings: Gear,
+  // The admin panel is the one role-gated surface in the app, and it now sits
+  // next to Settings (Gear) in the same menu — so it cannot reuse Gear without
+  // the two reading as the same destination. A shield is what "role-gated"
+  // looks like, and it has no Lucide ancestor to match.
+  shield: ShieldCheck,
   barChart: ChartBar,
   gitMerge: GitMerge,
   zap: Lightning,
