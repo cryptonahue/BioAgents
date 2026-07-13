@@ -269,6 +269,36 @@ export function EvidenceViewer({
     };
   }, [fitMode, pageRender]);
 
+  // Bring a resolved highlight into view. Jumping to the right page is
+  // not enough: the bbox can sit anywhere down a tall page, so the user
+  // lands at the top and has to hunt for it. We measure the overlay
+  // against the scroll container and scroll ONLY that container (never
+  // the document, which `scrollIntoView` would also walk up and move).
+  // Re-runs after a re-render at a new scale/page so the highlight stays
+  // centered under zoom.
+  useEffect(() => {
+    const wrap = scrollRef.current;
+    if (!wrap || !bbox) return;
+    // Wait a frame: the overlay only exists once the page has painted at
+    // the current scale.
+    const raf = requestAnimationFrame(() => {
+      const el = wrap.querySelector<HTMLElement>(".provenance-bbox");
+      if (!el) return;
+      const wrapRect = wrap.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const deltaY =
+        elRect.top - wrapRect.top - (wrap.clientHeight - elRect.height) / 2;
+      const deltaX =
+        elRect.left - wrapRect.left - (wrap.clientWidth - elRect.width) / 2;
+      wrap.scrollTo({
+        top: Math.max(0, wrap.scrollTop + deltaY),
+        left: Math.max(0, wrap.scrollLeft + deltaX),
+        behavior: "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [bbox, scale, pageNumber, pageRender]);
+
   const zoomIn = useCallback(() => {
     setFitMode(false);
     setScale((s) => clampScale(s * ZOOM_STEP));
@@ -390,21 +420,28 @@ export function EvidenceViewer({
         ) : null}
       </div>
       <div ref={scrollRef} className="provenance-viewer__canvaswrap">
-        <canvas ref={canvasRef} className="provenance-viewer__canvas" />
-        <div
-          ref={textLayerRef}
-          className="provenance-viewer__textlayer"
-          aria-hidden="false"
-        />
-        {showBbox ? (
-          <BboxOverlay
-            bbox={bbox}
-            type={type}
-            imageUrl={imageUrlProp}
-            scale={scale}
-            className="provenance-viewer__overlay"
+        {/* The page box shrink-wraps the canvas so the text layer and the
+            bbox overlay — both absolutely positioned — resolve against the
+            CANVAS origin. Without it they anchor to the scroll container,
+            whose padding and centering margin drift them off the page (the
+            highlight slid left as the zoom went down). */}
+        <div className="provenance-viewer__pagebox">
+          <canvas ref={canvasRef} className="provenance-viewer__canvas" />
+          <div
+            ref={textLayerRef}
+            className="provenance-viewer__textlayer"
+            aria-hidden="false"
           />
-        ) : null}
+          {showBbox ? (
+            <BboxOverlay
+              bbox={bbox}
+              type={type}
+              imageUrl={imageUrlProp}
+              scale={scale}
+              className="provenance-viewer__overlay"
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

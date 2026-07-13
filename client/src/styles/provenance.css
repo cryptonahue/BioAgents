@@ -202,11 +202,27 @@
   background: #fff;
   box-shadow: var(--shadow-lg);
 }
+/* Shrink-wraps the canvas and becomes the containing block for the two
+   absolutely-positioned layers above it (text layer + bbox overlay), so
+   both share the CANVAS coordinate origin. It is the inline-block that
+   `text-align: center` on the wrap centers.
+
+   Before this box existed, those layers resolved against the scroll
+   container: the text layer papered over it with a left:50%/translateX
+   centering hack, and the overlay compensated for nothing at all — so a
+   highlight drifted left by the whole centering margin as the zoom went
+   down (at fit-width the margin is ~0, which is why it only showed up
+   when zoomed out). Both layers now sit at 0,0 of the canvas. */
+.provenance-viewer__pagebox {
+  position: relative;
+  display: inline-block;
+  /* Kills the inline-block baseline gap under the canvas. */
+  line-height: 0;
+}
 .provenance-viewer__textlayer {
   position: absolute;
-  left: 50%;
-  top: 24px;
-  transform: translateX(-50%);
+  left: 0;
+  top: 0;
   overflow: hidden;
   opacity: 1;
   line-height: 1;
@@ -214,8 +230,8 @@
   pointer-events: auto;
 }
 .provenance-viewer__overlay {
-  /* The canvas+textlayer are wrapped in a relative canvaswrap; the
-     overlay positions are absolute within that. */
+  /* Absolute within `.provenance-viewer__pagebox` — i.e. in canvas
+     coordinates, which is exactly what `bboxToPixels` produces. */
   z-index: 2;
 }
 .provenance-viewer__status {
