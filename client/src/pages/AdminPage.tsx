@@ -10,15 +10,18 @@ import {
   useBulkResolveContradictions,
   useDedupEvents,
   useResolveContradiction,
+  useSetWhitelistAccess,
   useUnmergeFact,
+  useWhitelistUsers,
   type AdminContradiction,
   type AdminContradictionStatus,
   type DedupEventWindow,
   type ReasonCategory,
   type RecentDedupEvent,
+  type WhitelistUser,
 } from "../hooks";
 
-type TabId = "contras" | "dedup" | "stats";
+type TabId = "contras" | "dedup" | "stats" | "whitelist";
 
 /** Namespaces the generated `id`s that wire each tab to its panel. */
 const ADMIN_TABS_ID = "admin";
@@ -27,6 +30,7 @@ const ADMIN_TABS: TabItem<TabId>[] = [
   { value: "contras", label: "Contras" },
   { value: "dedup", label: "Dedup" },
   { value: "stats", label: "Stats" },
+  { value: "whitelist", label: "Whitelist" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -106,6 +110,11 @@ export function AdminPage() {
           {tab === "stats" && (
             <TabPanel idPrefix={ADMIN_TABS_ID} value="stats">
               <StatsTab onSwitchTab={setTab} />
+            </TabPanel>
+          )}
+          {tab === "whitelist" && (
+            <TabPanel idPrefix={ADMIN_TABS_ID} value="whitelist">
+              <WhitelistTab />
             </TabPanel>
           )}
         </Tabs>
@@ -777,6 +786,205 @@ function StatsTile(props: { label: string; value: number; highlight?: boolean })
     >
       <span class="admin-stats-tile-value">{props.value}</span>
       <span class="admin-stats-tile-label">{props.label}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Whitelist Tab — grant / revoke CoralGPT access (users.access_type)
+// ---------------------------------------------------------------------------
+
+/**
+ * The UI half of the whitelist manager. It renders the roster and a toggle per
+ * row; the SERVER is what actually authorizes the change
+ * (`authResolver({ required: true, role: "admin" })` on both routes), so
+ * nothing here is a security boundary — it is the affordance on top of one.
+ *
+ * Revoking your OWN access is refused by the server with `cannot_revoke_self`.
+ * The row's control is disabled for the signed-in admin so the user does not
+ * have to discover that by hitting the error.
+ */
+function WhitelistTab() {
+  const { userId: selfId } = useAdmin();
+  const [search, setSearch] = useState("");
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [page, setPage] = useState(0);
+  const [actionMessage, setActionMessage] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const { data, isLoading, error, refetch } = useWhitelistUsers({
+    search,
+    pendingOnly,
+    page,
+  });
+  const { mutate: setAccess, error: mutateError } = useSetWhitelistAccess();
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, pendingOnly]);
+
+  const users: WhitelistUser[] = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / (data?.limit || 50)));
+
+  const toggle = async (user: WhitelistUser) => {
+    setActionMessage("");
+    setBusyId(user.id);
+    try {
+      const updated = await setAccess(user.id, !user.whitelisted);
+      setActionMessage(
+        updated.whitelisted
+          ? `Granted access to ${updated.email || updated.id}`
+          : `Revoked access for ${updated.email || updated.id}`,
+      );
+      await refetch();
+    } catch (err: any) {
+      setActionMessage(err?.message || "Failed to update access");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div>
+      {error && (
+        <div class="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>
+      )}
+      {mutateError && (
+        <div class="alert" data-tone="danger" role="alert">
+          <strong>{mutateError}</strong>
+        </div>
+      )}
+      {actionMessage && (
+        <div class="alert" data-tone="info" role="status">
+          <strong>{actionMessage}</strong>
+        </div>
+      )}
+
+      <div class="admin-toolbar">
+        <input
+          class="input admin-whitelist-search"
+          type="search"
+          placeholder="Search by email, username or ID…"
+          aria-label="Search users"
+          value={search}
+          onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+        />
+        <button
+          class="badge admin-chip"
+          data-variant={pendingOnly ? "primary" : "outline"}
+          aria-pressed={pendingOnly}
+          onClick={() => setPendingOnly((v) => !v)}
+        >
+          Pending only
+        </button>
+      </div>
+
+      {isLoading && <div class="admin-loading">Loading users...</div>}
+
+      {!isLoading && users.length === 0 && (
+        <div class="empty">
+          <header>
+            <p>No users match this filter.</p>
+          </header>
+        </div>
+      )}
+
+      {!isLoading && users.length > 0 && (
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>ID</th>
+                <th>Access</th>
+                <th>Joined</th>
+                <th style={{ width: 160 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => {
+                const isSelf = user.id === selfId;
+                return (
+                  <tr key={user.id}>
+                    <td>
+                      {user.email || user.username || "—"}
+                      {user.isAdmin && (
+                        <>
+                          {" "}
+                          <span class="badge" data-tone="brand">
+                            admin
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      <code>{shortId(user.id)}</code>
+                    </td>
+                    <td>
+                      <span
+                        class="badge admin-status-badge"
+                        data-tone={user.whitelisted ? "success" : "neutral"}
+                      >
+                        {user.whitelisted ? "whitelisted" : "pending"}
+                      </span>
+                    </td>
+                    <td>{formatTimestamp(user.createdAt)}</td>
+                    <td>
+                      {/* `data-tone` MUST ride an explicit `data-variant` — a
+                          toned button with no variant matches Lyra's
+                          `.btn:not([data-variant])` primary-hover rule and turns
+                          teal on hover. See the header of `buttons.css`. */}
+                      <button
+                        class="btn"
+                        data-variant="outline"
+                        data-tone={user.whitelisted ? undefined : "success"}
+                        disabled={busyId === user.id || (isSelf && user.whitelisted)}
+                        title={
+                          isSelf && user.whitelisted
+                            ? "You cannot revoke your own access"
+                            : undefined
+                        }
+                        onClick={() => toggle(user)}
+                      >
+                        {busyId === user.id
+                          ? "Saving…"
+                          : user.whitelisted
+                            ? "Revoke"
+                            : "Grant"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div class="admin-pagination">
+        <button
+          class="btn"
+          data-variant="outline"
+          disabled={page === 0}
+          onClick={() => setPage(Math.max(0, page - 1))}
+        >
+          Prev
+        </button>
+        <span>
+          Page {page + 1} of {totalPages} ({total} total)
+        </span>
+        <button
+          class="btn"
+          data-variant="outline"
+          disabled={page + 1 >= totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }

@@ -100,6 +100,16 @@
   margin-bottom: 16px;
 }
 
+/* The whitelist tab's user search. Basecoat's `.input` already carries the box,
+   the border and the focus ring; only the width is ours — it needs to be wide
+   enough for an email but must still let the "Pending only" chip sit beside it
+   on a narrow viewport, hence the `flex-wrap` on the toolbar above. Layout, not
+   chrome. No radius: `--radius` is inert and the app is square. */
+.admin-whitelist-search {
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
 /* The filter chip is the ONE badge in this app whose color is chrome rather than
    meaning — selected vs. not — so it is the one place Basecoat's own vocabulary
    genuinely fits, and it takes `data-variant` (`primary` selected, `outline` not)

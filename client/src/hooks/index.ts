@@ -29,6 +29,12 @@ export {
   useAdminStats,
   isContradictionOpen,
 } from './useAdminReview';
+export { useWhitelistUsers, useSetWhitelistAccess } from './useWhitelist';
+export type {
+  WhitelistUser,
+  WhitelistUsersResponse,
+  UseWhitelistUsersParams,
+} from './useWhitelist';
 export {
   useLibraryList,
   useLibraryFacets,

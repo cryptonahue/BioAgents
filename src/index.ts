@@ -39,6 +39,7 @@ import { waitlistRoute } from "./routes/waitlist";
 import { createQueueDashboard } from "./routes/admin/queue-dashboard";
 import { adminJobsRoute } from "./routes/admin/jobs";
 import { costTotalsRoute } from "./routes/admin/cost-totals";
+import { whitelistRoute } from "./routes/admin/whitelist";
 import { versionRoute } from "./routes/version";
 
 // ============================================================================
@@ -499,6 +500,10 @@ app.use(adminJobsRoute);
 
 // Mount admin cost-totals drill-down (api-cost-guard-rails PR #3)
 app.use(costTotalsRoute);
+
+// Mount admin whitelist manager. Grants/revokes CoralGPT access
+// (users.access_type). Admin-only — see the header of the route.
+app.use(whitelistRoute);
 
 // Continue with catch-all route
 app
