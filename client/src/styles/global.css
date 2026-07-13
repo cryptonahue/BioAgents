@@ -391,25 +391,16 @@ body {
   border: 0;
 }
 
-/* `Button` wraps ALL its children in a single `.btn-text` span, so the label and
-   the ⌘K hint arrive as siblings inside one box. This spreads them to the two
-   edges. Layout, not chrome. */
-.sidebar-search-btn .btn-text {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
+/* The ⌘K hint chip is gone from the search button, and with it the two rules
+   that existed only to carry it: `.sidebar-search-btn .btn-text` (a
+   `space-between` flex row that spread the label and the chip to opposite
+   edges — with the chip removed it has one child left to spread, and the
+   button's own `justify-content: flex-start` already left-aligns it) and
+   `.kbd` (the chip's entire skin, and its only call site in the app).
 
-.kbd {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  padding: 2px 6px;
-  font-size: 11px;
-  font-family: monospace;
-  color: var(--text-tertiary);
-}
+   The SHORTCUT ITSELF IS UNTOUCHED. The `(metaKey || ctrlKey) + K` handler at
+   the top of `Sidebar.jsx` still opens the search — only its visual hint was
+   removed. */
 
 .sessions-list {
   flex: 1;

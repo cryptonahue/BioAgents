@@ -221,7 +221,6 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 className="sidebar-search-btn"
               >
                 <span>Search chats</span>
-                <kbd className="kbd">⌘K</kbd>
               </Button>
             )}
             <Button
