@@ -602,26 +602,39 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
         await mkdir(docsRoot, { recursive: true });
         await Bun.write(destination, file);
 
-        const { VectorSearchWithDocuments } =
-          await import("../embeddings/vectorSearchWithDocs");
-        let vectorSearch = (globalThis as any).__knowledgeVectorSearch;
-        if (!vectorSearch) {
-          vectorSearch = new VectorSearchWithDocuments();
-          (globalThis as any).__knowledgeVectorSearch = vectorSearch;
-        }
+        /*
+          RETURN AS SOON AS THE FILE IS SAFE. DO NOT AWAIT THE PIPELINE.
 
-        const added = await vectorSearch.addFile(destination);
+          This handler used to run the entire ingestion inline: parse the PDF,
+          embed every chunk, an LLM pass for claims, another for bioprospecting
+          facts, then anchoring. Two to five minutes of work behind a gateway
+          that gives up after a hundred seconds.
+
+          So the upload did not fail. It LIED. The browser was told "Failed to
+          upload paper" while the server quietly finished the job, and the paper
+          appeared in the library anyway — with the user believing it had not.
+          A failure message over a success is worse than either: it teaches the
+          user to distrust what they are looking at.
+
+          The work now runs behind the response, reporting its stage as it goes
+          (see ingestStage.ts), and the client watches. The progress the user
+          asked to see is not decoration — it is the mechanism that fixes this.
+        */
+        const { runIngestPipeline } = await import(
+          "../services/researchBrain/ingestPipeline"
+        );
+        const started = await runIngestPipeline(destination, file.name);
 
         logger.info(
-          { filename: file.name, destination, sourceId: added.sourceId },
-          "research_brain_source_uploaded",
+          { filename: file.name, destination, sourceId: started.sourceId },
+          "research_brain_source_upload_started",
         );
 
         return {
           ok: true,
-          title: added.title,
-          chunkCount: added.chunkCount,
-          sourceId: added.sourceId,
+          sourceId: started.sourceId,
+          title: started.title,
+          stage: "queued",
         };
       } catch (error: any) {
         logger.error(
@@ -633,6 +646,136 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
       }
     },
     { beforeHandle: authResolver({ required: true }) },
+  )
+  /**
+   * Add a paper by URL. The link must point at the PDF itself — we verify that
+   * from the bytes, not from the file extension, because a landing page served
+   * as `paper.pdf` would otherwise be ingested as a document full of navigation
+   * chrome and the user would never know why the claims were nonsense.
+   */
+  .post(
+    "/sources/upload-url",
+    async ({ body, set }) => {
+      const parsed = (body || {}) as { url?: string };
+      const raw = (parsed.url || "").trim();
+      if (!raw) {
+        set.status = 400;
+        return { error: "Missing url" };
+      }
+
+      let target: URL;
+      try {
+        target = new URL(raw);
+      } catch {
+        set.status = 400;
+        return { error: "That is not a valid URL" };
+      }
+      if (target.protocol !== "https:" && target.protocol !== "http:") {
+        set.status = 400;
+        return { error: "Only http(s) links are supported" };
+      }
+
+      try {
+        const res = await fetch(target.toString(), {
+          redirect: "follow",
+          headers: { Accept: "application/pdf" },
+        });
+        if (!res.ok) {
+          set.status = 400;
+          return {
+            error: "Could not fetch that URL",
+            message: `The server answered ${res.status}`,
+          };
+        }
+        const bytes = new Uint8Array(await res.arrayBuffer());
+
+        // Trust the BYTES, not the URL. A landing page whose path ends in .pdf
+        // would otherwise sail through and be ingested as a document made of
+        // navigation chrome — and the user would never learn why its claims
+        // were nonsense.
+        const isPdf =
+          bytes.length > 4 &&
+          bytes[0] === 0x25 && // %
+          bytes[1] === 0x50 && // P
+          bytes[2] === 0x44 && // D
+          bytes[3] === 0x46; //  F
+        if (!isPdf) {
+          set.status = 400;
+          return {
+            error: "That link is not a PDF",
+            message:
+              "It points at a page, not at the file. Use the link to the PDF itself.",
+          };
+        }
+
+        const name =
+          decodeURIComponent(target.pathname.split("/").filter(Boolean).pop() || "")
+            .replace(/[^\w.\- ()]/g, "_") || "paper";
+        const filename = name.toLowerCase().endsWith(".pdf")
+          ? name
+          : `${name}.pdf`;
+
+        const destination = safeUploadPath(filename);
+        const docsRoot = path.resolve(getDocsPath());
+        if (
+          destination !== docsRoot &&
+          !destination.startsWith(docsRoot + path.sep)
+        ) {
+          set.status = 400;
+          return { error: "Invalid filename" };
+        }
+        await mkdir(docsRoot, { recursive: true });
+        await Bun.write(destination, bytes);
+
+        const { runIngestPipeline } = await import(
+          "../services/researchBrain/ingestPipeline"
+        );
+        const started = await runIngestPipeline(destination, filename);
+        logger.info(
+          { url: target.toString(), sourceId: started.sourceId },
+          "research_brain_source_upload_url_started",
+        );
+        return {
+          ok: true,
+          sourceId: started.sourceId,
+          title: started.title,
+          stage: "queued",
+        };
+      } catch (error: any) {
+        logger.error({ err: error, url: raw }, "research_brain_upload_url_failed");
+        set.status = 500;
+        return { error: "Could not fetch that URL", message: error?.message };
+      }
+    },
+    { beforeHandle: authResolver({ required: true }) },
+  )
+  /**
+   * What is this paper's ingestion doing right now? Polled by the upload
+   * modal, which renders the stages as they happen.
+   */
+  .get(
+    "/sources/:sourceId/ingest-status",
+    async ({ params, set }) => {
+      try {
+        const { getIngestStatus } = await import(
+          "../services/researchBrain/ingestPipeline"
+        );
+        const status = await getIngestStatus(params.sourceId);
+        if (!status) {
+          set.status = 404;
+          return { error: "Source not found" };
+        }
+        return status;
+      } catch (error: any) {
+        logger.error(
+          { err: error, sourceId: params.sourceId },
+          "research_brain_ingest_status_failed",
+        );
+        set.status = 500;
+        return { error: "Failed to read status", message: error?.message };
+      }
+    },
+    { beforeHandle: authResolver({ required: false }) },
   )
   .post(
     "/ingestion/start",

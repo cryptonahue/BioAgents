@@ -830,3 +830,140 @@
   font-weight: 700;
   color: var(--muted-foreground);
 }
+
+/* ---- Upload dialog ---- */
+.upload-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, #000 55%, transparent);
+}
+.upload-dialog {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--card, var(--background));
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+}
+.upload-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.upload-dialog__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.upload-dialog__body { padding: 16px; }
+.upload-dialog__tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+
+/* One target for both gestures: dropping and clicking are the same intent. */
+.upload-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 34px 20px;
+  text-align: center;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.upload-drop:hover,
+.upload-drop--over {
+  border-color: var(--primary, #2563eb);
+  background: color-mix(in srgb, var(--primary, #2563eb) 6%, transparent);
+}
+.upload-drop__title { margin: 0; font-size: 14px; font-weight: 600; }
+.upload-drop__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  max-width: 42ch;
+}
+.upload-url__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.upload-url__row { display: flex; gap: 8px; }
+.upload-url__row .input { flex: 1; }
+
+/* The stages. A spinner says "wait"; this says WHAT WE ARE DOING — which is
+   the difference between a user who trusts the wait and one who reloads. */
+.upload-stages { list-style: none; margin: 0; padding: 0; }
+.upload-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.upload-stage:last-child { border-bottom: none; }
+.upload-stage__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 700;
+}
+.upload-stage--pending { color: var(--muted-foreground); }
+.upload-stage--active { font-weight: 600; }
+.upload-stage--active .upload-stage__dot {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+  animation: upload-pulse 1.1s ease-in-out infinite;
+}
+.upload-stage--done .upload-stage__dot {
+  border-color: var(--bbox-figure-image, #10b981);
+  color: var(--bbox-figure-image, #10b981);
+}
+@keyframes upload-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.upload-dialog__detail {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.upload-dialog__done {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bbox-figure-image, #10b981);
+}
+.upload-dialog__error {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--destructive, #dc2626);
+  background: color-mix(in srgb, var(--destructive, #dc2626) 8%, transparent);
+  border-left: 3px solid var(--destructive, #dc2626);
+  border-radius: 4px;
+}
+.upload-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}

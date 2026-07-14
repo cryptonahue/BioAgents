@@ -17,7 +17,7 @@ import { Icon } from "../components/icons";
 import { BUTTON_ICON_CLASS } from "../components/ui/Button";
 import { Pagination } from "../components/ui/Pagination";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { uploadResearchBrainSource } from "../hooks/useResearchBrain";
+import { UploadPaperDialog } from "../components/UploadPaperDialog";
 
 interface LibraryPageProps {
   path?: string;
@@ -495,9 +495,7 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
     useLibraryList(query);
   const { facets, refetch: refetchFacets } = useLibraryFacets();
 
-  const [uploadError, setUploadError] = useState("");
   const [deleteError, setDeleteError] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const [viewMode, setViewMode] = useState<LibraryView>(getInitialView());
 
   const filtersActive = activeFilterCount(query);
@@ -527,19 +525,12 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
     refetchFacets();
   };
 
-  const handleUpload = async (file?: File) => {
-    if (!file) return;
-    setIsUploading(true);
-    setUploadError("");
-    try {
-      await uploadResearchBrainSource(file);
-      afterMutation();
-    } catch (err: any) {
-      setUploadError(err?.message || "Could not load the paper");
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  // The old handler awaited the ENTIRE pipeline — parse, embed, two LLM passes,
+  // anchoring — inside one request, behind a gateway that gives up after a
+  // hundred seconds. It did not fail; it LIED: "Could not load the paper" while
+  // the server quietly finished and the paper appeared in the library anyway.
+  // The dialog owns this now, and shows the work instead of guessing at it.
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const activeSort =
     SORT_OPTIONS.find((o) => o.sort === query.sort && o.dir === query.dir) ??
@@ -603,18 +594,15 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
             )}
           </div>
 
-          <label className="btn library-link-btn brain-upload-btn" data-variant="outline">
+          <button
+            type="button"
+            className="btn library-link-btn brain-upload-btn"
+            data-variant="outline"
+            onClick={() => setUploadOpen(true)}
+          >
             <Icon name="upload" size={16} className={BUTTON_ICON_CLASS} />
-            <span>{isUploading ? "Loading…" : "Upload paper"}</span>
-            <input
-              type="file"
-              accept=".pdf,.md,.txt,.docx"
-              disabled={isUploading}
-              onChange={(e) =>
-                handleUpload((e.target as HTMLInputElement).files?.[0])
-              }
-            />
-          </label>
+            <span>Add paper</span>
+          </button>
 
           <div className="library-view-toggle">
             <button
@@ -723,12 +711,6 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
               : `${rangeStart}–${rangeEnd} of ${total} papers`}
             {isFiltered ? " matching your filters" : ""}
           </p>
-        )}
-
-        {uploadError && (
-          <div className="alert" data-tone="danger" role="alert">
-            <strong>{uploadError}</strong>
-          </div>
         )}
 
         {deleteError && (
@@ -963,6 +945,11 @@ function PaperCard({
           onError={onError}
         />
       </footer>
+      <UploadPaperDialog
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onIngested={() => afterMutation()}
+      />
     </div>
   );
 }

@@ -234,13 +234,19 @@ export async function registerDocumentAsResearchSource(params: {
         })),
       );
 
+  // Each stage announces itself from where it actually happens, so the upload
+  // modal shows the truth rather than a spinner and a guess.
+  const { setIngestStage } = await import("./ingestStage");
+
   // Reaching here means either the content changed or the source was never
   // extracted, so extraction should run (subject to the caller's opt-out).
   if (params.runExtraction !== false) {
+    await setIngestStage(source.id, "claims");
     await extractClaimsForSource(source.id, evidenceChunks);
   }
 
   if (process.env.BIOPROSPECTING_AUTO_EXTRACT === "true") {
+    await setIngestStage(source.id, "facts");
     const { extractBioprospectingFactsForSource } =
       await import("./bioprospectingExtractor");
     await extractBioprospectingFactsForSource(source.id, evidenceChunks);
@@ -260,6 +266,9 @@ export async function registerDocumentAsResearchSource(params: {
   // OCR, no network. Failure is non-fatal — the source is still ingested and
   // the UI says, honestly, that it has not been checked.
   try {
+    // The one stage worth watching go by. It tells the user, without a word of
+    // marketing, that this system checks its own work.
+    await setIngestStage(source.id, "verifying");
     const { anchorEvidenceForSource } = await import("./anchorEvidence");
     await anchorEvidenceForSource(source.id);
   } catch (error) {
