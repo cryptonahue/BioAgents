@@ -71,7 +71,16 @@ export const NEEDLE_MAX_ALNUM = 140;
  * risk comes from trying two hundred of them.
  */
 export const MATCH_FLOOR_MAX = 60;
-export const MATCH_FLOOR_MIN = 14;
+/**
+ * The absolute minimum, used by callers that have SCOPED their search (to a
+ * page, or to a table they have already located) and therefore lean on the
+ * uniqueness check in `findAlnumMatchRuns` rather than on length.
+ *
+ * Ten characters names a table row ("Vancomycin") without naming a cell
+ * ("5"), which is exactly the line we want: long enough for a unique hit to
+ * MEAN something, short enough that a real row can anchor.
+ */
+export const MATCH_FLOOR_MIN = 10;
 // Calibrated so that log10(500_000) * SLOPE ≈ MATCH_FLOOR_MAX.
 const FLOOR_SLOPE = 10.5;
 
@@ -199,15 +208,36 @@ export function findAlnumMatchRuns(
   const maxLen = Math.min(NEEDLE_MAX_ALNUM, needleAlnum.length);
   if (maxLen < effectiveFloor) return null;
 
+  // UNIQUENESS IS THE REAL CRITERION; LENGTH WAS ONLY EVER A PROXY FOR IT.
+  //
+  // We demand length because we want the match to be unambiguous. But length
+  // is a guess at ambiguity, and a poor one in both directions: "Vancomycin"
+  // is ten characters and names exactly one row of a table, while "5" is
+  // short and appears forty times on the same page. So ask the question we
+  // actually care about — does this text appear EXACTLY ONCE here? — and the
+  // proxy stops mattering.
+  //
+  // Shortening a prefix can only ever find MORE places, never fewer. So once
+  // a prefix is ambiguous, every shorter one is too, and there is nothing
+  // left to try:
+  //
+  //     1 occurrence   -> that is where it is. Take it.
+  //     0 occurrences  -> not here at this length; try a shorter prefix.
+  //     2+ occurrences -> ambiguous, and shortening cannot help. Refuse.
+  //
+  // Refusing is not a failure. It is the honest answer, and the caller has a
+  // `text-only` badge to say it with.
   let matchIdx = -1;
   let matchedLen = 0;
   for (let len = maxLen; len >= effectiveFloor; len -= PREFIX_STEP) {
-    const idx = fullAlnum.indexOf(needleAlnum.slice(0, len));
-    if (idx !== -1) {
-      matchIdx = idx;
-      matchedLen = len;
-      break;
-    }
+    const candidate = needleAlnum.slice(0, len);
+    const first = fullAlnum.indexOf(candidate);
+    if (first === -1) continue; // not here — a shorter prefix may be
+    const second = fullAlnum.indexOf(candidate, first + 1);
+    if (second !== -1) return null; // ambiguous, and shortening only worsens it
+    matchIdx = first;
+    matchedLen = len;
+    break;
   }
   if (matchIdx === -1) return null;
 

@@ -82,9 +82,10 @@ describe("matchFloorFor", () => {
   });
 
   it("never drops below the minimum, however small the haystack", () => {
-    // Below this a "match" stops meaning anything at all.
-    expect(matchFloorFor(1)).toBe(MATCH_FLOOR_MIN);
-    expect(matchFloorFor(0)).toBe(MATCH_FLOOR_MIN);
+    // Below this a "match" stops meaning anything at all — a unique hit on
+    // three characters tells you nothing you can act on.
+    expect(matchFloorFor(1)).toBeGreaterThanOrEqual(MATCH_FLOOR_MIN);
+    expect(matchFloorFor(0)).toBeGreaterThanOrEqual(MATCH_FLOOR_MIN);
   });
 
   it("is monotonic — more text searched is never a weaker demand", () => {
@@ -96,34 +97,79 @@ describe("matchFloorFor", () => {
   });
 });
 
-describe("findAlnumMatchRuns with a scoped floor", () => {
-  // A real table row: short, and exactly what we want to highlight.
-  const ROW = "Candidate 3 S. enterica 5 mg/mL 10 mg/mL";
-  const runs = [
-    { str: "Candidate 3" },
-    { str: "S. enterica" },
-    { str: "5 mg/mL" },
-    { str: "10 mg/mL" },
+/**
+ * UNIQUENESS IS THE REAL CRITERION; LENGTH WAS ONLY EVER A PROXY.
+ *
+ * We demand length because we want the match to be unambiguous — but length
+ * guesses at ambiguity, and guesses wrong in both directions. "Vancomycin"
+ * is ten characters and names exactly one row of a table. "5" is short and
+ * appears forty times on the same page. Asking the question we actually care
+ * about — does this text appear EXACTLY ONCE here? — makes the proxy stop
+ * mattering.
+ *
+ * These runs are a REAL table from the corpus (Table 1, page 6), in the order
+ * PDF.js reports them: row by row, cell by cell. A row's text is therefore
+ * contiguous in the stream, which is the whole reason a row can be anchored
+ * at all.
+ */
+describe("uniqueness, on a real table's runs", () => {
+  const tableRuns = [
+    { str: "Antimicrobials" }, { str: "Cut-Off Value *" },
+    { str: "Candidate 1" }, { str: "Candidate 2" }, { str: "Candidate 3" },
+    { str: "Vancomycin" }, { str: "4" }, { str: "0.125" }, { str: "0.125" }, { str: "0.25" },
+    { str: "Gentamicin" }, { str: "4" }, { str: "0.0078" }, { str: "0.0125" }, { str: "0.0625" },
+    { str: "Kanamycin" }, { str: "8" }, { str: "0.01563" }, { str: "1" }, { str: "0.5" },
   ];
+  const scoped = MATCH_FLOOR_MIN;
 
-  it("REFUSES the row at document scale", () => {
-    const floor = matchFloorFor(500_000);
-    expect(buildNeedle(ROW, floor)).toBe("");
+  it("anchors a row by its label — unique, though only ten characters", () => {
+    const match = findAlnumMatchRuns(
+      tableRuns,
+      buildNeedle("Vancomycin", scoped),
+      scoped,
+    );
+    expect(match).not.toBeNull();
+    expect(tableRuns[match!.startRun].str).toBe("Vancomycin");
   });
 
-  it("ANCHORS the same row inside a located table", () => {
-    // The haystack is now the table's own text, not the whole book.
-    const haystack = runs.reduce(
-      (n, r) => n + normalizeToAlnum(r.str).length,
-      0,
+  it("anchors a whole row, whose cells are contiguous in the stream", () => {
+    const row = "Vancomycin 4 0.125 0.125 0.25";
+    const match = findAlnumMatchRuns(
+      tableRuns,
+      buildNeedle(row, scoped),
+      scoped,
     );
-    const floor = matchFloorFor(haystack);
-    const needle = buildNeedle(ROW, floor);
-    expect(needle).not.toBe("");
-
-    const match = findAlnumMatchRuns(runs, needle, floor);
     expect(match).not.toBeNull();
-    expect(match!.startRun).toBe(0);
+    expect(tableRuns[match!.startRun].str).toBe("Vancomycin");
+    // It spans the row's cells, not just the label.
+    expect(match!.endRun).toBeGreaterThan(match!.startRun);
+  });
+
+  // "4" appears in the Vancomycin row AND the Gentamicin row. A length floor
+  // would have let it through if it were long enough; uniqueness will not,
+  // because it cannot tell you WHICH four you meant.
+  it("REFUSES an ambiguous cell, however the floor is set", () => {
+    // Bypass buildNeedle's floor to prove the matcher itself refuses.
+    expect(findAlnumMatchRuns(tableRuns, "4", 1)).toBeNull();
+    expect(findAlnumMatchRuns(tableRuns, "0125", 1)).toBeNull(); // 0.125 twice
+  });
+
+  it("still refuses text that is not there at all", () => {
+    expect(
+      findAlnumMatchRuns(tableRuns, buildNeedle("Ciprofloxacin", scoped), scoped),
+    ).toBeNull();
+  });
+});
+
+describe("scale still governs what a caller may even attempt", () => {
+  const ROW = "Candidate 3 S. enterica 5 mg/mL 10 mg/mL";
+
+  it("REFUSES the row at document scale — it is too short to trust there", () => {
+    expect(buildNeedle(ROW, matchFloorFor(500_000))).toBe("");
+  });
+
+  it("ACCEPTS it once the search is scoped to a located table", () => {
+    expect(buildNeedle(ROW, MATCH_FLOOR_MIN)).not.toBe("");
   });
 });
 
