@@ -818,6 +818,16 @@ export function LibraryPage({ coralGptMode = false }: LibraryPageProps) {
           </>
         )}
       </main>
+      {/* Mounted in LibraryPage — where the button and its state live. It was
+          briefly mounted inside PaperCard, which compiled and typechecked and
+          could never have worked: the card is rendered per paper and knows
+          nothing about the dialog's state. A build passing is not the same as a
+          thing working. */}
+      <UploadPaperDialog
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onIngested={() => afterMutation()}
+      />
     </div>
   );
 }
@@ -945,11 +955,6 @@ function PaperCard({
           onError={onError}
         />
       </footer>
-      <UploadPaperDialog
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        onIngested={() => afterMutation()}
-      />
     </div>
   );
 }
