@@ -744,3 +744,44 @@
   flex-wrap: wrap;
   margin: 4px 0 10px;
 }
+
+/* The claim card stacks: status + verdict, then the claim, then the quote.
+   The button inherits Basecoat's `.btn`, which is a ROW flex — so the quote
+   landed BESIDE the claim and overflowed off the card, clipped. A citation
+   you cannot finish reading is not a citation. */
+.viewer-page__claim-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  height: auto;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.viewer-page__claim-btn .claim-text {
+  display: block;
+  width: 100%;
+  line-height: 1.5;
+}
+.viewer-page__claim-btn .evidence-quote {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+.viewer-page__claim-btn .evidence-trust-note {
+  width: 100%;
+  box-sizing: border-box;
+}
+/* A citation we could not verify is not clickable — but it must stay
+   READABLE. A disabled control that fades its own warning to grey is telling
+   the user the thing they most need to read is the thing that matters least. */
+.viewer-page__claim-btn:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.viewer-page__claim-btn:disabled .claim-text {
+  opacity: 0.65;
+}
