@@ -29,6 +29,7 @@ import {
   type IngestStage,
 } from "./ingestStage";
 import { getServiceClient } from "../../db/client";
+import { upsertResearchSource } from "./db";
 
 export interface IngestStarted {
   sourceId: string | null;
@@ -61,33 +62,34 @@ export async function runIngestPipeline(
   originalName: string,
 ): Promise<IngestStarted> {
   const title = path.basename(originalName);
-  const sb = getServiceClient();
 
-  // Create (or find) the source row up front. `upsertResearchSource` runs
-  // inside the pipeline too, and is idempotent on title.
-  const { data: existing } = await sb
-    .from("research_sources")
-    .select("id")
-    .eq("title", title)
-    .maybeSingle();
+  // Create (or find) the source row up front, so the caller always has
+  // something to poll. An upload that returns an id which does not exist yet is
+  // an upload the user cannot follow.
+  //
+  // Use `upsertResearchSource` — the function that already knows this table.
+  // Hand-rolling the INSERT here missed `source_kind`, a NOT NULL column, and
+  // every upload failed. Writing a second, worse copy of something the codebase
+  // already does correctly is the same mistake that left the PDF loader blind
+  // to the local disk in two places at once.
+  //
+  // It is idempotent on title, and the pipeline calls it again with the parsed
+  // metadata (DOI, content hash) once the PDF has actually been read.
+  const source = await upsertResearchSource({
+    sourceKind: "paper",
+    trustTier: "internal",
+    title,
+    filePath,
+    extractionStatus: "pending_extraction",
+  });
+  const sourceId: string = source.id;
 
-  let sourceId: string | null = existing?.id ?? null;
-  if (!sourceId) {
-    const { data, error } = await sb
-      .from("research_sources")
-      .insert({ title, file_path: filePath, extraction_status: "pending_extraction" })
-      .select("id")
-      .single();
-    if (error) throw error;
-    sourceId = (data as any).id;
-  }
-
-  await setIngestStage(sourceId!, "queued", title);
+  await setIngestStage(sourceId, "queued", title);
 
   // Deliberately NOT awaited. The response goes out now; the work continues.
-  void ingest(sourceId!, filePath, title).catch(async (error) => {
+  void ingest(sourceId, filePath, title).catch(async (error) => {
     logger.error({ err: error, sourceId, filePath }, "ingest_pipeline_failed");
-    await setIngestFailed(sourceId!, error);
+    await setIngestFailed(sourceId, error);
   });
 
   return { sourceId, title };
