@@ -227,6 +227,23 @@ export type EvidencePackPassage = {
   content: string;
   /** Cosine similarity from the vector search — how well it answers the query. */
   similarity?: number | null;
+
+  /*
+    WHERE THIS PASSAGE IS, AND A LINK THAT PROVES IT.
+
+    A citation that points at doi.org is a promise. A citation that opens OUR
+    copy of the PDF, on the right page, with the sentence boxed, is the thing
+    itself — and it is the only kind this system can stand behind, because it is
+    the only kind it can check.
+
+    We anchor the passage against the PDF the same way we anchor a claim: find
+    its text in the layer, read off the box. If it does not anchor, `citation`
+    is null and the model is told to cite the DOI instead. We never fabricate a
+    location we did not verify.
+  */
+  page?: number | null;
+  /** Internal deep link: opens the viewer at the page with the box drawn. */
+  citation?: string | null;
 };
 
 export type EvidencePack = {

@@ -1,4 +1,5 @@
 import logger from "../../utils/logger";
+import { getServiceClient } from "../../db/client";
 import type {
   BioprospectingFactSearchParams,
   BioprospectingReviewStatus,
@@ -315,7 +316,73 @@ export async function researchBrainSearch(params: {
       sourceTitle: d.title ?? null,
       content: String(d.content ?? "").slice(0, 1200),
       similarity: d.relevanceScore ?? d.similarity ?? null,
+      page: d.metadata?.page ?? null,
+      citation: null,
     }));
+
+    /*
+      ANCHOR EACH PASSAGE, AND HAND THE MODEL A LINK IT CAN STAND BEHIND.
+
+      A citation to doi.org is a promise: "trust me, it's in there." A citation
+      that opens OUR copy of the PDF, on the right page, with the sentence boxed,
+      is the thing itself — and it is the only kind this system can stand behind,
+      because it is the only kind it can CHECK.
+
+      So we locate each passage in the PDF exactly as we locate a claim: find its
+      text in the layer, read off the box. The result is a deep link the viewer
+      already knows how to restore (#bbox=…&page=…&type=chunk), which lands the
+      reader on the sentence with the verdict beside it.
+
+      If a passage does not anchor, its `citation` stays null and the model is
+      told to cite the DOI instead. We do not invent a location we could not
+      verify — the whole apparatus exists to stop exactly that.
+
+      The PDF is parsed ONCE per source, not once per passage: PDF.js detaches
+      the buffer it is handed, so a per-passage call would anchor the first and
+      throw on the rest. Best-effort throughout — a paper we cannot open still
+      contributes its text, just without a box.
+    */
+    const bySource = new Map<string, typeof passages>();
+    for (const p of passages) {
+      if (!p.sourceId) continue;
+      const list = bySource.get(p.sourceId) ?? [];
+      list.push(p);
+      bySource.set(p.sourceId, list);
+    }
+
+    for (const [sourceId, group] of bySource) {
+      try {
+        const { data: src } = await getServiceClient()
+          .from("research_sources")
+          .select("id,title,file_path")
+          .eq("id", sourceId)
+          .maybeSingle();
+        if (!src?.file_path) continue;
+
+        const { loadSourcePdf } = await import("../pdf/loadSourcePdf");
+        const pdf = await loadSourcePdf(src as any);
+        if (!pdf) continue;
+
+        const { indexPdfText, anchorInIndex } = await import(
+          "../pdf/textAnchor"
+        );
+        const index = await indexPdfText(pdf);
+        const docId = Buffer.from(String(src.title ?? "")).toString("base64");
+
+        for (const p of group) {
+          const hit = anchorInIndex(index, p.content);
+          if (!hit) continue;
+          const { x, y, w, h } = hit.bbox;
+          p.page = hit.page;
+          p.citation = `/library/${docId}/viewer#bbox=${x},${y},${w},${h}&page=${hit.page}&type=chunk`;
+        }
+      } catch (error) {
+        logger.warn(
+          { err: error, sourceId },
+          "evidence_pack_passage_anchor_failed",
+        );
+      }
+    }
   } catch (error) {
     logger.warn({ err: error }, "evidence_pack_passage_search_failed");
   }
@@ -421,11 +488,22 @@ export function formatEvidencePackForPrompt(pack: EvidencePack): string {
     lines.push(
       `Passages from the loaded papers (${pack.passages.length}) — the source text itself, quote from these:`,
     );
+    lines.push(
+      "CITE THESE WITH THEIR INTERNAL LINK, NOT THE DOI. A doi.org link is a promise — 'trust me, it is in there'. An internal link opens OUR copy of the PDF, on the page, with the sentence boxed and a verdict beside it, and it is the only citation this system can stand behind, because it is the only one it can CHECK. Format: [cited text]{<link>}. A passage with no link did not anchor: cite its DOI and say the location could not be verified. Never invent a link.",
+    );
     pack.passages.forEach((p, i) => {
       const sim =
         p.similarity != null ? ` (relevance ${p.similarity.toFixed(2)})` : "";
-      lines.push(`[passage ${i + 1}] ${p.sourceTitle ?? "unknown source"}${sim}`);
+      const where = p.page != null ? `, p.${p.page}` : "";
+      lines.push(
+        `[passage ${i + 1}] ${p.sourceTitle ?? "unknown source"}${where}${sim}`,
+      );
       lines.push(`"${p.content.replace(/\s+/g, " ").trim()}"`);
+      lines.push(
+        p.citation
+          ? `link: ${p.citation}`
+          : "link: none (this passage could not be located in the PDF — cite the DOI and say so)",
+      );
     });
   }
 
