@@ -47,12 +47,16 @@ import {
   type PdfDocumentProxy,
   type PdfPageProxy,
 } from "../lib/pdfjs";
+// The MATCH lives in one place, shared with the server-side anchor
+// (src/services/pdf/textAnchor.ts). Only the geometry below is
+// client-specific — this side works in canvas pixels, the server in PDF
+// points, and pretending those are the same space is how the y-axis got
+// flipped once already.
+import {
+  buildNeedle,
+  findAlnumMatchRuns,
+} from "../../../shared/textAnchor";
 
-// How many alphanumeric characters of the quote we match on, and the
-// minimum contiguous match we accept. The floor is what kills
-// spurious matches: a 60-char verbatim alphanumeric span is unique.
-const NEEDLE_MAX_ALNUM = 140;
-const MATCH_FLOOR_ALNUM = 60;
 // A short raw snippet echoed back for debug visibility.
 const SNIPPET_CHARS = 80;
 
@@ -87,83 +91,6 @@ export interface TextRun {
   width: number;      // canvas px
 }
 
-/**
- * Reduce text to a lowercase alphanumeric-only stream. Strips
- * whitespace, punctuation, hyphens and case so the PDF text layer
- * and the stored quote compare on letters/digits alone.
- */
-export function normalizeToAlnum(text: string): string {
-  let out = "";
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code >= 65 && code <= 90) {
-      out += String.fromCharCode(code + 32); // A-Z → a-z
-    } else if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) {
-      out += text[i]; // a-z, 0-9
-    }
-    // everything else (space, punctuation, hyphen, ligature glyphs) dropped
-  }
-  return out;
-}
-
-/**
- * Locate `needleAlnum` (already alphanumeric-normalized) inside a
- * list of runs and return the inclusive run-index range the match
- * spans, or null on a miss. Pure over `runs[i].str` — unit-tested
- * with synthetic runs, no PDF required.
- *
- * The longest prefix that still matches wins, down to the floor;
- * this tolerates a quote whose tail diverges from the page text
- * while still requiring a long, unambiguous anchor.
- */
-export function findAlnumMatchRuns(
-  runs: Array<{ str: string }>,
-  needleAlnum: string,
-): { startRun: number; endRun: number } | null {
-  if (!needleAlnum) return null;
-
-  // Alphanumeric stream over all runs + a map from each stream
-  // index back to the run it came from.
-  let fullAlnum = "";
-  const alnumToRun: number[] = [];
-  for (let i = 0; i < runs.length; i++) {
-    const s = runs[i].str;
-    for (let k = 0; k < s.length; k++) {
-      const code = s.charCodeAt(k);
-      let ch = "";
-      if (code >= 65 && code <= 90) ch = String.fromCharCode(code + 32);
-      else if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57))
-        ch = s[k];
-      if (ch) {
-        fullAlnum += ch;
-        alnumToRun.push(i);
-      }
-    }
-  }
-  if (!fullAlnum) return null;
-
-  const floor = Math.min(MATCH_FLOOR_ALNUM, needleAlnum.length);
-  const maxLen = Math.min(NEEDLE_MAX_ALNUM, needleAlnum.length);
-  if (maxLen < floor) return null;
-
-  let matchIdx = -1;
-  let matchedLen = 0;
-  for (let len = maxLen; len >= floor; len -= 8) {
-    const idx = fullAlnum.indexOf(needleAlnum.slice(0, len));
-    if (idx !== -1) {
-      matchIdx = idx;
-      matchedLen = len;
-      break;
-    }
-  }
-  if (matchIdx === -1) return null;
-
-  const startRun = alnumToRun[matchIdx];
-  const endRun =
-    alnumToRun[Math.min(matchIdx + matchedLen - 1, alnumToRun.length - 1)];
-  if (startRun == null || endRun == null) return null;
-  return { startRun, endRun };
-}
 
 /**
  * Union the bboxes of runs [startRun, endRun] and convert to the
@@ -285,14 +212,10 @@ export function useTextChunkSearch({
         return;
       }
       const snippet = chunkContent.slice(0, SNIPPET_CHARS).trim();
-      // Match on up to NEEDLE_MAX_ALNUM alphanumeric chars of the
-      // quote (draw from a generous raw prefix so punctuation/spaces
-      // don't starve the needle).
-      const needleAlnum = normalizeToAlnum(
-        chunkContent.slice(0, NEEDLE_MAX_ALNUM * 3),
-      ).slice(0, NEEDLE_MAX_ALNUM);
-      if (needleAlnum.length < MATCH_FLOOR_ALNUM) {
-        // Too little text to anchor a confident match.
+      // `buildNeedle` enforces the 60-char floor and returns "" when the
+      // text is too short to anchor confidently. Refuse rather than guess.
+      const needleAlnum = buildNeedle(chunkContent);
+      if (!needleAlnum) {
         if (!cancelled) setResult({ bbox: null, snippet });
         return;
       }

@@ -1,68 +1,16 @@
 import { describe, it, expect } from "bun:test";
 
-import {
-  normalizeToAlnum,
-  findAlnumMatchRuns,
-  bboxFromRunRange,
-  type TextRun,
-} from "./useTextChunkSearch";
+import { bboxFromRunRange, type TextRun } from "./useTextChunkSearch";
 import { PDFJS_RENDER_SCALE } from "../lib/bbox";
 
-describe("normalizeToAlnum", () => {
-  it("lowercases and drops whitespace/punctuation/hyphens", () => {
-    expect(normalizeToAlnum("The health of individual organisms")).toBe(
-      "thehealthofindividualorganisms",
-    );
-    expect(normalizeToAlnum("host's resilience — and, resistance!")).toBe(
-      "hostsresilienceandresistance",
-    );
-  });
-});
-
-// A run only needs `str` for the match; geometry is irrelevant here.
-const r = (str: string): { str: string } => ({ str });
-
-describe("findAlnumMatchRuns", () => {
-  const NEEDLE =
-    // ~a real quote, > 60 alphanumeric chars
-    "Microorganisms, as catalysts of all biogeochemical cycles on our planet, are the very origin and essence of life on Earth";
-
-  it("matches a quote split across runs, tolerating line-break hyphenation", () => {
-    const runs = [
-      r("Preface"),
-      r("Microorganisms, as catalysts of all biogeo-"),
-      r("chemical cycles on our planet, are the very origin"),
-      r("and essence of life on Earth. The health of ..."),
-    ];
-    const match = findAlnumMatchRuns(runs, normalizeToAlnum(NEEDLE));
-    expect(match).not.toBeNull();
-    // Anchor starts in run 1 (the "Microorganisms…" run).
-    expect(match!.startRun).toBe(1);
-    // And spans into the hyphen-broken continuation.
-    expect(match!.endRun).toBeGreaterThanOrEqual(2);
-  });
-
-  it("does NOT match on a short spurious prefix (60-char floor)", () => {
-    // The page shares only the first few words, then diverges.
-    const runs = [r("Microorganisms, as catalysts of PLANKTON blooms in reef lagoons")];
-    const match = findAlnumMatchRuns(runs, normalizeToAlnum(NEEDLE));
-    expect(match).toBeNull();
-  });
-
-  it("returns null when the quote is absent", () => {
-    const runs = [r("Completely unrelated methods section about HPLC gradients and columns")];
-    const match = findAlnumMatchRuns(runs, normalizeToAlnum(NEEDLE));
-    expect(match).toBeNull();
-  });
-
-  it("returns null for an empty needle or empty page", () => {
-    expect(findAlnumMatchRuns([r("anything")], "")).toBeNull();
-    expect(findAlnumMatchRuns([], normalizeToAlnum(NEEDLE))).toBeNull();
-  });
-});
-
+/**
+ * The MATCHING logic now lives in `shared/textAnchor.ts` and is tested
+ * there — once, for both the client and the server-side anchor. What
+ * remains client-specific, and what this file guards, is the GEOMETRY:
+ * turning canvas-pixel runs into the bbox the overlay renders.
+ */
 describe("bboxFromRunRange", () => {
-  // Two runs side by side on the same line, 200px from the canvas top.
+  // Two runs side by side on the same line, 200px down the canvas.
   const runs: TextRun[] = [
     { str: "a", x: 100, yTopCanvas: 200, fontHeight: 20, width: 50 },
     { str: "b", x: 160, yTopCanvas: 200, fontHeight: 20, width: 40 },
@@ -73,23 +21,22 @@ describe("bboxFromRunRange", () => {
     expect(bbox).not.toBeNull();
     expect(bbox!.page).toBe(3);
     expect(bbox!.units).toBe("pt");
-    // Left edge = min x, in points.
     expect(bbox!.x).toBeCloseTo(100 / PDFJS_RENDER_SCALE);
-    // Width spans both runs: from x=100 to x=160+40=200.
+    // Spans both runs: x=100 through x=160+40=200.
     expect(bbox!.w).toBeCloseTo(100 / PDFJS_RENDER_SCALE);
-    // Height is the run's font height.
     expect(bbox!.h).toBeCloseTo(20 / PDFJS_RENDER_SCALE);
   });
 
-  // Regression guard: `bboxToPixels` renders `top = y * scale`, so `y`
-  // MUST be the distance from the TOP of the page. A bottom-left origin
-  // (the old `pageHeight - y` flip) drew every highlight mirrored.
+  // THE REGRESSION THAT SHIPPED. `bboxToPixels` renders `top = y * scale`,
+  // so `y` MUST be the distance from the TOP of the page. An earlier
+  // version flipped it through the page height (a bottom-left origin) and
+  // drew every text highlight mirrored — a couple of lines off for
+  // mid-page text, and far out over blank space near an edge.
   it("measures y downward from the page top, never flipped", () => {
     const bbox = bboxFromRunRange(runs, 0, 1, 3);
-    // Top edge of the topmost run (yTopCanvas=200), in points.
     expect(bbox!.y).toBeCloseTo(200 / PDFJS_RENDER_SCALE);
-    // Round-tripping through the overlay must land back on the canvas
-    // row the run actually occupies.
+    // Round-tripping through the overlay must land back on the canvas row
+    // the run actually occupies.
     expect(bbox!.y * PDFJS_RENDER_SCALE).toBeCloseTo(200);
   });
 
@@ -103,7 +50,7 @@ describe("bboxFromRunRange", () => {
     expect(bbox!.y).toBeLessThan(20);
   });
 
-  it("rejects degenerate geometry", () => {
+  it("rejects degenerate geometry rather than drawing a zero-size box", () => {
     const degenerate: TextRun[] = [
       { str: "a", x: 100, yTopCanvas: 200, fontHeight: 0, width: 0 },
     ];
