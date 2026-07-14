@@ -2190,9 +2190,19 @@ export async function searchClaims(params: {
   // level but our search loop below uses both raw + stripped forms).
   const queryHasDiacritics = /[áéíóúàèìòùäëïöüâêîôûñç]/i.test(query);
 
+  // NEVER CITE OURSELVES — this is the PRIMARY query, and it must obey the
+  // same rule as `selectClaims()`. It ran without the artifact filter, and
+  // because it fills `claimMap` to `limit` FIRST, the filtered loop below
+  // starts with `if (claimMap.size >= limit) break;` and never runs. The
+  // back door was locked and the front door left open: Deep Research memories
+  // came straight back in through this builder and were shown as evidence.
+  // `!inner` makes the embedded source a real join so `.neq` actually filters.
   let builder = supabase
     .from("research_claims")
-    .select("*, source:research_sources(*), chunk:research_evidence_chunks(*)")
+    .select(
+      "*, source:research_sources!inner(*), chunk:research_evidence_chunks(*)",
+    )
+    .neq("source.source_kind", "artifact")
     .limit(limit);
 
   if (params.trustTier && params.trustTier !== "all") {
@@ -2217,8 +2227,9 @@ export async function searchClaims(params: {
     const fallback = await supabase
       .from("research_claims")
       .select(
-        "*, source:research_sources(*), chunk:research_evidence_chunks(*)",
+        "*, source:research_sources!inner(*), chunk:research_evidence_chunks(*)",
       )
+      .neq("source.source_kind", "artifact")
       .ilike("claim", `%${query}%`)
       .limit(limit);
     if (fallback.error) throw fallback.error;

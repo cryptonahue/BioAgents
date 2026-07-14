@@ -342,20 +342,30 @@ export async function researchBrainSearch(params: {
       throw on the rest. Best-effort throughout — a paper we cannot open still
       contributes its text, just without a box.
     */
-    const bySource = new Map<string, typeof passages>();
+    // KEY BY TITLE, NOT sourceId.
+    //
+    // The vector store's `documents` metadata never carries a sourceId — the
+    // research_sources row is created AFTER the chunks are inserted, and it is
+    // keyed by title. So `d.metadata?.sourceId` was always undefined, this loop
+    // skipped EVERY passage, no passage ever anchored, and every citation fell
+    // back to the DOI. The whole "cite the link we can open" feature was dead on
+    // arrival for exactly this reason. The passage already carries `sourceTitle`
+    // (= the document title), which is the real join key to research_sources.
+    const byTitle = new Map<string, typeof passages>();
     for (const p of passages) {
-      if (!p.sourceId) continue;
-      const list = bySource.get(p.sourceId) ?? [];
+      if (!p.sourceTitle) continue;
+      const list = byTitle.get(p.sourceTitle) ?? [];
       list.push(p);
-      bySource.set(p.sourceId, list);
+      byTitle.set(p.sourceTitle, list);
     }
 
-    for (const [sourceId, group] of bySource) {
+    let anchored = 0;
+    for (const [title, group] of byTitle) {
       try {
         const { data: src } = await getServiceClient()
           .from("research_sources")
           .select("id,title,file_path")
-          .eq("id", sourceId)
+          .eq("title", title)
           .maybeSingle();
         if (!src?.file_path) continue;
 
@@ -375,14 +385,22 @@ export async function researchBrainSearch(params: {
           const { x, y, w, h } = hit.bbox;
           p.page = hit.page;
           p.citation = `/library/${docId}/viewer#bbox=${x},${y},${w},${h}&page=${hit.page}&type=chunk`;
+          anchored++;
         }
       } catch (error) {
         logger.warn(
-          { err: error, sourceId },
+          { err: error, title },
           "evidence_pack_passage_anchor_failed",
         );
       }
     }
+    // Say it out loud. A citation that silently degrades to a DOI reads exactly
+    // like one that anchored — this line is how we tell the two apart in the
+    // logs instead of guessing.
+    logger.info(
+      { total: passages.length, anchored },
+      "evidence_pack_passages_anchored",
+    );
   } catch (error) {
     logger.warn({ err: error }, "evidence_pack_passage_search_failed");
   }
