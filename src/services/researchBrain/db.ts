@@ -1604,11 +1604,15 @@ export async function searchBioprospectingFacts(
   };
 
   const selectFacts = () => {
+    // Same rule as searchClaims: never cite an artifact. A Deep Research memory
+    // has no PDF, so it can never be anchored, so nothing we built can check
+    // whether its quotes are real. Evidence we cannot verify is not evidence.
     let request = supabase
       .from("research_bioprospecting_facts")
       .select(
-        "*, source:research_sources(*), chunk:research_evidence_chunks(*)",
-      );
+        "*, source:research_sources!inner(*), chunk:research_evidence_chunks(*)",
+      )
+      .neq("source.source_kind", "artifact");
     request = applyBioprospectingSourceFilter(
       request,
       params,
@@ -2086,12 +2090,41 @@ export async function searchClaims(params: {
     for (const claim of claims) claimMap.set(claim.id, claim);
   };
 
+  /*
+    EVIDENCE MUST BE VERIFIABLE. WE DO NOT CITE OURSELVES.
+
+    The Research Brain stores two very different things in one table. There are
+    PAPERS — real literature, with a PDF we can open and check every quote
+    against. And there are ARTIFACTS: the system's own Deep Research memories,
+    written by an LLM, with no file_path, no DOI, and nothing behind them.
+
+    On this deployment that is 61 artifacts against 17 papers. Seventy-eight
+    percent of the "evidence store" is the system's own prior output.
+
+    Unfiltered, the chat retrieved those memories and cited them to the user as
+    literature. A researcher asked about sea urchin microbiomes; the real paper
+    was sitting in the library, PDF and all — and the assistant answered by
+    quoting its own earlier summary OF that paper, as though it were a source.
+
+    That is a citation ouroboros: the system quoting itself and calling it
+    evidence. And it is unfalsifiable by construction — an artifact has no PDF,
+    so it can never be anchored, and the entire verification apparatus we built
+    (the quote anchoring, the verbatim / approximate / not-found verdicts) is
+    blind to it. A fabricated quote inside a memory would sail through forever.
+
+    So the rule, which falls straight out of that work:
+
+        If we cannot verify it, we cannot cite it.
+
+    `!inner` makes the embedded source a real join, so the filter applies.
+  */
   const selectClaims = () =>
     supabase
       .from("research_claims")
       .select(
-        "*, source:research_sources(*), chunk:research_evidence_chunks(*)",
-      );
+        "*, source:research_sources!inner(*), chunk:research_evidence_chunks(*)",
+      )
+      .neq("source.source_kind", "artifact");
 
   const applyTrustTier = <T extends ReturnType<typeof selectClaims>>(
     builder: T,
