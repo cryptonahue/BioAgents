@@ -27,11 +27,26 @@ import { loadSourcePdf } from "../pdf/loadSourcePdf";
 import { anchorInIndex, indexPdfText } from "../pdf/textAnchor";
 import logger from "../../utils/logger";
 
+/**
+ * `anchored` — the quote was found in the PDF and has a box.
+ * `verbatim` — it was found IN FULL, character for character.
+ *
+ * The gap between them is the number that matters. The extractor is told to
+ * return a verbatim snippet; when `verbatim < anchored`, it is paraphrasing,
+ * and when a quote does not anchor at all it may simply have been invented —
+ * as one on this corpus was. Nothing else in the system can see that.
+ */
+export interface AnchorStats {
+  total: number;
+  anchored: number;
+  verbatim: number;
+}
+
 export interface AnchorEvidenceResult {
   sourceId: string;
   status: "anchored" | "no_pdf" | "nothing_to_anchor" | "failed";
-  claims: { total: number; anchored: number };
-  facts: { total: number; anchored: number };
+  claims: AnchorStats;
+  facts: AnchorStats;
   error?: string;
 }
 
@@ -51,7 +66,7 @@ interface Quoted {
 export async function anchorEvidenceForSource(
   sourceId: string,
 ): Promise<AnchorEvidenceResult> {
-  const empty = { total: 0, anchored: 0 };
+  const empty: AnchorStats = { total: 0, anchored: 0, verbatim: 0 };
   const sb = getServiceClient();
 
   try {
@@ -101,16 +116,20 @@ export async function anchorEvidenceForSource(
       return {
         sourceId,
         status: "no_pdf",
-        claims: { total: quotedClaims.length, anchored: 0 },
-        facts: { total: quotedFacts.length, anchored: 0 },
+        claims: { total: quotedClaims.length, anchored: 0, verbatim: 0 },
+        facts: { total: quotedFacts.length, anchored: 0, verbatim: 0 },
       };
     }
 
     // Parse once; match many.
     const index = await indexPdfText(pdf);
 
-    const anchorAll = async (table: string, rows: Quoted[]) => {
+    const anchorAll = async (
+      table: string,
+      rows: Quoted[],
+    ): Promise<AnchorStats> => {
       let anchored = 0;
+      let verbatim = 0;
       for (const row of rows) {
         const hit = row.quote ? anchorInIndex(index, row.quote) : null;
         // Write the miss too: NULL is the answer "we could not find this",
@@ -129,13 +148,18 @@ export async function anchorEvidenceForSource(
           );
           continue;
         }
-        if (hit) anchored++;
+        if (hit) {
+          anchored++;
+          // Found IN FULL, not merely found. The gap between these two counts
+          // is the extractor paraphrasing when it was told not to.
+          if (hit.matchedChars >= hit.needleChars) verbatim++;
+        }
       }
-      return anchored;
+      return { total: rows.length, anchored, verbatim };
     };
 
-    const claimsAnchored = await anchorAll("research_claims", quotedClaims);
-    const factsAnchored = await anchorAll(
+    const claimStats = await anchorAll("research_claims", quotedClaims);
+    const factStats = await anchorAll(
       "research_bioprospecting_facts",
       quotedFacts,
     );
@@ -143,8 +167,8 @@ export async function anchorEvidenceForSource(
     const result: AnchorEvidenceResult = {
       sourceId,
       status: "anchored",
-      claims: { total: quotedClaims.length, anchored: claimsAnchored },
-      facts: { total: quotedFacts.length, anchored: factsAnchored },
+      claims: claimStats,
+      facts: factStats,
     };
     logger.info(result, "anchor_evidence_completed");
     return result;

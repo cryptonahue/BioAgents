@@ -39,6 +39,38 @@ const QUOTE_P8 =
 const QUOTE_RESULTS =
   "A total of 67 sponge-derived bacterial isolates were cultivated under Bacillus favourable conditions";
 
+/**
+ * REAL QUOTES THAT THE FLOOR THREW AWAY.
+ *
+ * Anchoring this paper's 25 extracted facts left four unanchored. Three of
+ * them quote a strain ID — short, and appearing EXACTLY ONCE in the document.
+ * They could not have been more unambiguous, and the floor discarded all
+ * three before uniqueness was ever consulted, because 25 characters is less
+ * than the 48 a 14-page paper demanded.
+ *
+ * That is what a proxy costs you. These three are why the check is now the
+ * real question — does this appear exactly once? — and not a guess at it.
+ */
+const STRAIN_IDS = [
+  "BPR-16 (B. velezensis, CBS#148295)", // 25 alphanumeric chars
+  "BPR-20 (B. subtilis, CBS#144669)", // 23
+  "BPR-11 (Bacillus amyloliquefaciens, CBS#141692)", // 39
+];
+
+/**
+ * THE FOURTH ONE, AND THE MORE IMPORTANT FINDING.
+ *
+ * This sentence is NOT IN THE PAPER. The extractor is told to return "a short
+ * verbatim snippet", and it paraphrased instead — a fabricated citation,
+ * indistinguishable from a real one at every layer of the system until the
+ * text is looked for in the PDF and is not there.
+ *
+ * The anchor is therefore not only a locator. It is a hallucination detector,
+ * and this test is what stops us from ever "fixing" it into silence.
+ */
+const FABRICATED_QUOTE =
+  "Protease activity was determined by clear zones on milk agar";
+
 describe("indexPdfText + anchorInIndex (real paper)", () => {
   withPaper("finds the quote on the page the browser highlights (page 8)", async () => {
     const index = await indexPdfText(await loadPaper());
@@ -90,9 +122,37 @@ describe("indexPdfText + anchorInIndex (real paper)", () => {
 
   withPaper("refuses text too short to anchor, instead of guessing", async () => {
     const index = await indexPdfText(await loadPaper());
-    // Under the 60-char alphanumeric floor: this could match anywhere, so
-    // the honest answer is "I don't know where this is".
+    // "Bacillus" is the subject of the entire paper: it appears everywhere.
+    // Ambiguous, so the honest answer is "I don't know which one you mean".
     expect(anchorInIndex(index, "Bacillus")).toBeNull();
+  }, 60_000);
+
+  // The three the floor discarded. Each appears EXACTLY ONCE, on page 9.
+  withPaper("anchors a short strain ID that appears exactly once", async () => {
+    const index = await indexPdfText(await loadPaper());
+    for (const quote of STRAIN_IDS) {
+      const hit = anchorInIndex(index, quote);
+      expect(hit, `should anchor: ${quote}`).not.toBeNull();
+      expect(hit!.page).toBe(9);
+      expect(hit!.bbox.w).toBeGreaterThan(0);
+    }
+  }, 60_000);
+
+  // The extractor fabricated this sentence. It is not in the paper, and the
+  // anchor is the only layer of the system that can tell.
+  withPaper("REFUSES a quote the extractor invented", async () => {
+    const index = await indexPdfText(await loadPaper());
+    expect(anchorInIndex(index, FABRICATED_QUOTE)).toBeNull();
+  }, 60_000);
+
+  // Uniqueness must hold ACROSS the document, not per page. A quote appearing
+  // once on page 3 and once on page 7 is unique on each and ambiguous in the
+  // paper — and a page-by-page scan taking the first hit would anchor it to
+  // page 3, confidently and wrongly.
+  withPaper("refuses text that recurs on different pages", async () => {
+    const index = await indexPdfText(await loadPaper());
+    // The journal stamps this on every page.
+    expect(anchorInIndex(index, "Mar. Drugs 2026, 24, 137")).toBeNull();
   }, 60_000);
 
   withPaper("returns null for text that is simply not in the paper", async () => {

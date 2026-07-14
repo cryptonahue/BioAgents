@@ -40,8 +40,10 @@ import { loadPdfjsLegacy } from "../files/loaders/pdfjsLegacy";
 import {
   buildNeedle,
   findAlnumMatchRuns,
-  matchFloorFor,
   normalizeToAlnum,
+  MATCH_FLOOR_MIN,
+  NEEDLE_MAX_ALNUM,
+  PREFIX_STEP,
   type MatchableRun,
 } from "../../../shared/textAnchor";
 import logger from "../../utils/logger";
@@ -62,7 +64,39 @@ export interface AnchorBBox {
 export interface AnchorResult {
   page: number;
   bbox: AnchorBBox;
+  /**
+   * How much of the quote actually turned up in the PDF, and how much we
+   * were looking for. A verbatim quote matches in full; a paraphrased one
+   * matches only its opening words, if that.
+   *
+   * This is not bookkeeping — it is the difference between evidence and a
+   * fabrication, and nothing else in the system can tell them apart.
+   */
+  matchedChars: number;
+  needleChars: number;
 }
+
+/**
+ * The fraction of a quote that must turn up in the PDF for its box to mean
+ * anything.
+ *
+ * The extractor is told to return "a short verbatim snippet". On this corpus
+ * it mostly does — and once it did not, inventing "Protease activity was
+ * determined by clear zones on milk agar", a sentence that is not in the
+ * paper. Its opening words ARE, though, so a search that keeps shortening its
+ * prefix until something matches will happily anchor a fabricated citation to
+ * the two real words it starts with, and report success.
+ *
+ * A box drawn over 20% of a quote is not evidence for that quote. It is a
+ * highlight in roughly the right neighbourhood, dressed up as a citation —
+ * which is exactly the kind of confident wrongness that costs more trust than
+ * showing nothing at all.
+ *
+ * So demand that most of the quote be real. What survives is an anchor you can
+ * stand behind; what does not is a fabrication we now detect instead of
+ * decorate.
+ */
+const MIN_FIDELITY = 0.6;
 
 /**
  * One text run: the string (for the match) plus its geometry in the
@@ -81,10 +115,17 @@ export interface PdfTextIndex {
   /** Runs per page. `pages[0]` is page 1. */
   pages: PositionedRun[][];
   /**
-   * Alphanumeric character count per page. Precomputed because the match
-   * floor scales with the haystack, and the haystack is the SUM over the
-   * pages a search is about to cover — see `matchFloorFor`.
+   * The alphanumeric stream of each page, and the map from each position in
+   * it back to the run it came from.
+   *
+   * Precomputed because uniqueness is checked ACROSS THE DOCUMENT: to know
+   * that a quote appears exactly once we have to count it on every page, and
+   * rebuilding each page's stream per quote — for dozens of quotes — would
+   * turn a linear job into a quadratic one.
    */
+  pageAlnum: string[];
+  pageAlnumToRun: number[][];
+  /** Convenience: `pageAlnum[i].length`. */
   pageAlnumLength: number[];
 }
 
@@ -184,6 +225,8 @@ export async function indexPdfText(pdf: Uint8Array): Promise<PdfTextIndex> {
 
   try {
     const pages: PositionedRun[][] = [];
+    const pageAlnum: string[] = [];
+    const pageAlnumToRun: number[][] = [];
     const pageAlnumLength: number[] = [];
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
       const page = await doc.getPage(pageNum);
@@ -195,14 +238,30 @@ export async function indexPdfText(pdf: Uint8Array): Promise<PdfTextIndex> {
           pageHeightPt,
         );
         pages.push(runs);
-        pageAlnumLength.push(
-          runs.reduce((n, r) => n + normalizeToAlnum(r.str).length, 0),
-        );
+
+        // Alphanumeric stream + the map back to runs. Crossing run boundaries
+        // is what makes hyphenation and layout breaks invisible to the match.
+        let alnum = "";
+        const toRun: number[] = [];
+        for (let i = 0; i < runs.length; i++) {
+          const norm = normalizeToAlnum(runs[i].str);
+          alnum += norm;
+          for (let k = 0; k < norm.length; k++) toRun.push(i);
+        }
+        pageAlnum.push(alnum);
+        pageAlnumToRun.push(toRun);
+        pageAlnumLength.push(alnum.length);
       } finally {
         page.cleanup();
       }
     }
-    return { numPages: doc.numPages, pages, pageAlnumLength };
+    return {
+      numPages: doc.numPages,
+      pages,
+      pageAlnum,
+      pageAlnumToRun,
+      pageAlnumLength,
+    };
   } finally {
     try {
       await doc.destroy();
@@ -239,29 +298,74 @@ export function anchorInIndex(
     : 1;
   const last = options.page ? first : index.numPages;
 
-  // The floor scales with the HAYSTACK — the text this call is about to
-  // cover, summed over every page in scope. The match itself runs page by
-  // page, but the risk of a spurious hit comes from trying all of them, so
-  // scoping to one page earns a shorter (still safe) anchor. That is what
-  // lets a 30-character table row anchor inside a table we have already
-  // located, while the same row would rightly be refused document-wide.
-  let haystack = 0;
-  for (let p = first; p <= last; p++) haystack += index.pageAlnumLength[p - 1] ?? 0;
-  const floor = matchFloorFor(haystack);
-
-  const needle = buildNeedle(text, floor);
-  // Too little text to anchor confidently at this scale. Refuse, don't guess.
+  // UNIQUENESS IS CHECKED ACROSS THE WHOLE SCOPE, NOT PAGE BY PAGE.
+  //
+  // Page-local uniqueness is not uniqueness. A quote that appears once on
+  // page 3 and once on page 7 is unique on each and ambiguous in the
+  // document, and a page-by-page scan taking the first hit would anchor it
+  // to page 3 with total confidence and no idea it was wrong.
+  //
+  // Counting across the scope also lets the floor collapse. It only ever
+  // existed as a PROXY for uniqueness — and a bad one. Three real facts on
+  // this corpus quote strain IDs like "BPR-16 (B. velezensis, CBS#148295)":
+  // twenty-five characters, appearing EXACTLY ONCE in the paper, and the
+  // floor threw all three away before uniqueness was ever consulted. They
+  // could not have been more unambiguous. Once we can ask the real question,
+  // asking the proxy first is just a way of getting it wrong.
+  const needle = buildNeedle(text, MATCH_FLOOR_MIN);
+  // Below the minimum, a unique hit stops meaning anything. Refuse, don't
+  // guess.
   if (!needle) return null;
 
-  for (let pageNum = first; pageNum <= last; pageNum++) {
-    const runs = index.pages[pageNum - 1];
-    if (!runs || runs.length === 0) continue;
-    const match = findAlnumMatchRuns(runs, needle, floor);
-    if (!match) continue;
-    const bbox = bboxFromRuns(runs, match.startRun, match.endRun, pageNum);
+  const maxLen = Math.min(NEEDLE_MAX_ALNUM, needle.length);
+  for (let len = maxLen; len >= MATCH_FLOOR_MIN; len -= PREFIX_STEP) {
+    const candidate = needle.slice(0, len);
+
+    // Count every occurrence across every page in scope.
+    let hitPage = -1;
+    let hitIdx = -1;
+    let occurrences = 0;
+    for (let pageNum = first; pageNum <= last && occurrences < 2; pageNum++) {
+      const hay = index.pageAlnum[pageNum - 1];
+      if (!hay) continue;
+      let idx = hay.indexOf(candidate);
+      while (idx !== -1) {
+        occurrences++;
+        if (occurrences === 1) {
+          hitPage = pageNum;
+          hitIdx = idx;
+        } else break; // two is already too many
+        idx = hay.indexOf(candidate, idx + 1);
+      }
+    }
+
+    // Shortening can only ever find MORE places, never fewer. So once a
+    // prefix is ambiguous, every shorter one is too, and there is nothing
+    // left to try.
+    if (occurrences > 1) return null;
+    if (occurrences === 0) continue; // not here at this length; try shorter
+
+    // Found it — but is it really the QUOTE, or just the words the quote
+    // happens to start with? A fabricated sentence borrows its opening from
+    // the paper; only a verbatim one keeps going.
+    if (len < needle.length * MIN_FIDELITY) return null;
+
+    const runs = index.pages[hitPage - 1];
+    const toRun = index.pageAlnumToRun[hitPage - 1];
+    const startRun = toRun[hitIdx];
+    const endRun = toRun[Math.min(hitIdx + len - 1, toRun.length - 1)];
+    if (startRun == null || endRun == null) continue;
+
+    const bbox = bboxFromRuns(runs, startRun, endRun, hitPage);
     if (!bbox) continue;
-    return { page: pageNum, bbox };
+    return {
+      page: hitPage,
+      bbox,
+      matchedChars: len,
+      needleChars: needle.length,
+    };
   }
+
   return null;
 }
 

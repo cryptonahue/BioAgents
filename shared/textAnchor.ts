@@ -98,7 +98,8 @@ export function matchFloorFor(haystackAlnum: number): number {
 }
 
 /** Step down by this much when the longest prefix does not match. */
-const PREFIX_STEP = 8;
+/** Step down by this much when the longest prefix does not match. */
+export const PREFIX_STEP = 8;
 
 /**
  * Reduce text to a lowercase alphanumeric-only stream. Strips
