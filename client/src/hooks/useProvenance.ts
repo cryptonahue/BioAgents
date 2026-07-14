@@ -86,6 +86,14 @@ export interface ProvenanceResponse {
     table: ProvenanceTable | null;
     figure: ProvenanceFigure | null;
     chunk: ProvenanceChunk | null;
+    /**
+     * The fact's VERBATIM quote: the exact snippet it was extracted from.
+     * Prefer this over `chunk.content` when anchoring — a chunk is a block
+     * of many sentences, so anchoring on it highlights wherever the BLOCK
+     * begins, which is routinely not the sentence the user clicked.
+     * Null when the extractor produced no quote; fall back to the chunk.
+     */
+    quote?: string | null;
     bbox: BBox | null;
   };
 }

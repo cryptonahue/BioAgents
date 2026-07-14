@@ -106,11 +106,25 @@ export function EvidenceLightbox({
   // already has a stored bbox skip the search entirely (enabled
   // false), preserving the pre-change behavior.
   const provChunk = data?.provenance?.chunk ?? null;
-  const needsTextSearch = !data?.provenance?.bbox && !!provChunk?.content;
+  // Anchor on the fact's VERBATIM quote when we have one, and only fall
+  // back to the chunk's full text when we do not.
+  //
+  // A chunk is a block of many sentences. Anchoring on it highlights
+  // wherever that BLOCK starts — which is routinely a sentence with nothing
+  // to do with the fact the user clicked. The quote is the snippet the
+  // extractor actually pulled the fact out of, so it is what the user asked
+  // to see. (The whole pipeline already produced it; it simply never
+  // reached this component.)
+  const anchorText = data?.provenance?.quote || provChunk?.content || null;
+  const needsTextSearch = !data?.provenance?.bbox && !!anchorText;
   const chunkHighlight = useTextChunkHighlight({
     doc,
+    // Optional. When the chunk carries a page the search is scoped to it;
+    // when it does not (the common case today — chunk rows are not
+    // reliably page-stamped) the search scans every page for the quote,
+    // which the 60-character anchor floor makes unambiguous.
     page: provChunk?.page,
-    content: needsTextSearch ? provChunk?.content : null,
+    content: needsTextSearch ? anchorText : null,
     enabled: isOpen && !!doc && needsTextSearch,
   });
 

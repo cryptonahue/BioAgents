@@ -1567,6 +1567,18 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
               type: "chunk",
               table: null,
               figure: null,
+              // The fact's VERBATIM quote — the exact snippet the
+              // extractor pulled the fact out of. The whole extraction
+              // pipeline already produces it (the prompt demands "a short
+              // verbatim snippet from the chunk", the parser keeps it, the
+              // row stores it) and then it stopped here, never reaching the
+              // client, which anchored on `chunk.content` instead.
+              //
+              // A chunk is a block of many sentences. Anchoring on it
+              // highlights wherever the BLOCK starts — routinely a sentence
+              // that has nothing to do with the fact the user clicked. The
+              // quote is what the user actually asked to see.
+              quote: (fact as any).quote ?? null,
               chunk: {
                 id: fact.chunk.id,
                 page: fact.chunk.page,
