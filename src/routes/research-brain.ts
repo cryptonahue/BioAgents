@@ -7,6 +7,7 @@ import {
   backfillBioprospectingMeasurements,
   extractBioprospectingFactsForSource,
   extractClaimsForSource,
+  anchorEvidenceForSource,
   getBioprospectingFact,
   getBioprospectingFactsForSource,
   getCanonicalById,
@@ -498,6 +499,39 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
         set.status = 500;
         return {
           error: "Failed to extract source claims",
+          message: error?.message,
+        };
+      }
+    },
+    { beforeHandle: authResolver({ required: true }) },
+  )
+  /**
+   * Locate every quoted claim and fact of this source in the PDF and store
+   * where it is. Idempotent, and cheap: the PDF is parsed once and matched
+   * against many times, with no LLM and no OCR involved.
+   *
+   * The response is the first honest quality signal this system has. Not a
+   * confidence score that measures character density and reports 0.988 over
+   * a paper's title mislabelled as a table, but a fact about the document:
+   * of the things we claim to have extracted, how many actually turn up in
+   * the PDF? A miss stores NULL and the viewer says so. We do not invent
+   * boxes.
+   */
+  .post(
+    "/sources/:sourceId/anchor",
+    async ({ params, set }) => {
+      try {
+        const result = await anchorEvidenceForSource(params.sourceId);
+        if (result.status === "failed") set.status = 500;
+        return result;
+      } catch (error: any) {
+        logger.error(
+          { err: error, sourceId: params.sourceId },
+          "research_brain_anchor_failed",
+        );
+        set.status = 500;
+        return {
+          error: "Failed to anchor source evidence",
           message: error?.message,
         };
       }

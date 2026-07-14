@@ -1,4 +1,5 @@
 export * from "./bioprospectingExtractor";
+export * from "./anchorEvidence";
 export * from "./compoundAuthority";
 export * from "./costService";
 export * from "./discoveryPersistence";
