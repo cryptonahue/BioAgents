@@ -37,6 +37,7 @@ import { useTextChunkHighlight } from "../hooks/useTextChunkHighlight";
 import { BBox } from "../lib/bbox";
 import { ChainPager } from "./ChainPager";
 import { EvidenceViewer } from "./EvidenceViewer";
+import { TrustBadge, TrustNote, trustOf } from "./EvidenceTrust";
 
 interface EvidenceLightboxProps {
   factId: string | null;
@@ -252,6 +253,15 @@ export function EvidenceLightbox({
   if (!isOpen) return null;
 
   const { provenance, sourceTitle } = data ?? {};
+  const doi = data?.doi ?? null;
+  // What the user clicked, and what the paper actually says about it. The
+  // lightbox used to show neither: a UUID, a PDF, and the user left to work
+  // out the connection by reading.
+  const assertion = data?.assertion ?? null;
+  const quote = provenance?.quote ?? null;
+  // The verdict. `trustOf` lives in one place so the viewer and the lightbox
+  // can never disagree about whether a citation is trustworthy.
+  const trust = trustOf(provenance?.bbox, provenance?.anchorVerbatim);
   const storedBbox: BBox | null = provenance?.bbox ?? null;
   // Prefer the stored bbox (table/figure/with-bbox facts). For a
   // text chunk with no bbox, fall back to the text-search rect; it is
@@ -323,8 +333,11 @@ export function EvidenceLightbox({
               {sourceTitle ?? "Source PDF"}
             </h2>
             <span className="evidence-lightbox__subtitle">
-              Fact {factId ?? "—"}
-              {/* PR #2: `Figure {N} (page {P})` next to the Fact id.
+              {/* The DOI, not the fact's UUID. This line used to read
+                  "Fact c64fd4ac-a1ee-4cd6-bdc7-d0162b7435c5" — a primary key,
+                  shown to a scientist, telling them nothing. */}
+              {doi ?? "—"}
+              {/* PR #2: `Figure {N} (page {P})` next to the source line.
                   Visible regardless of imageUrl presence. */}
               {provenance?.type === "figure" && figureIndex != null ? (
                 <span
@@ -457,6 +470,60 @@ export function EvidenceLightbox({
           <div className="evidence-lightbox__loading">Loading provenance…</div>
         ) : (
           <>
+            {/*
+              VERIFICATION, NOT NAVIGATION.
+
+              A scientist clicking a citation is doing exactly one thing:
+              checking whether the assistant told them the truth. That takes
+              three facts, together, in one glance:
+
+                what was asserted   ·   what the paper says   ·   where it is
+
+              This lightbox used to show only the third — a PDF and a
+              highlight — and leave the reader to reconstruct the other two.
+              Worse, when the quote could not be found at all (a fabricated
+              citation: one fact in twenty-five on our corpus) it showed a PDF
+              with no highlight and no explanation, and the user was left to
+              conclude either "this is broken" or, far worse, "it must be
+              fine".
+
+              So: say what they clicked, quote what the paper actually says,
+              and state plainly whether we could verify it.
+            */}
+            {assertion || quote ? (
+              <section className="evidence-lightbox__evidence">
+                {assertion ? (
+                  <>
+                    <div className="evidence-lightbox__eyebrow">
+                      What you clicked
+                    </div>
+                    <p className="evidence-lightbox__assertion">{assertion}</p>
+                  </>
+                ) : null}
+
+                {quote ? (
+                  <>
+                    <div
+                      className="evidence-lightbox__evidence-head"
+                      style={{ marginTop: assertion ? "12px" : 0 }}
+                    >
+                      <span className="evidence-lightbox__eyebrow">
+                        What the paper says
+                      </span>
+                      <TrustBadge
+                        level={trust}
+                        page={provenance?.anchorPage ?? provChunk?.page ?? null}
+                      />
+                    </div>
+                    <p className="evidence-quote">{quote}</p>
+                    {/* Only the failing states explain themselves. A verbatim
+                        quote needs no defending — get out of the way. */}
+                    <TrustNote level={trust} />
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+
             {/* PR #2: conditional image header above the PDF viewer,
                 rendered ONLY when the figure has an imageUrl. The
                 <img> is wrapped in role="img" + aria-label

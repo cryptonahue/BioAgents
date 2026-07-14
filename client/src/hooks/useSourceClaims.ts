@@ -43,6 +43,22 @@ export interface SourceClaim {
    * for a tighter text-layer highlight when present.
    */
   quote?: string | null;
+  /**
+   * Where the quote was located in the PDF at INGESTION, and whether it was
+   * found WORD FOR WORD.
+   *
+   *   anchor_bbox + anchor_verbatim      -> the paper says exactly this
+   *   anchor_bbox, not verbatim          -> right passage, reworded
+   *   no anchor_bbox                     -> THE QUOTE IS NOT IN THE PAPER
+   *
+   * The last state is a fabricated citation. Nothing else in this system can
+   * see it, so the sidebar says so and draws no box.
+   */
+  anchor_page?: number | null;
+  anchor_bbox?: any | null;
+  anchor_verbatim?: boolean | null;
+  /** Embedded by getSourceClaims — used for the paper's real title. */
+  source?: { title?: string | null } | null;
   chunk?: SourceClaimChunk | null;
 }
 

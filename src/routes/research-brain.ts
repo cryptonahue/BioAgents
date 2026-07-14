@@ -1597,6 +1597,9 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
             doi,
             compound,
             compoundAuthority,
+            // What the user actually clicked. The lightbox used to show them
+            // a raw UUID and a PDF and leave them to work out the connection.
+            assertion: (fact as any).result_summary ?? null,
             provenance: {
               type: "chunk",
               table: null,
@@ -1619,7 +1622,22 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
                 chunkIndex: fact.chunk.chunk_index,
                 content: fact.chunk.content,
               },
-              bbox: null,
+              // The box we found at INGESTION, by looking for the quote in the
+              // PDF's text layer. Serving it makes the highlight instant — the
+              // client no longer re-scans the document on every click — and,
+              // more importantly, lets the UI tell the truth about it:
+              //
+              //   bbox + verbatim  -> the paper says exactly this
+              //   bbox, not verbatim -> right passage, paraphrased wording
+              //   no bbox          -> THE QUOTE IS NOT IN THE PAPER
+              //
+              // That last state is a fabricated citation, and it is
+              // indistinguishable from a real one everywhere else in this
+              // system. One fact in twenty-five on the test corpus. The user
+              // is told, plainly, and no box is drawn.
+              bbox: (fact as any).anchor_bbox ?? null,
+              anchorPage: (fact as any).anchor_page ?? null,
+              anchorVerbatim: (fact as any).anchor_verbatim ?? null,
             },
           };
         }

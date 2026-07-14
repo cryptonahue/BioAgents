@@ -95,7 +95,23 @@ export interface ProvenanceResponse {
      */
     quote?: string | null;
     bbox: BBox | null;
+    /**
+     * Where the quote was located in the PDF at INGESTION, by looking for it
+     * in the text layer, and whether it was found WORD FOR WORD.
+     *
+     * These are what let the UI tell the truth about a citation:
+     *   bbox + verbatim      -> the paper says exactly this
+     *   bbox, not verbatim   -> right passage, the assistant reworded it
+     *   no bbox              -> THE QUOTE IS NOT IN THE PAPER
+     *
+     * That last state is a fabricated citation — indistinguishable from a
+     * real one everywhere else in this system. We say so, and draw no box.
+     */
+    anchorPage?: number | null;
+    anchorVerbatim?: boolean | null;
   };
+  /** What the user actually clicked — the fact's assertion, in words. */
+  assertion?: string | null;
 }
 
 function getAuthToken(): string | null {

@@ -132,6 +132,12 @@ export async function anchorEvidenceForSource(
       let verbatim = 0;
       for (const row of rows) {
         const hit = row.quote ? anchorInIndex(index, row.quote) : null;
+        // Found IN FULL, not merely found. The UI shows these as different
+        // things because they ARE different things: one is a quotation, the
+        // other is a paraphrase pointing at the right passage.
+        const isVerbatim = hit
+          ? hit.matchedChars >= hit.needleChars
+          : null;
         // Write the miss too: NULL is the answer "we could not find this",
         // and a stale value from a previous run would be worse than none.
         const { error } = await sb
@@ -139,6 +145,7 @@ export async function anchorEvidenceForSource(
           .update({
             anchor_page: hit?.page ?? null,
             anchor_bbox: hit?.bbox ?? null,
+            anchor_verbatim: isVerbatim,
           })
           .eq("id", row.id);
         if (error) {
@@ -150,9 +157,9 @@ export async function anchorEvidenceForSource(
         }
         if (hit) {
           anchored++;
-          // Found IN FULL, not merely found. The gap between these two counts
-          // is the extractor paraphrasing when it was told not to.
-          if (hit.matchedChars >= hit.needleChars) verbatim++;
+          // The gap between these two counts is the extractor paraphrasing
+          // when it was told not to.
+          if (isVerbatim) verbatim++;
         }
       }
       return { total: rows.length, anchored, verbatim };

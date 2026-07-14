@@ -31,6 +31,12 @@ import { useSourceEvidence } from "../hooks/useSourceEvidence";
 import { useSourceClaims } from "../hooks/useSourceClaims";
 import { computeTableChain } from "../hooks/useTableChain";
 import { useTextChunkHighlight } from "../hooks/useTextChunkHighlight";
+import {
+  TrustBadge,
+  TrustNote,
+  trustOf,
+  trustSummary,
+} from "../components/EvidenceTrust";
 import { parseViewerHash, ProvenanceType } from "../hooks/useProvenance";
 import { BBox } from "../lib/bbox";
 
@@ -147,8 +153,19 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     );
   }
 
+  // The paper's real title. The header used to read "Source e9db7c7b" — a
+  // truncated primary key, shown to a scientist, naming nothing.
   const sourceTitle =
-    (evidence as unknown as { title?: string } | null)?.title ?? null;
+    (evidence as unknown as { title?: string } | null)?.title ??
+    claims.find((c) => c.source?.title)?.source?.title ??
+    null;
+
+  // How much of this paper's evidence we can actually stand behind. The user
+  // asked for a quality panel; it belongs HERE — where they are deciding
+  // whether to believe the citations — and not buried in an admin page.
+  const summary = trustSummary(
+    claims.map((c) => ({ bbox: c.anchor_bbox, verbatim: c.anchor_verbatim })),
+  );
 
   return (
     <div className="viewer-page">
@@ -188,6 +205,17 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
           {claims.length ? (
             <section>
               <h4>Claims ({claims.length})</h4>
+              <div className="viewer-page__trust-summary">
+                {summary.verbatim > 0 ? (
+                  <TrustBadge level="verbatim" />
+                ) : null}
+                {summary.approximate > 0 ? (
+                  <TrustBadge level="approximate" />
+                ) : null}
+                {summary["not-found"] > 0 ? (
+                  <TrustBadge level="not-found" />
+                ) : null}
+              </div>
               <ul className="viewer-page__claims">
                 {claims.map((c) => {
                   const chunk = c.chunk;
@@ -195,11 +223,12 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                   // was extracted from) over the whole chunk for a tighter
                   // highlight; fall back to the chunk content.
                   const searchText = c.quote || chunk?.content || "";
-                  // The page is optional: when absent the search scans
-                  // every page for the quote (all-pages mode). We only
-                  // need something to search for to enable the click.
-                  const page = chunk?.page ?? null;
-                  const canHighlight = !!searchText;
+                  const page = c.anchor_page ?? chunk?.page ?? null;
+                  const trust = trustOf(c.anchor_bbox, c.anchor_verbatim);
+                  // A citation we could not locate gets no box, and says why.
+                  // Clicking it would launch a search of a document that does
+                  // not contain the text — an animation of a failure.
+                  const canHighlight = !!searchText && trust !== "not-found";
                   return (
                     <li key={c.id} className="viewer-page__claim">
                       <button
@@ -209,18 +238,49 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                         data-size="sm"
                         disabled={!canHighlight}
                         onClick={() => {
-                          if (searchText) {
-                            highlightChunk(page, searchText);
+                          if (!canHighlight) return;
+                          // The box was found at INGESTION, by looking for the
+                          // quote in the PDF's text layer, and stored. Use it:
+                          // the highlight is instant instead of re-scanning the
+                          // document on every click (a second on a paper,
+                          // fifteen on a book).
+                          if (c.anchor_bbox && page) {
+                            highlightStored(page, "chunk", c.anchor_bbox as BBox);
+                            return;
                           }
+                          // Not yet anchored (this paper predates the anchoring
+                          // pass): fall back to searching in the browser.
+                          highlightChunk(page, searchText);
                         }}
                       >
-                        <span
-                          className="badge claim-status"
-                          data-tone={claimTone(c.status)}
-                        >
-                          {c.status.replace(/_/g, " ")}
+                        <span className="viewer-page__claim-head">
+                          <span
+                            className="badge claim-status"
+                            data-tone={claimTone(c.status)}
+                          >
+                            {c.status.replace(/_/g, " ")}
+                          </span>
+                          <TrustBadge level={trust} page={page} />
                         </span>
                         <span className="claim-text">{c.claim}</span>
+                        {/*
+                          THE QUOTE, WHERE THE CLAIM IS.
+
+                          The card showed only the synthesised claim while the
+                          viewer highlighted the verbatim quote — two texts,
+                          worded differently, and the user asked to trust they
+                          matched. They read the mismatch as a bug in the
+                          highlight. It was not: we were never showing them what
+                          was about to be highlighted.
+
+                          Now what you read is what gets highlighted.
+                        */}
+                        {c.quote ? (
+                          <span className="evidence-quote viewer-page__claim-quote">
+                            {c.quote}
+                          </span>
+                        ) : null}
+                        <TrustNote level={trust} />
                       </button>
                     </li>
                   );
