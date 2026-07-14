@@ -71,6 +71,21 @@ const STRAIN_IDS = [
 const FABRICATED_QUOTE =
   "Protease activity was determined by clear zones on milk agar";
 
+/**
+ * AND THE OTHER SIDE OF THE SAME LINE.
+ *
+ * A REAL claim from this paper, whose head the extractor copied verbatim and
+ * whose tail it paraphrased. Sixty-five of its 163 characters are in the PDF,
+ * on page 5 — 40%, against the fabrication's 37%. Fidelity cannot tell these
+ * two apart; only the absolute span can (65 against 19).
+ *
+ * These two constants are the boundary of what counts as evidence, taken from
+ * the corpus rather than from intuition. Keep them together: a change that
+ * makes one pass must be checked against the other.
+ */
+const PARAPHRASED_TAIL =
+  "the MIC values of candidates 1–3 for all tested antimicrobials were equal to or below the EFSA-recommended cut-off values, confirming their antimicrobial susceptibility";
+
 describe("indexPdfText + anchorInIndex (real paper)", () => {
   withPaper("finds the quote on the page the browser highlights (page 8)", async () => {
     const index = await indexPdfText(await loadPaper());
@@ -140,9 +155,29 @@ describe("indexPdfText + anchorInIndex (real paper)", () => {
 
   // The extractor fabricated this sentence. It is not in the paper, and the
   // anchor is the only layer of the system that can tell.
+  //
+  // Note what it costs to catch: the fabrication's OPENING WORDS are real, so
+  // the search finds them — 19 characters of a 51-character needle, 37%. A
+  // real claim on this same paper matches 65 of 163, which is 40%. Fidelity
+  // cannot separate 37 from 40. Only the absolute span can separate 19 from
+  // 65, and that is what the rule uses.
   withPaper("REFUSES a quote the extractor invented", async () => {
     const index = await indexPdfText(await loadPaper());
     expect(anchorInIndex(index, FABRICATED_QUOTE)).toBeNull();
+  }, 60_000);
+
+  // The other side of that same line: a REAL claim whose head is verbatim and
+  // whose tail the extractor paraphrased. Sixty-five unique characters name
+  // the sentence on page 5 beyond any doubt. Refusing it would be throwing
+  // away good evidence to catch a fabrication we can already catch.
+  withPaper("ANCHORS a real quote whose tail was paraphrased", async () => {
+    const index = await indexPdfText(await loadPaper());
+    const hit = anchorInIndex(index, PARAPHRASED_TAIL);
+    expect(hit).not.toBeNull();
+    expect(hit!.page).toBe(5);
+    // ...and reports honestly that it is NOT verbatim, which is the signal
+    // the ingestion metric surfaces as `anchored > verbatim`.
+    expect(hit!.matchedChars).toBeLessThan(hit!.needleChars);
   }, 60_000);
 
   // Uniqueness must hold ACROSS the document, not per page. A quote appearing

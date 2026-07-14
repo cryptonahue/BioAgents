@@ -77,26 +77,48 @@ export interface AnchorResult {
 }
 
 /**
- * The fraction of a quote that must turn up in the PDF for its box to mean
- * anything.
+ * WHEN IS A PARTIAL MATCH STILL EVIDENCE?
  *
- * The extractor is told to return "a short verbatim snippet". On this corpus
- * it mostly does — and once it did not, inventing "Protease activity was
- * determined by clear zones on milk agar", a sentence that is not in the
- * paper. Its opening words ARE, though, so a search that keeps shortening its
- * prefix until something matches will happily anchor a fabricated citation to
- * the two real words it starts with, and report success.
+ * The search shortens its prefix until something matches, so a quote whose
+ * tail diverges still finds its head. That is usually what we want — and
+ * sometimes catastrophic, because a FABRICATED sentence borrows its opening
+ * words from the paper too. Left unchecked, an invented citation anchors to
+ * the two real words it starts with and reports success.
  *
- * A box drawn over 20% of a quote is not evidence for that quote. It is a
- * highlight in roughly the right neighbourhood, dressed up as a citation —
- * which is exactly the kind of confident wrongness that costs more trust than
- * showing nothing at all.
+ * The obvious guard — demand that most of the quote be real — does not work.
+ * Measured on this corpus:
  *
- * So demand that most of the quote be real. What survives is an anchor you can
- * stand behind; what does not is a fabrication we now detect instead of
- * decorate.
+ *     invented   "Protease activity was determined by clear zones..."
+ *                needle 51, matched 19  ->  37%   NOT IN THE PAPER
+ *     real       "the MIC values of candidates 1-3 for all tested..."
+ *                needle 163, matched 65 ->  40%   verbatim head, paraphrased tail
+ *
+ * Thirty-seven percent against forty. Any fidelity threshold that rejects the
+ * fabrication also kills a legitimate claim. Fidelity cannot tell them apart.
+ *
+ * What CAN is the absolute length of what matched — 19 against 65:
+ *
+ *     A unique match of 65 characters identifies a SENTENCE.
+ *     A unique match of 19 characters identifies a TOPIC.
+ *
+ * "protease activity" tells you what is being discussed. It does not tell you
+ * where the evidence is, and a box drawn around it is a highlight in roughly
+ * the right neighbourhood dressed up as a citation.
+ *
+ * So a match is evidence when the quote is essentially all there, OR when what
+ * IS there is a long enough span to name the passage on its own. The margins
+ * are wide (19 | 45 | 65); these are not shaved thresholds.
+ *
+ * Marginal cases are precisely what a vision judge is for. Until then, refuse:
+ * a box in the wrong place does not cost you that box, it costs the
+ * credibility of every box you draw.
  */
-const MIN_FIDELITY = 0.6;
+const NEAR_VERBATIM = 0.9;
+const SUBSTANTIAL_SPAN = 45;
+
+function isEvidence(matched: number, needle: number): boolean {
+  return matched >= needle * NEAR_VERBATIM || matched >= SUBSTANTIAL_SPAN;
+}
 
 /**
  * One text run: the string (for the match) plus its geometry in the
@@ -348,7 +370,7 @@ export function anchorInIndex(
     // Found it — but is it really the QUOTE, or just the words the quote
     // happens to start with? A fabricated sentence borrows its opening from
     // the paper; only a verbatim one keeps going.
-    if (len < needle.length * MIN_FIDELITY) return null;
+    if (!isEvidence(len, needle.length)) return null;
 
     const runs = index.pages[hitPage - 1];
     const toRun = index.pageAlnumToRun[hitPage - 1];
