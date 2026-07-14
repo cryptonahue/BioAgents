@@ -199,17 +199,37 @@ export type ResearchEvidenceFigureRow = {
 
 const MODE_KEY = "__bioprospectingTableExtractionMode";
 
-function resolveMode(): "auto" | "local" | "mistral" {
+/**
+ * `off` disables table/figure extraction entirely: nothing runs, nothing
+ * is persisted, nothing is charged.
+ *
+ * It exists because BOTH providers currently produce unusable provenance
+ * and there was no way to stop them:
+ *   - `local` detects real bboxes but grossly over-detects (it marked a
+ *     paper's TITLE as a table, 32 "tables" in a 14-page paper), and the
+ *     quality gate waves it through because it only measures character
+ *     density, not table-ness.
+ *   - `mistral` returns markdown with NO table coordinates, so every bbox
+ *     persists as {0,0,0,0} — a highlight that renders as a dot in the
+ *     page corner, paid for by the page.
+ *
+ * A wrong highlight is worse than no highlight in a provenance product,
+ * so `off` is the honest default until the anchor-based pipeline lands.
+ * Fact extraction is unaffected: it reads the text chunks and keeps
+ * working.
+ */
+function resolveMode(): "auto" | "local" | "mistral" | "off" {
   const cached = (globalThis as any)[MODE_KEY] as
     | "auto"
     | "local"
     | "mistral"
+    | "off"
     | undefined;
   if (cached) return cached;
   const raw = (process.env.TABLE_EXTRACTION_PROVIDER || "auto").toLowerCase();
   const mode =
-    raw === "local" || raw === "mistral" || raw === "auto"
-      ? (raw as "auto" | "local" | "mistral")
+    raw === "local" || raw === "mistral" || raw === "auto" || raw === "off"
+      ? (raw as "auto" | "local" | "mistral" | "off")
       : "auto";
   (globalThis as any)[MODE_KEY] = mode;
   return mode;
@@ -544,7 +564,9 @@ export async function persistExtractedFigures(
 export interface ExtractPDFTablesResult {
   tables: ExtractedTable[];
   figures: ExtractedFigure[];
-  provider: "local" | "mistral" | "cache";
+  // "off" = table extraction is disabled; nothing ran and nothing was
+  // persisted. See the `off` mode note on `resolveMode`.
+  provider: "local" | "mistral" | "cache" | "off";
 }
 
 /**
@@ -568,6 +590,17 @@ export async function extractPDFTables(
   pdf: Uint8Array,
   ctx?: { runId?: string; sourceId?: string },
 ): Promise<ExtractPDFTablesResult> {
+  // 0. Kill switch. Short-circuits BEFORE the cache read so that any rows
+  // left over from a previous (bad) run are never served either — `off`
+  // means "this source has no table evidence", full stop.
+  if (resolveMode() === "off") {
+    logger.info(
+      { sourceId },
+      "pdf_table_extraction_disabled",
+    );
+    return { tables: [], figures: [], provider: "off" };
+  }
+
   // 1. Cache check
   const existing = await loadTablesForSource(sourceId);
   if (existing.length > 0) {
