@@ -570,22 +570,63 @@ async function ensureTablesForSource(
     return [];
   }
 
+  // The PDF lives in object storage OR on the local docs volume — a
+  // single-node deployment ingests straight to disk and configures no
+  // S3 at all. Try the configured provider first, then fall back to
+  // disk, mirroring the PDF proxy (`/sources/:sourceId/pdf`). Without
+  // the fallback, a disk-only deployment bailed at
+  // `no_storage_provider` and produced ZERO tables, so every extracted
+  // fact lost its bbox provenance and the evidence lightbox had
+  // nothing to highlight.
+  let buffer: Buffer | null = null;
+
   const storage = getStorageProvider();
-  if (!storage) {
-    logger.warn(
-      { sourceId: source.id },
-      "bioprospecting_table_extraction_no_storage_provider",
-    );
-    return [];
+  if (storage) {
+    try {
+      buffer = await storage.download(source.file_path);
+    } catch (error) {
+      logger.warn(
+        { err: error, sourceId: source.id, filePath: source.file_path },
+        "bioprospecting_table_extraction_download_failed",
+      );
+    }
   }
 
-  let buffer: Buffer;
-  try {
-    buffer = await storage.download(source.file_path);
-  } catch (error) {
+  if (!buffer || buffer.length === 0) {
+    // LocalStorageProvider carries the path-traversal guard and accepts
+    // the `docs/<sub>/<file>.pdf` shape the ingester stores.
+    const localRoot =
+      process.env.LOCAL_STORAGE_ROOT ||
+      process.env.KNOWLEDGE_DOCS_PATH ||
+      "docs";
+    try {
+      const { LocalStorageProvider } = await import(
+        "../../storage/providers/local"
+      );
+      buffer = await new LocalStorageProvider({ rootDir: localRoot }).download(
+        source.file_path,
+      );
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          sourceId: source.id,
+          filePath: source.file_path,
+          localRoot,
+        },
+        "bioprospecting_table_extraction_local_fallback_failed",
+      );
+    }
+  }
+
+  if (!buffer || buffer.length === 0) {
     logger.warn(
-      { err: error, sourceId: source.id, filePath: source.file_path },
-      "bioprospecting_table_extraction_download_failed",
+      {
+        sourceId: source.id,
+        filePath: source.file_path,
+        hasStorage: Boolean(storage),
+      },
+      "bioprospecting_table_extraction_pdf_unavailable",
     );
     return [];
   }
