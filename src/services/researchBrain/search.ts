@@ -273,9 +273,57 @@ export async function researchBrainSearch(params: {
     }),
   );
 
+  /*
+    THE PAPER'S OWN WORDS, FOUND SEMANTICALLY.
+
+    Everything above this point is found by LEXICAL search — `claim ILIKE
+    '%word%'` — which cannot cross a language. A Spanish question never matches
+    an English paper. The system's own Deep Research memories, written in the
+    user's language, DO match, so the pack filled with the system's prior output
+    while the real literature sat unreachable in the same database.
+
+    The cost was not a bad answer. Deep Research READ the sea urchin paper,
+    pulled 20 of its chunks, and answered all six of the user's questions
+    correctly — including the trap about siderophores, quoting the paper's own
+    limitations section. Then the VERIFIER checked that answer against this pack,
+    which structurally could not contain the paper, found only six memories that
+    all said "I cannot find enough evidence", and deleted every correct answer.
+
+    The system found the truth, verified it against the PDF, and censored itself.
+
+    So the pack now carries the passages the researcher actually read, retrieved
+    the same way the researcher retrieved them: by MEANING, not by matching
+    letters. A failure here is non-fatal — the pack degrades to what it had
+    before, which is what it has always had.
+  */
+  let passages: EvidencePack["passages"] = [];
+  try {
+    const { VectorSearchWithDocuments } = await import(
+      "../../embeddings/vectorSearchWithDocs"
+    );
+    let vectorSearch = (globalThis as any).__knowledgeVectorSearch;
+    if (!vectorSearch) {
+      vectorSearch = new VectorSearchWithDocuments();
+      (globalThis as any).__knowledgeVectorSearch = vectorSearch;
+    }
+    const docs = await vectorSearch.search(params.query, {
+      vectorLimit: 24,
+      finalLimit: 8,
+    });
+    passages = (docs ?? []).map((d: any) => ({
+      sourceId: d.metadata?.sourceId ?? null,
+      sourceTitle: d.title ?? null,
+      content: String(d.content ?? "").slice(0, 1200),
+      similarity: d.relevanceScore ?? d.similarity ?? null,
+    }));
+  } catch (error) {
+    logger.warn({ err: error }, "evidence_pack_passage_search_failed");
+  }
+
   const pack: EvidencePack = {
     question: params.query,
     queryPlan,
+    passages,
     bioprospectingFacts: mappedFacts,
     supportedClaims: mapped.filter((claim) => claim.status === "supported"),
     partialClaims: mapped.filter(
@@ -354,6 +402,32 @@ export function formatEvidencePackForPrompt(pack: EvidencePack): string {
   lines.push(
     "Answering rule: when using this evidence, include compact provenance in the answer: DOI link, source title, internal fragment link, fragment index/page if available, and a short quoted evidence snippet. Use citation format [text]{/library/...?...} for internal fragment links, and [DOI]{https://doi.org/...} for the public DOI. Prefer the internal fragment link for claim-level citations.",
   );
+
+  /*
+    THE PAPER'S OWN WORDS COME FIRST.
+
+    Everything else in this pack is something we EXTRACTED about a paper — a
+    claim, a fact, a contradiction. These passages are the paper itself,
+    retrieved by meaning rather than by matching letters, and they are the only
+    part of the pack that can cross a language: a Spanish question does not
+    match an English paper by substring, but it does by embedding.
+
+    They are printed first because a verifier that reads claims before text
+    treats our summaries as the ground truth and the source as commentary,
+    which is exactly backwards.
+  */
+  if (pack.passages && pack.passages.length > 0) {
+    lines.push("");
+    lines.push(
+      `Passages from the loaded papers (${pack.passages.length}) — the source text itself, quote from these:`,
+    );
+    pack.passages.forEach((p, i) => {
+      const sim =
+        p.similarity != null ? ` (relevance ${p.similarity.toFixed(2)})` : "";
+      lines.push(`[passage ${i + 1}] ${p.sourceTitle ?? "unknown source"}${sim}`);
+      lines.push(`"${p.content.replace(/\s+/g, " ").trim()}"`);
+    });
+  }
 
   const formatClaim = (claim: EvidencePackClaim) => {
     const source = claim.sourceTitle ? ` Source: ${claim.sourceTitle}.` : "";

@@ -35,7 +35,26 @@ export async function verifyHypothesisAgainstEvidence(params: {
   hypothesis: string;
   evidencePack: EvidencePack;
 }): Promise<string> {
+  /*
+    THE PAPER'S TEXT IS EVIDENCE. This gate used to say otherwise.
+
+    It counted claims, facts and contradictions — everything we EXTRACTED about
+    a paper — and never the paper itself. So when Deep Research read the sea
+    urchin study, pulled twenty of its chunks, and answered all six of the
+    user's questions correctly (including the trap about siderophores, quoting
+    the paper's own limitations section), this gate looked for evidence, found
+    none of the kinds it knew how to count, and returned the refusal message —
+    deleting every correct answer.
+
+    The system found the truth, verified it against the PDF, and censored
+    itself. A product that fabricates loses credibility; one that suppresses its
+    own correct answers is useless.
+
+    The verifier must judge against the SAME material the researcher reasoned
+    from. That is the whole point of a verifier.
+  */
   const hasEvidence =
+    params.evidencePack.passages?.length > 0 ||
     params.evidencePack.bioprospectingFacts.length > 0 ||
     params.evidencePack.supportedClaims.length > 0 ||
     params.evidencePack.partialClaims.length > 0 ||
@@ -127,7 +146,26 @@ export async function verifyEvidenceGroundedResponse(params: {
   draft: string;
   evidencePack: EvidencePack;
 }): Promise<string> {
+  /*
+    THE PAPER'S TEXT IS EVIDENCE. This gate used to say otherwise.
+
+    It counted claims, facts and contradictions — everything we EXTRACTED about
+    a paper — and never the paper itself. So when Deep Research read the sea
+    urchin study, pulled twenty of its chunks, and answered all six of the
+    user's questions correctly (including the trap about siderophores, quoting
+    the paper's own limitations section), this gate looked for evidence, found
+    none of the kinds it knew how to count, and returned the refusal message —
+    deleting every correct answer.
+
+    The system found the truth, verified it against the PDF, and censored
+    itself. A product that fabricates loses credibility; one that suppresses its
+    own correct answers is useless.
+
+    The verifier must judge against the SAME material the researcher reasoned
+    from. That is the whole point of a verifier.
+  */
   const hasEvidence =
+    params.evidencePack.passages?.length > 0 ||
     params.evidencePack.bioprospectingFacts.length > 0 ||
     params.evidencePack.supportedClaims.length > 0 ||
     params.evidencePack.partialClaims.length > 0 ||

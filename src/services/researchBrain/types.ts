@@ -196,9 +196,48 @@ export type EvidencePackQueryPlan = {
   cautions: string[];
 };
 
+/**
+ * A PASSAGE: the paper's own words, retrieved SEMANTICALLY from the text we
+ * ingested. Not a claim we extracted about it — the text itself.
+ *
+ * The pack used to carry no such thing. It held claims and facts and nothing
+ * else, all of them found by LEXICAL search (`claim ILIKE '%word%'`), which
+ * cannot cross a language: a Spanish question never matches an English paper.
+ * The system's own Deep Research memories, written in the user's language, DID
+ * match — so the pack filled with the system's prior output while the real
+ * literature sat unreachable.
+ *
+ * The consequence was not merely a bad answer. Deep Research READ the sea
+ * urchin paper, retrieved 20 of its chunks, answered all six of the user's
+ * questions correctly — including the trap about siderophores, quoting the
+ * paper's own limitations — and then its VERIFIER, checking that answer against
+ * a pack that structurally could not contain the paper, declared every one of
+ * them unsupported and deleted them.
+ *
+ * The system found the truth, verified it against the PDF, and censored itself.
+ * A product that fabricates loses credibility. One that suppresses its own
+ * correct answers is simply useless.
+ *
+ * So the pack now carries what the researcher actually read.
+ */
+export type EvidencePackPassage = {
+  sourceId?: string | null;
+  sourceTitle?: string | null;
+  /** The paper's words, verbatim. */
+  content: string;
+  /** Cosine similarity from the vector search — how well it answers the query. */
+  similarity?: number | null;
+};
+
 export type EvidencePack = {
   question: string;
   queryPlan: EvidencePackQueryPlan;
+  /**
+   * The paper text retrieved for this question. THE VERIFIER MUST COUNT THIS AS
+   * EVIDENCE — it is the same material the researcher reasoned from, and
+   * ignoring it is what made a correct answer look unsupported.
+   */
+  passages: EvidencePackPassage[];
   bioprospectingFacts: EvidencePackBioprospectingFact[];
   supportedClaims: EvidencePackClaim[];
   partialClaims: EvidencePackClaim[];
