@@ -1,6 +1,9 @@
 import { resolveResearchBrainLLM } from "./llm";
 import { formatEvidencePackForPrompt } from "./search";
-import { INTERNAL_CITATION_RULE } from "./citation/citationPolicy";
+import {
+  INTERNAL_CITATION_RULE,
+  resolvePassageTokens,
+} from "./citation/citationPolicy";
 import type { EvidencePack } from "./types";
 
 const NO_EVIDENCE_MESSAGE =
@@ -121,7 +124,12 @@ ${params.hypothesis}`;
     return NO_EVIDENCE_HYPOTHESIS_MESSAGE;
   }
 
-  return grounded || params.hypothesis;
+  // Swap the {Pn} tokens the model cited for the real internal links. The model
+  // never saw the links, so it could not corrupt them; the code fills them in.
+  return (
+    resolvePassageTokens(grounded, params.evidencePack.passages) ||
+    params.hypothesis
+  );
 }
 
 /**
@@ -225,10 +233,13 @@ ${params.draft}`;
     temperature: 0,
   });
 
-  return (
-    response.content.trim() ||
-    appendEvidenceNotice(params.draft, params.evidencePack)
+  // Swap the {Pn} tokens the model cited for the real internal links. The model
+  // never saw the links, so it could not corrupt them; the code fills them in.
+  const grounded = resolvePassageTokens(
+    response.content.trim(),
+    params.evidencePack.passages,
   );
+  return grounded || appendEvidenceNotice(params.draft, params.evidencePack);
 }
 
 function appendEvidenceNotice(draft: string, pack: EvidencePack): string {

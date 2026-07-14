@@ -22,28 +22,46 @@
  * system can stand behind, because it is the only one it can verify. When a
  * passage did not anchor, we have no such proof, so we fall back to the DOI and
  * say the location could not be verified — we never fabricate a link.
+ *
+ * WHY THE MODEL NEVER WRITES THE LINK. An internal link is an opaque string:
+ * `/library/<base64 title>/viewer#bbox=<four floats>&page=<n>&type=chunk`. We
+ * asked the model to reproduce it and it could not — it typed "marinindugs"
+ * for "marinedrugs", prepended "https://", and dropped the bbox. TWICE, on two
+ * different code paths. A language model cannot reliably transcribe an opaque
+ * string; it regenerates one that looks right and corrupts the part that must
+ * be exact.
+ *
+ * So the model never sees the link and never writes it. Each anchored passage
+ * is shown with a short TOKEN — {P1}, {P2}, … — and the model cites the token.
+ * After generation, `resolvePassageTokens` swaps each token for the real link,
+ * deterministically, in code. You cannot corrupt a base64 you were never given.
  */
 import type { EvidencePackPassage } from "../types";
 
+/** The token a model uses to cite passage i (1-based): {P1}, {P2}, … */
+export function passageToken(index1Based: number): string {
+  return `{P${index1Based}}`;
+}
+
 /**
  * The canonical citation instruction. Every prompt that asks a model to cite
- * evidence includes this verbatim. It is deliberately unambiguous: internal
- * link when we have one, DOI only when we do not, and never an invented link.
+ * evidence includes this verbatim. The model cites by TOKEN, never by URL.
  */
 export const INTERNAL_CITATION_RULE = [
   "CITATION RULE (single source of truth — follow it exactly):",
-  "- When a passage carries an internal link, cite it with that link: [cited text]{<internal link>}. This is the ONLY citation the system can verify, because it opens our copy of the PDF on the anchored page with the sentence boxed.",
-  "- The [cited text] is a SHORT label — a few words in the answer's own language, like a normal inline citation. NEVER paste the whole passage in the brackets: the passage is the evidence you are pointing AT, not the link's display text. A long quoted blob as the label wastes the answer's length budget and can truncate the response mid-citation.",
-  "- Prefer the internal link over the DOI for every claim that a passage supports. Do NOT keep a doi.org link when an internal link for the same source is available — replace it.",
-  "- A passage with NO internal link did not anchor to the PDF: cite its DOI with [cited text]{https://doi.org/…} and say the exact location could not be verified.",
-  "- Never invent, guess, or fabricate a link, a page, a section number, or a fragment id. Cite only what the evidence pack gives you.",
+  "- Cite a passage by its TOKEN, exactly as shown next to it: [short label]{P1}, [short label]{P2}, and so on. The system replaces the token with a link that opens our copy of the PDF on the anchored page with the sentence boxed.",
+  "- NEVER write a URL, a /library/ path, a bbox, a page number, or a fragment id yourself. You do not have the link and you cannot reconstruct it — if you type it by hand you WILL corrupt it. Write ONLY the token.",
+  "- The [short label] is a few words in the answer's own language, like a normal inline citation. NEVER paste the whole passage into the brackets: the passage is the evidence the token points AT, not the label.",
+  "- Prefer a passage token over a DOI for every claim a passage supports. Do NOT keep a doi.org link when a passage token for the same fact is available — cite the token instead.",
+  "- Only for a source with NO passage token here (it did not anchor): cite its DOI as [short label]{https://doi.org/…} and say the exact location could not be verified.",
+  "- Never invent a token, a link, a page, or a section number. Cite only tokens shown below or a real DOI from the pack.",
 ].join("\n");
 
 /**
  * Render the anchored passages as a prompt block: the paper's own words, each
- * with the link (or the honest absence of one) the model must cite. Shared by
- * `formatEvidencePackForPrompt` and any agent that gets the passages directly,
- * so the two never drift apart.
+ * tagged with the token the model must cite it by. The real link is NOT shown —
+ * that is the whole point. Shared by `formatEvidencePackForPrompt` and any agent
+ * that gets the passages directly, so the two never drift apart.
  */
 export function renderPassageBlock(
   passages: EvidencePackPassage[] | undefined,
@@ -61,16 +79,35 @@ export function renderPassageBlock(
     const sim =
       p.similarity != null ? ` (relevance ${p.similarity.toFixed(2)})` : "";
     const where = p.page != null ? `, p.${p.page}` : "";
+    const tag = p.citation
+      ? `cite as ${passageToken(i + 1)}`
+      : "no token — did not anchor, cite the DOI and say so";
     lines.push(
-      `[passage ${i + 1}] ${p.sourceTitle ?? "unknown source"}${where}${sim}`,
+      `[passage ${i + 1} · ${tag}] ${p.sourceTitle ?? "unknown source"}${where}${sim}`,
     );
     lines.push(`"${p.content.replace(/\s+/g, " ").trim()}"`);
-    lines.push(
-      p.citation
-        ? `link: ${p.citation}`
-        : "link: none (this passage could not be located in the PDF — cite the DOI and say so)",
-    );
   });
 
   return lines;
+}
+
+/**
+ * Swap each {Pn} token in a model's output for the real internal link of
+ * passage n. Deterministic and total: the model supplies the token and the
+ * label, the code supplies the opaque string it could never type correctly.
+ *
+ * Tolerant of the shapes a model actually emits — {P1}, { p1 }, {P 1} — and
+ * leaves anything it cannot resolve (a token past the end, a passage with no
+ * link) untouched rather than inventing a target.
+ */
+export function resolvePassageTokens(
+  text: string,
+  passages: EvidencePackPassage[] | undefined,
+): string {
+  if (!text || !passages || passages.length === 0) return text;
+  return text.replace(/\{\s*[Pp]\s*(\d+)\s*\}/g, (whole, digits) => {
+    const idx = Number(digits) - 1;
+    const link = passages[idx]?.citation;
+    return link ? `{${link}}` : whole;
+  });
 }
