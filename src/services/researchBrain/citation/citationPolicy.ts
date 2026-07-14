@@ -33,6 +33,7 @@ import type { EvidencePackPassage } from "../types";
 export const INTERNAL_CITATION_RULE = [
   "CITATION RULE (single source of truth — follow it exactly):",
   "- When a passage carries an internal link, cite it with that link: [cited text]{<internal link>}. This is the ONLY citation the system can verify, because it opens our copy of the PDF on the anchored page with the sentence boxed.",
+  "- The [cited text] is a SHORT label — a few words in the answer's own language, like a normal inline citation. NEVER paste the whole passage in the brackets: the passage is the evidence you are pointing AT, not the link's display text. A long quoted blob as the label wastes the answer's length budget and can truncate the response mid-citation.",
   "- Prefer the internal link over the DOI for every claim that a passage supports. Do NOT keep a doi.org link when an internal link for the same source is available — replace it.",
   "- A passage with NO internal link did not anchor to the PDF: cite its DOI with [cited text]{https://doi.org/…} and say the exact location could not be verified.",
   "- Never invent, guess, or fabricate a link, a page, a section number, or a fragment id. Cite only what the evidence pack gives you.",

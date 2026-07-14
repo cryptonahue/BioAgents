@@ -216,8 +216,12 @@ ${params.draft}`;
 
   const response = await llm.createChatCompletion({
     model,
+    // Internal-link citations run longer than the DOIs they replace, and a
+    // six-question answer carries many of them. 2200 truncated the rewrite
+    // mid-citation on the first question; give it room to finish. The short-
+    // display-text rule (citationPolicy) keeps this from ballooning further.
+    maxTokens: 3600,
     messages: [{ role: "user", content: prompt }],
-    maxTokens: 2200,
     temperature: 0,
   });
 
