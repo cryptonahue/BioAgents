@@ -303,6 +303,11 @@ ${context}`;
 
   const response = await llm.createChatCompletion({
     model,
+    // The prompt above was built and then never sent: without `messages` the
+    // adapters dereference `request.messages.forEach` on undefined and every
+    // extraction died with "undefined is not an object", so fact extraction
+    // has never produced a row.
+    messages: [{ role: "user", content: prompt }],
     // 2500 truncated fact-dense batches mid-JSON (finishReason: "length"),
     // silently dropping facts — worse now that categorical values push verbose
     // text into resultSummary. Give ample headroom; env-tunable for big batches.
