@@ -27,7 +27,11 @@
  */
 import { BBox } from "../lib/bbox";
 
-export type TrustLevel = "verbatim" | "approximate" | "not-found";
+export type TrustLevel =
+  | "verbatim"
+  | "approximate"
+  | "not-found"
+  | "not-verified";
 
 /**
  * `bbox`     — where the quote was found in the PDF, or null if it was not.
@@ -36,15 +40,35 @@ export type TrustLevel = "verbatim" | "approximate" | "not-found";
 export function trustOf(
   bbox: BBox | null | undefined,
   verbatim: boolean | null | undefined,
+  /**
+   * When the source was last anchored. REQUIRED to tell the two failures
+   * apart, because both look like a NULL bbox:
+   *
+   *   anchored, no bbox  ->  the quote is NOT IN THE PAPER. A fabrication.
+   *   never anchored     ->  we have not looked. We do not know.
+   *
+   * This shipped conflating them, and every claim of a freshly uploaded paper
+   * was accused of being invented — a confident verdict about something never
+   * checked, which is the exact failure this feature exists to prevent.
+   *
+   * Absent this timestamp we say "not verified". Never "not found".
+   */
+  anchoredAt?: string | null,
 ): TrustLevel {
-  if (!bbox) return "not-found";
-  return verbatim ? "verbatim" : "approximate";
+  if (bbox) return verbatim ? "verbatim" : "approximate";
+  return anchoredAt ? "not-found" : "not-verified";
 }
 
 const COPY: Record<
   TrustLevel,
   { icon: string; label: string; detail: string }
 > = {
+  "not-verified": {
+    icon: "?",
+    label: "Not verified",
+    detail:
+      "We have not yet checked this quote against the PDF. That is our gap, not a judgement on the citation.",
+  },
   verbatim: {
     icon: "✓",
     label: "Verbatim",
@@ -108,12 +132,60 @@ export function TrustNote({ level }: { level: TrustLevel }) {
 /** Counts for the "11 verbatim · 1 approximate · 0 not found" summary. */
 export function trustSummary(
   items: Array<{ bbox?: BBox | null; verbatim?: boolean | null }>,
+  anchoredAt?: string | null,
 ): Record<TrustLevel, number> {
   const out: Record<TrustLevel, number> = {
     verbatim: 0,
     approximate: 0,
     "not-found": 0,
+    "not-verified": 0,
   };
-  for (const item of items) out[trustOf(item.bbox, item.verbatim)]++;
+  for (const item of items)
+    out[trustOf(item.bbox, item.verbatim, anchoredAt)]++;
   return out;
+}
+
+/**
+ * The one-line explanation for a whole panel.
+ *
+ * The per-card note was repeated on every claim, and on an unverified paper
+ * that meant eight identical four-line warnings stacked in a 225px column — a
+ * wall of red that buries the very thing it is trying to say. Say it ONCE,
+ * above the list, and let the badges carry the rest.
+ */
+export function TrustSummary({
+  counts,
+}: {
+  counts: Record<TrustLevel, number>;
+}) {
+  const levels: TrustLevel[] = [
+    "verbatim",
+    "approximate",
+    "not-found",
+    "not-verified",
+  ];
+  const present = levels.filter((l) => counts[l] > 0);
+  if (present.length === 0) return null;
+
+  // Lead with the worst news. A user scanning this panel needs the problem
+  // before the reassurance.
+  const worst =
+    (counts["not-found"] > 0 && "not-found") ||
+    (counts["not-verified"] > 0 && "not-verified") ||
+    (counts.approximate > 0 && "approximate") ||
+    null;
+
+  return (
+    <div className="viewer-page__trust-summary">
+      <div className="viewer-page__trust-counts">
+        {present.map((level) => (
+          <span key={level} className="viewer-page__trust-count">
+            <TrustBadge level={level} />
+            <span className="viewer-page__trust-n">{counts[level]}</span>
+          </span>
+        ))}
+      </div>
+      {worst ? <TrustNote level={worst as TrustLevel} /> : null}
+    </div>
+  );
 }

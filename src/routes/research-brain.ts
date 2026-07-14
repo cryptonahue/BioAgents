@@ -1600,6 +1600,11 @@ export const researchBrainRoute = new Elysia({ prefix: "/api/research-brain" })
             // What the user actually clicked. The lightbox used to show them
             // a raw UUID and a PDF and leave them to work out the connection.
             assertion: (fact as any).result_summary ?? null,
+            // NULL means we have NOT verified this source's citations — which
+            // is not the same as "the quote is not in the paper", and must
+            // never be shown as such.
+            sourceAnchoredAt:
+              (fact as any).source?.evidence_anchored_at ?? null,
             provenance: {
               type: "chunk",
               table: null,

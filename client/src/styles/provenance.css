@@ -785,3 +785,48 @@
 .viewer-page__claim-btn:disabled .claim-text {
   opacity: 0.65;
 }
+
+/* Not verified: we have not looked. An admission, not an accusation — so it
+   must NOT read like the red one. Confusing "we didn't check" with "the
+   assistant made this up" is how a freshly uploaded paper had all eight of its
+   claims called fabrications. */
+.evidence-trust--not-verified {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
+  border-color: color-mix(in srgb, var(--muted-foreground) 28%, transparent);
+}
+.evidence-trust-note--not-verified {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 6%, transparent);
+  border-left: 3px solid var(--muted-foreground);
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+.evidence-trust-note--approximate {
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  border-left: 3px solid #f59e0b;
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+/* The summary: counts, then ONE explanation. */
+.viewer-page__trust-summary {
+  display: block;
+  margin: 4px 0 12px;
+}
+.viewer-page__trust-counts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.viewer-page__trust-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.viewer-page__trust-n {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}

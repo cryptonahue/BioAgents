@@ -33,7 +33,7 @@ import { computeTableChain } from "../hooks/useTableChain";
 import { useTextChunkHighlight } from "../hooks/useTextChunkHighlight";
 import {
   TrustBadge,
-  TrustNote,
+  TrustSummary,
   trustOf,
   trustSummary,
 } from "../components/EvidenceTrust";
@@ -163,8 +163,15 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
   // How much of this paper's evidence we can actually stand behind. The user
   // asked for a quality panel; it belongs HERE — where they are deciding
   // whether to believe the citations — and not buried in an admin page.
+  // When this source was last verified. NULL means we have not looked — which
+  // is NOT the same as "the quote is not in the paper", and must never be
+  // reported as such.
+  const anchoredAt =
+    claims.find((c) => c.source?.evidence_anchored_at)?.source
+      ?.evidence_anchored_at ?? null;
   const summary = trustSummary(
     claims.map((c) => ({ bbox: c.anchor_bbox, verbatim: c.anchor_verbatim })),
+    anchoredAt,
   );
 
   return (
@@ -205,17 +212,7 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
           {claims.length ? (
             <section>
               <h4>Claims ({claims.length})</h4>
-              <div className="viewer-page__trust-summary">
-                {summary.verbatim > 0 ? (
-                  <TrustBadge level="verbatim" />
-                ) : null}
-                {summary.approximate > 0 ? (
-                  <TrustBadge level="approximate" />
-                ) : null}
-                {summary["not-found"] > 0 ? (
-                  <TrustBadge level="not-found" />
-                ) : null}
-              </div>
+              <TrustSummary counts={summary} />
               <ul className="viewer-page__claims">
                 {claims.map((c) => {
                   const chunk = c.chunk;
@@ -224,10 +221,16 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
                   // highlight; fall back to the chunk content.
                   const searchText = c.quote || chunk?.content || "";
                   const page = c.anchor_page ?? chunk?.page ?? null;
-                  const trust = trustOf(c.anchor_bbox, c.anchor_verbatim);
-                  // A citation we could not locate gets no box, and says why.
-                  // Clicking it would launch a search of a document that does
-                  // not contain the text — an animation of a failure.
+                  const trust = trustOf(
+                    c.anchor_bbox,
+                    c.anchor_verbatim,
+                    anchoredAt,
+                  );
+                  // A citation we VERIFIED as absent gets no box: clicking it
+                  // would animate a search of a document that does not contain
+                  // the text. One we simply have not checked stays clickable —
+                  // the browser can still look, and refusing would punish the
+                  // user for OUR gap.
                   const canHighlight = !!searchText && trust !== "not-found";
                   return (
                     <li key={c.id} className="viewer-page__claim">
@@ -275,12 +278,16 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
 
                           Now what you read is what gets highlighted.
                         */}
+                        {/* The explanation lives ONCE, in the panel summary.
+                            Repeating a four-line warning on every card built a
+                            wall of red that buried what it was trying to say —
+                            the badge carries the verdict, its tooltip the
+                            detail. */}
                         {c.quote ? (
                           <span className="evidence-quote viewer-page__claim-quote">
                             {c.quote}
                           </span>
                         ) : null}
-                        <TrustNote level={trust} />
                       </button>
                     </li>
                   );

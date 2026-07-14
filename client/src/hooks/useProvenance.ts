@@ -112,6 +112,9 @@ export interface ProvenanceResponse {
   };
   /** What the user actually clicked — the fact's assertion, in words. */
   assertion?: string | null;
+  /** When this source's citations were last verified. NULL = never checked,
+   *  which is NOT the same as "the quote is not in the paper". */
+  sourceAnchoredAt?: string | null;
 }
 
 function getAuthToken(): string | null {

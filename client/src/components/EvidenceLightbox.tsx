@@ -261,7 +261,11 @@ export function EvidenceLightbox({
   const quote = provenance?.quote ?? null;
   // The verdict. `trustOf` lives in one place so the viewer and the lightbox
   // can never disagree about whether a citation is trustworthy.
-  const trust = trustOf(provenance?.bbox, provenance?.anchorVerbatim);
+  const trust = trustOf(
+    provenance?.bbox,
+    provenance?.anchorVerbatim,
+    data?.sourceAnchoredAt,
+  );
   const storedBbox: BBox | null = provenance?.bbox ?? null;
   // Prefer the stored bbox (table/figure/with-bbox facts). For a
   // text chunk with no bbox, fall back to the text-search rect; it is

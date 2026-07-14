@@ -171,6 +171,16 @@ export async function anchorEvidenceForSource(
       quotedFacts,
     );
 
+    // Stamp the source as VERIFIED. Without this, a NULL bbox is ambiguous —
+    // it could mean "the quote is not in the paper" (a fabrication) or "we
+    // never looked" — and the UI accused every claim of a freshly uploaded
+    // paper of being invented. NULL here now means "not verified yet", which
+    // is an admission, not an accusation.
+    await sb
+      .from("research_sources")
+      .update({ evidence_anchored_at: new Date().toISOString() })
+      .eq("id", sourceId);
+
     const result: AnchorEvidenceResult = {
       sourceId,
       status: "anchored",

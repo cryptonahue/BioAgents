@@ -246,6 +246,29 @@ export async function registerDocumentAsResearchSource(params: {
     await extractBioprospectingFactsForSource(source.id, evidenceChunks);
   }
 
+  // Verify every quote we just extracted against the PDF, and record where it
+  // is. This is the LAST step because it checks the work of the ones before it.
+  //
+  // It has to run at ingestion, not on demand. A source that has never been
+  // anchored cannot be told apart from one whose quotes are missing, so an
+  // unverified paper showed every claim as "not found in this paper" — an
+  // accusation of fabrication, made about work nobody had checked. Anchoring
+  // here means a paper arrives verified, and "not verified" stays a transient
+  // state rather than the permanent condition of everything new.
+  //
+  // Cheap by design: it parses the PDF once and matches strings. No LLM, no
+  // OCR, no network. Failure is non-fatal — the source is still ingested and
+  // the UI says, honestly, that it has not been checked.
+  try {
+    const { anchorEvidenceForSource } = await import("./anchorEvidence");
+    await anchorEvidenceForSource(source.id);
+  } catch (error) {
+    logger.warn(
+      { err: error, sourceId: source.id },
+      "research_brain_anchor_after_ingest_failed",
+    );
+  }
+
   return source;
 }
 

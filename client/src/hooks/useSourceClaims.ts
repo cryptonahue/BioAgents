@@ -58,7 +58,11 @@ export interface SourceClaim {
   anchor_bbox?: any | null;
   anchor_verbatim?: boolean | null;
   /** Embedded by getSourceClaims — used for the paper's real title. */
-  source?: { title?: string | null } | null;
+  source?: {
+    title?: string | null;
+    /** When the source was last anchored. NULL = not verified yet. */
+    evidence_anchored_at?: string | null;
+  } | null;
   chunk?: SourceClaimChunk | null;
 }
 
