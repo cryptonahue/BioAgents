@@ -1,5 +1,6 @@
 import { resolveResearchBrainLLM } from "./llm";
 import { formatEvidencePackForPrompt } from "./search";
+import { INTERNAL_CITATION_RULE } from "./citation/citationPolicy";
 import type { EvidencePack } from "./types";
 
 const NO_EVIDENCE_MESSAGE =
@@ -184,6 +185,16 @@ export async function verifyEvidenceGroundedResponse(params: {
 
 Rewrite the draft so every scientific factual claim is grounded in the evidence pack.
 
+YOUR PRIMARY JOB, alongside grounding, is to FIX THE CITATIONS. The draft was
+written by upstream agents that only knew how to cite DOIs. The evidence pack
+below carries internal links that open our copy of the PDF on the anchored page.
+Wherever the draft cites a doi.org link for a source that has an anchored passage
+here, REPLACE that DOI with the passage's internal link. This is not optional and
+it is not a preference to weigh against keeping the DOI — it is the point of this
+pass. Keep the DOI only for a source that has no internal link in the pack.
+
+${INTERNAL_CITATION_RULE}
+
 Rules:
 - Do not introduce facts not present in the evidence pack.
 - If evidence is partial, use cautious wording.
@@ -192,10 +203,7 @@ Rules:
 - Follow the evidence pack query plan when present: use its strategy, answer sections, and cautions to decide the response structure.
 - If contradictions exist, state them without resolving them as consensus.
 - If a claim in the draft is unsupported, remove it.
-- Include compact inline provenance using source title and DOI when available.
-- Always include a final short section titled "Evidence used" when evidence exists. For each key claim, list source title, DOI as a clickable inline citation using [DOI]{https://doi.org/...}, internal fragment link using citation format [fragment N]{/library/...?...}, fragment/page when available, and a short quoted snippet from the evidence pack.
-- Use "fragment" in user-facing answers, not "chunk". Prefer the internal fragment link for claim-level citations and the DOI link for the public paper reference.
-- Do not invent snippets, chunks, pages, paper links, DOI links, or citations; use only the evidence pack.
+- Use "fragment" in user-facing answers, not "chunk".
 - Answer in the same language as the user's question.
 
 ${formatEvidencePackForPrompt(params.evidencePack)}

@@ -6,6 +6,7 @@ import type {
 } from "./db";
 import { searchBioprospectingFacts, searchClaims } from "./db";
 import { searchBioprospectingContradictions } from "./contradictionDb";
+import { renderPassageBlock } from "./citation/citationPolicy";
 import type {
   BioprospectingFact,
   EvidencePack,
@@ -500,30 +501,12 @@ export function formatEvidencePackForPrompt(pack: EvidencePack): string {
     They are printed first because a verifier that reads claims before text
     treats our summaries as the ground truth and the source as commentary,
     which is exactly backwards.
+
+    The block and its citation rule come from citation/citationPolicy.ts — the
+    one place that owns how we cite — so this prompt and the reply/verifier
+    prompts can never drift into disagreeing about DOI vs internal links again.
   */
-  if (pack.passages && pack.passages.length > 0) {
-    lines.push("");
-    lines.push(
-      `Passages from the loaded papers (${pack.passages.length}) — the source text itself, quote from these:`,
-    );
-    lines.push(
-      "CITE THESE WITH THEIR INTERNAL LINK, NOT THE DOI. A doi.org link is a promise — 'trust me, it is in there'. An internal link opens OUR copy of the PDF, on the page, with the sentence boxed and a verdict beside it, and it is the only citation this system can stand behind, because it is the only one it can CHECK. Format: [cited text]{<link>}. A passage with no link did not anchor: cite its DOI and say the location could not be verified. Never invent a link.",
-    );
-    pack.passages.forEach((p, i) => {
-      const sim =
-        p.similarity != null ? ` (relevance ${p.similarity.toFixed(2)})` : "";
-      const where = p.page != null ? `, p.${p.page}` : "";
-      lines.push(
-        `[passage ${i + 1}] ${p.sourceTitle ?? "unknown source"}${where}${sim}`,
-      );
-      lines.push(`"${p.content.replace(/\s+/g, " ").trim()}"`);
-      lines.push(
-        p.citation
-          ? `link: ${p.citation}`
-          : "link: none (this passage could not be located in the PDF — cite the DOI and say so)",
-      );
-    });
-  }
+  lines.push(...renderPassageBlock(pack.passages));
 
   const formatClaim = (claim: EvidencePackClaim) => {
     const source = claim.sourceTitle ? ` Source: ${claim.sourceTitle}.` : "";
