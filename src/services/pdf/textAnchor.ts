@@ -40,6 +40,8 @@ import { loadPdfjsLegacy } from "../files/loaders/pdfjsLegacy";
 import {
   buildNeedle,
   findAlnumMatchRuns,
+  matchFloorFor,
+  normalizeToAlnum,
   type MatchableRun,
 } from "../../../shared/textAnchor";
 import logger from "../../utils/logger";
@@ -78,6 +80,12 @@ export interface PdfTextIndex {
   numPages: number;
   /** Runs per page. `pages[0]` is page 1. */
   pages: PositionedRun[][];
+  /**
+   * Alphanumeric character count per page. Precomputed because the match
+   * floor scales with the haystack, and the haystack is the SUM over the
+   * pages a search is about to cover — see `matchFloorFor`.
+   */
+  pageAlnumLength: number[];
 }
 
 // The shape PDF.js reports for a text item. `transform` is
@@ -176,19 +184,25 @@ export async function indexPdfText(pdf: Uint8Array): Promise<PdfTextIndex> {
 
   try {
     const pages: PositionedRun[][] = [];
+    const pageAlnumLength: number[] = [];
     for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
       const page = await doc.getPage(pageNum);
       try {
         const pageHeightPt = page.getViewport({ scale: 1.0 }).height;
         const tc = await page.getTextContent();
-        pages.push(
-          runsFromItems((tc.items || []) as PdfTextItem[], pageHeightPt),
+        const runs = runsFromItems(
+          (tc.items || []) as PdfTextItem[],
+          pageHeightPt,
+        );
+        pages.push(runs);
+        pageAlnumLength.push(
+          runs.reduce((n, r) => n + normalizeToAlnum(r.str).length, 0),
         );
       } finally {
         page.cleanup();
       }
     }
-    return { numPages: doc.numPages, pages };
+    return { numPages: doc.numPages, pages, pageAlnumLength };
   } finally {
     try {
       await doc.destroy();
@@ -220,19 +234,29 @@ export function anchorInIndex(
   text: string,
   options: AnchorOptions = {},
 ): AnchorResult | null {
-  const needle = buildNeedle(text);
-  // Too little text to anchor confidently. Refuse rather than guess.
-  if (!needle) return null;
-
   const first = options.page
     ? Math.min(Math.max(1, options.page), index.numPages)
     : 1;
   const last = options.page ? first : index.numPages;
 
+  // The floor scales with the HAYSTACK — the text this call is about to
+  // cover, summed over every page in scope. The match itself runs page by
+  // page, but the risk of a spurious hit comes from trying all of them, so
+  // scoping to one page earns a shorter (still safe) anchor. That is what
+  // lets a 30-character table row anchor inside a table we have already
+  // located, while the same row would rightly be refused document-wide.
+  let haystack = 0;
+  for (let p = first; p <= last; p++) haystack += index.pageAlnumLength[p - 1] ?? 0;
+  const floor = matchFloorFor(haystack);
+
+  const needle = buildNeedle(text, floor);
+  // Too little text to anchor confidently at this scale. Refuse, don't guess.
+  if (!needle) return null;
+
   for (let pageNum = first; pageNum <= last; pageNum++) {
     const runs = index.pages[pageNum - 1];
     if (!runs || runs.length === 0) continue;
-    const match = findAlnumMatchRuns(runs, needle);
+    const match = findAlnumMatchRuns(runs, needle, floor);
     if (!match) continue;
     const bbox = bboxFromRuns(runs, match.startRun, match.endRun, pageNum);
     if (!bbox) continue;

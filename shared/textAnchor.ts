@@ -43,10 +43,50 @@
 export const NEEDLE_MAX_ALNUM = 140;
 
 /**
- * The minimum contiguous match we accept. This is what kills spurious
- * matches — do not lower it without re-reading the note above.
+ * THE FLOOR SCALES WITH THE HAYSTACK.
+ *
+ * The floor exists to stop a short match from landing somewhere it does
+ * not belong. But how short is "too short" is not a property of the text —
+ * it is a property of HOW MUCH TEXT YOU SEARCH. Sixty characters is the
+ * right demand when scanning a 500,000-character book, and it is an absurd
+ * one when scanning the 300 characters of a table you have already
+ * located: a table row is barely 30 alphanumeric characters, so a fixed
+ * floor of 60 refuses to anchor the very thing we most want to highlight.
+ *
+ * Risk of a spurious hit grows with the size of the haystack, so the floor
+ * grows with it too — logarithmically, calibrated against what we have
+ * actually observed:
+ *
+ *   ~500,000 chars (a 243-page book)  -> 60   a 20-char prefix DID match
+ *                                             the wrong page here; 60 does
+ *                                             not. This is the anchor point.
+ *   ~2,000 chars (one page)           -> ~35
+ *   ~300 chars (a located table)      -> ~26  a table row now anchors
+ *
+ * The floor NEVER goes below MATCH_FLOOR_MIN, however small the haystack:
+ * below that a match stops meaning anything at all.
+ *
+ * Callers pass the haystack they are about to search — the sum over every
+ * page in scope, NOT the size of one page. The match runs per page, but the
+ * risk comes from trying two hundred of them.
  */
-export const MATCH_FLOOR_ALNUM = 60;
+export const MATCH_FLOOR_MAX = 60;
+export const MATCH_FLOOR_MIN = 14;
+// Calibrated so that log10(500_000) * SLOPE ≈ MATCH_FLOOR_MAX.
+const FLOOR_SLOPE = 10.5;
+
+/** @deprecated Use `matchFloorFor`. Kept as the document-scale default. */
+export const MATCH_FLOOR_ALNUM = MATCH_FLOOR_MAX;
+
+/**
+ * The minimum contiguous match to accept when searching `haystackAlnum`
+ * alphanumeric characters of text.
+ */
+export function matchFloorFor(haystackAlnum: number): number {
+  const n = Math.max(haystackAlnum, 10);
+  const floor = Math.round(FLOOR_SLOPE * Math.log10(n));
+  return Math.min(MATCH_FLOOR_MAX, Math.max(MATCH_FLOOR_MIN, floor));
+}
 
 /** Step down by this much when the longest prefix does not match. */
 const PREFIX_STEP = 8;
@@ -75,16 +115,24 @@ export function normalizeToAlnum(text: string): string {
  * NEEDLE_MAX_ALNUM alphanumeric characters. Draws from a generous raw
  * prefix so punctuation and spaces cannot starve it.
  *
- * Returns "" when the quote carries too little text to anchor
- * confidently — callers MUST treat that as "do not highlight", never as
- * "match anything".
+ * Returns "" when the quote carries less text than `floor` — too little to
+ * anchor confidently AT THAT SEARCH SCALE. Callers MUST treat "" as "do not
+ * highlight", never as "match anything".
+ *
+ * `floor` defaults to the document scale, which is the safe assumption: a
+ * caller that has not thought about its search space gets the strictest
+ * demand. Pass a floor from `matchFloorFor` when you know how much text you
+ * are actually searching.
  */
-export function buildNeedle(text: string): string {
+export function buildNeedle(
+  text: string,
+  floor: number = MATCH_FLOOR_MAX,
+): string {
   const needle = normalizeToAlnum(text.slice(0, NEEDLE_MAX_ALNUM * 3)).slice(
     0,
     NEEDLE_MAX_ALNUM,
   );
-  return needle.length >= MATCH_FLOOR_ALNUM ? needle : "";
+  return needle.length >= floor ? needle : "";
 }
 
 /**
@@ -117,6 +165,7 @@ export interface RunRange {
 export function findAlnumMatchRuns(
   runs: MatchableRun[],
   needleAlnum: string,
+  floor: number = MATCH_FLOOR_MAX,
 ): RunRange | null {
   if (!needleAlnum) return null;
 
@@ -141,13 +190,18 @@ export function findAlnumMatchRuns(
   }
   if (!fullAlnum) return null;
 
-  const floor = Math.min(MATCH_FLOOR_ALNUM, needleAlnum.length);
+  // Never accept less than the caller's floor, and never demand more than
+  // the needle can offer.
+  const effectiveFloor = Math.min(
+    Math.max(floor, MATCH_FLOOR_MIN),
+    needleAlnum.length,
+  );
   const maxLen = Math.min(NEEDLE_MAX_ALNUM, needleAlnum.length);
-  if (maxLen < floor) return null;
+  if (maxLen < effectiveFloor) return null;
 
   let matchIdx = -1;
   let matchedLen = 0;
-  for (let len = maxLen; len >= floor; len -= PREFIX_STEP) {
+  for (let len = maxLen; len >= effectiveFloor; len -= PREFIX_STEP) {
     const idx = fullAlnum.indexOf(needleAlnum.slice(0, len));
     if (idx !== -1) {
       matchIdx = idx;
