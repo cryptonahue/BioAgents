@@ -120,6 +120,31 @@ export function resolvePassageTokens(
  * "[P9]". Replace that label with a page reference pulled from the link, so a
  * slip degrades to "[fuente, p.2]" instead of a meaningless id.
  */
+/**
+ * Rewrite DOI citations to an internal paper-level link, for output that is
+ * SYNTHESIS rather than quotation — the reflection agent's Key Insights. Those
+ * are paper-level summaries, so they get a paper-level link ( /library/<docId>/
+ * viewer, no bbox ) that opens our copy of the paper, keeping them consistent
+ * with the rest of the answer instead of pointing out to doi.org.
+ *
+ * Only safe to call when the whole answer is scoped to one paper (docId), since
+ * every DOI citation then refers to that same paper. Handles both the
+ * "(label)[doi]" and bare "[doi]" shapes the reflection agent emits.
+ */
+export function rewriteDoiToPaperLink(
+  text: string,
+  docId: string | null | undefined,
+): string {
+  if (!text || !docId) return text;
+  const link = `/library/${docId}/viewer`;
+  return text
+    .replace(
+      /\(([^)]+)\)\s*\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi,
+      (_whole, label) => `[${label}]{${link}}`,
+    )
+    .replace(/\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi, `[fuente]{${link}}`);
+}
+
 export function cleanTokenIdLabels(text: string): string {
   if (!text) return text;
   return text.replace(

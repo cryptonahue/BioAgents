@@ -452,6 +452,13 @@ export async function researchBrainSearch(params: {
     openQuestions: mapped.filter((claim) => claim.status === "open_question"),
     sources: buildSources(claims, facts),
     contradictionWarnings,
+    scope: scope
+      ? {
+          sourceId: scope.sourceId,
+          title: scope.title,
+          docId: Buffer.from(String(scope.title)).toString("base64"),
+        }
+      : null,
   };
 
   if (

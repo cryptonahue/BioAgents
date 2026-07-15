@@ -6,6 +6,7 @@ import {
   passageToken,
   renderPassageBlock,
   resolvePassageTokens,
+  rewriteDoiToPaperLink,
 } from "./citationPolicy";
 import type { EvidencePackPassage } from "../types";
 
@@ -75,6 +76,38 @@ describe("collapseDuplicateCitations", () => {
 
   it("runs as part of resolvePassageTokens: {P1}{P1} -> one link", () => {
     expect(resolvePassageTokens("[a]{P1}{P1}", passages)).toBe(`[a]{${LINK1}}`);
+  });
+});
+
+describe("rewriteDoiToPaperLink", () => {
+  const DOC = "bWFyaW5lZHJ1Z3MtMjQtMDAyNDMucGRm";
+
+  it("rewrites a bare [doi] citation to an internal paper-level link", () => {
+    const out = rewriteDoiToPaperLink(
+      "El agua de cría tuvo la mayor riqueza[https://doi.org/10.3390/md24070243]",
+      DOC,
+    );
+    expect(out).toBe(
+      `El agua de cría tuvo la mayor riqueza[fuente]{/library/${DOC}/viewer}`,
+    );
+  });
+
+  it("rewrites the (label)[doi] shape keeping the label", () => {
+    const out = rewriteDoiToPaperLink(
+      "(mayor riqueza)[https://doi.org/10.3390/md24070243]",
+      DOC,
+    );
+    expect(out).toBe(`[mayor riqueza]{/library/${DOC}/viewer}`);
+  });
+
+  it("is a no-op without a docId (unscoped: DOI stays)", () => {
+    const s = "algo[https://doi.org/10.3390/md24070243]";
+    expect(rewriteDoiToPaperLink(s, null)).toBe(s);
+    expect(rewriteDoiToPaperLink(s, undefined)).toBe(s);
+  });
+
+  it("leaves text without a DOI untouched", () => {
+    expect(rewriteDoiToPaperLink("sin cita", DOC)).toBe("sin cita");
   });
 });
 

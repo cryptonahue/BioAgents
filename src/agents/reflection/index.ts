@@ -5,6 +5,7 @@ import type {
 } from "../../types/core";
 import logger from "../../utils/logger";
 import { reflectOnWorld, type ReflectionDoc } from "./utils";
+import { rewriteDoiToPaperLink } from "../../services/researchBrain/citation/citationPolicy";
 
 type ReflectionResult = {
   conversationTitle?: string;
@@ -166,8 +167,21 @@ export async function reflectionAgent(input: {
       "reflection_agent_completed",
     );
 
+    // When the question was scoped to one paper, the Key Insights are all about
+    // that paper — so cite it with an internal paper-level link, not a bare DOI,
+    // keeping them consistent with the body and the panels. Every other output
+    // already uses internal links; this was the last one still pointing at
+    // doi.org. Untouched when unscoped (insights may span papers; DOI is honest).
+    const scope = (conversationState.values.researchBrainEvidence as any)?.scope;
+    const keyInsights = Array.isArray((text as any).keyInsights)
+      ? (text as any).keyInsights.map((insight: string) =>
+          rewriteDoiToPaperLink(insight, scope?.docId),
+        )
+      : (text as any).keyInsights;
+
     return {
       ...text,
+      keyInsights,
       start,
       end,
     };

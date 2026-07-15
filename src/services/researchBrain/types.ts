@@ -262,6 +262,13 @@ export type EvidencePack = {
   openQuestions: EvidencePackClaim[];
   sources: EvidencePackSource[];
   contradictionWarnings: EvidencePackContradiction[];
+  /**
+   * Set when the question named one paper and retrieval was scoped to it. Lets
+   * downstream consumers (e.g. the reflection agent's Key Insights) cite the
+   * paper with an internal link instead of a DOI, since every fact in the pack
+   * is that one paper. `docId` is the base64 title used in /library/ links.
+   */
+  scope?: { sourceId: string; title: string; docId: string } | null;
 };
 
 export type ExtractedClaim = {

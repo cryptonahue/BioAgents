@@ -1444,9 +1444,28 @@ async function runDeepResearch(params: {
       }
 
       // Execute only tasks from the current level
-      tasksToExecute = (conversationState.values.plan || []).filter(
+      // A planner told to emit ~1 literature task occasionally emits the same
+      // one twice. Without a guard both run — identical query, identical result
+      // ("1/2 sources, 20 chunks, 1 failed" on each) — so we pay twice for the
+      // same evidence against an external service that already fails
+      // intermittently. Collapse tasks with the same (type, objective) so a
+      // duplicate runs once.
+      const levelTasks = (conversationState.values.plan || []).filter(
         (t) => t.level === newLevel,
       );
+      const seenTaskKeys = new Set<string>();
+      tasksToExecute = levelTasks.filter((t) => {
+        const key = `${t.type}::${(t.objective || "").trim().toLowerCase()}`;
+        if (seenTaskKeys.has(key)) {
+          logger.info(
+            { type: t.type, objective: t.objective, level: newLevel },
+            "dropped_duplicate_task",
+          );
+          return false;
+        }
+        seenTaskKeys.add(key);
+        return true;
+      });
 
       // Serialize DB writes to prevent concurrent updateConversationState calls
       // from overwriting each other's changes

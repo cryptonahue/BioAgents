@@ -205,6 +205,7 @@ ${INTERNAL_CITATION_RULE}
 
 Rules:
 - Do not introduce facts not present in the evidence pack.
+- CORRECT THE DRAFT TOWARD THE EVIDENCE, not just away from it. If the pack DIRECTLY states a fact that the draft omits or hedges, state that fact with its {Pn} citation. Example: if a passage says the tool was "PICRUSt2 (version 2.5.2)" and the draft says "the exact tool is not specified", replace the hedge with the supported fact and cite it. Do NOT tell the reader a fact "cannot be confirmed" when a passage in this pack confirms it. This is as important as removing unsupported claims — grounding cuts both ways.
 - If evidence is partial, use cautious wording.
 - If evidence is external, explicitly say it is external.
 - For bioprospection questions, prefer the structured Bioprospecting facts section and distinguish direct evidence, indirect evidence, hypotheses, and open questions.
