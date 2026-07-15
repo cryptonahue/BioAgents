@@ -344,6 +344,15 @@
   color: var(--text-tertiary);
 }
 
+/* The linked wallet address — shown in full so the admin can copy the exact
+   value to grant. Breaks rather than overflows the cell. */
+.admin-whitelist-wallet {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
 /* A user an admin whitelisted directly, who never filled the form. A named
    state, not an empty cell. */
 .admin-request-none {

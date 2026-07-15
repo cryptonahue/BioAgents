@@ -105,8 +105,10 @@ import logger from "../../utils/logger";
 /** The one value that means "has access". Same literal as the CLI. */
 const WHITELISTED = "whitelisted";
 
-/** Columns the CLI reads, plus `role` so the UI can mark admins. */
-const SELECT_COLS = "id, email, username, user_id, access_type, role, created_at";
+/** Columns the CLI reads, plus `role` so the UI can mark admins, plus
+ * `wallet_address` so the admin knows which wallet to grant access to. */
+const SELECT_COLS =
+  "id, email, username, user_id, access_type, role, wallet_address, created_at";
 
 const MAX_PAGE_SIZE = 100;
 
@@ -117,6 +119,7 @@ interface UserRow {
   user_id: string | null;
   access_type: string | null;
   role: string | null;
+  wallet_address: string | null;
   created_at: string | null;
 }
 
@@ -161,6 +164,8 @@ interface WhitelistUser {
   accessType: string | null;
   whitelisted: boolean;
   isAdmin: boolean;
+  /** The user's linked wallet, so the admin can confirm which wallet to grant. */
+  walletAddress: string | null;
   createdAt: string | null;
   /** `null` for a user the admin whitelisted directly, who never asked. */
   request: AccessRequest | null;
@@ -192,6 +197,7 @@ function toWhitelistUser(
     accessType: row.access_type,
     whitelisted: row.access_type === WHITELISTED,
     isAdmin: row.role === "admin",
+    walletAddress: row.wallet_address,
     createdAt: row.created_at,
     request,
   };

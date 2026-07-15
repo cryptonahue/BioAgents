@@ -51,6 +51,7 @@ export interface WhitelistUser {
   accessType: string | null;
   whitelisted: boolean;
   isAdmin: boolean;
+  walletAddress: string | null;
   createdAt: string | null;
   request: AccessRequest | null;
 }

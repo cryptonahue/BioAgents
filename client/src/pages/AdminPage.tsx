@@ -995,6 +995,11 @@ function WhitelistTab() {
                       <div class="admin-whitelist-id">
                         <code>{shortId(user.id)}</code>
                       </div>
+                      {user.walletAddress && (
+                        <div class="admin-whitelist-wallet" title={user.walletAddress}>
+                          <code>{user.walletAddress}</code>
+                        </div>
+                      )}
                     </td>
                     <td>
                       {/* The reason to approve. A user with no request was
