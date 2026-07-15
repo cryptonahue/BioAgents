@@ -137,12 +137,20 @@ export function rewriteDoiToPaperLink(
 ): string {
   if (!text || !docId) return text;
   const link = `/library/${docId}/viewer`;
-  return text
-    .replace(
-      /\(([^)]+)\)\s*\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi,
-      (_whole, label) => `[${label}]{${link}}`,
-    )
-    .replace(/\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi, `[fuente]{${link}}`);
+  return (
+    text
+      // (label)[doi] → keep the label
+      .replace(
+        /\(([^)]+)\)\s*\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi,
+        (_whole, label) => `[${label}]{${link}}`,
+      )
+      // (https://doi.org/…) — the DOI wrapped in plain parentheses, the shape the
+      // reflection agent emits for Key Insights. Without this the insights stayed
+      // on doi.org while everything else went internal.
+      .replace(/\(\s*https?:\/\/doi\.org\/[^)\s]+\s*\)/gi, `[fuente]{${link}}`)
+      // bare [doi]
+      .replace(/\[\s*https?:\/\/doi\.org\/[^\]]+\]/gi, `[fuente]{${link}}`)
+  );
 }
 
 export function cleanTokenIdLabels(text: string): string {

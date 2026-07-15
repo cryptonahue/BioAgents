@@ -111,6 +111,14 @@ describe("rewriteDoiToPaperLink", () => {
     expect(out).toBe(`[mayor riqueza]{/library/${DOC}/viewer}`);
   });
 
+  it("rewrites a DOI wrapped in plain parentheses (Key Insights shape)", () => {
+    const out = rewriteDoiToPaperLink(
+      "AW mostró la mayor riqueza (https://doi.org/10.3390/md24070243).",
+      DOC,
+    );
+    expect(out).toBe(`AW mostró la mayor riqueza [fuente]{/library/${DOC}/viewer}.`);
+  });
+
   it("is a no-op without a docId (unscoped: DOI stays)", () => {
     const s = "algo[https://doi.org/10.3390/md24070243]";
     expect(rewriteDoiToPaperLink(s, null)).toBe(s);
