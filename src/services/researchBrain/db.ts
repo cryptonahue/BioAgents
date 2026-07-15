@@ -2078,6 +2078,13 @@ export async function searchClaims(params: {
   query: string;
   trustTier?: ResearchTrustTier | "all";
   limit?: number;
+  /**
+   * When the query clearly names one paper, scope claims to that source. The
+   * five search paths below all funnel into `claimMap`; filtering the map once
+   * at the end covers every path without threading `.eq("source_id")` through
+   * each query and its fallbacks.
+   */
+  sourceId?: string;
 }): Promise<ResearchClaim[]> {
   const query = params.query.trim();
   if (!query) return [];
@@ -2304,9 +2311,11 @@ export async function searchClaims(params: {
     addClaims((chunkClaims.data || []) as ResearchClaim[]);
   }
 
-  return hydrateMissingClaimChunks(
-    Array.from(claimMap.values()).slice(0, limit),
-  );
+  let results = Array.from(claimMap.values());
+  if (params.sourceId) {
+    results = results.filter((claim) => claim.source_id === params.sourceId);
+  }
+  return hydrateMissingClaimChunks(results.slice(0, limit));
 }
 
 async function hydrateMissingClaimChunks(

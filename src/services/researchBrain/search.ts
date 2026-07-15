@@ -7,6 +7,7 @@ import type {
 import { searchBioprospectingFacts, searchClaims } from "./db";
 import { searchBioprospectingContradictions } from "./contradictionDb";
 import { renderPassageBlock } from "./citation/citationPolicy";
+import { detectPaperScope } from "./paperScope";
 import type {
   BioprospectingFact,
   EvidencePack,
@@ -212,18 +213,35 @@ export async function researchBrainSearch(params: {
     condition: params.condition ?? inferredMeasurementFilters.condition,
   };
   const queryPlan = planBioprospectingQuery(params.query, measurementFilters);
+
+  // When the query clearly names one paper, scope every part of the pack to it
+  // so the answer cites THAT paper and not whatever ranks high semantically. An
+  // explicit sourceId from the caller wins; otherwise we try to detect one, and
+  // a null detection means "search broadly" — unchanged behaviour.
+  const scope = params.sourceId
+    ? null
+    : await detectPaperScope(params.query);
+  const scopedSourceId = params.sourceId || scope?.sourceId;
+  if (scope) {
+    logger.info(
+      { sourceId: scope.sourceId, reason: scope.reason, entity: scope.entity },
+      "research_brain_search_scoped_to_paper",
+    );
+  }
+
   const [claims, facts] = await Promise.all([
     searchClaims({
       query: params.query,
       trustTier,
       limit,
+      sourceId: scopedSourceId,
     }),
     searchBioprospectingFacts({
       query: params.query,
       limit,
       ...measurementFilters,
       reviewStatus: params.reviewStatus,
-      sourceId: params.sourceId,
+      sourceId: scopedSourceId,
       sourceTrustTier: params.sourceTrustTier,
     }),
   ]);
@@ -308,9 +326,13 @@ export async function researchBrainSearch(params: {
       vectorSearch = new VectorSearchWithDocuments();
       (globalThis as any).__knowledgeVectorSearch = vectorSearch;
     }
+    // When scoped to a paper, filter the passage search to that document by
+    // title (documents.title === research_sources.title). This is what stops
+    // the pack pulling near-identical sentences out of OTHER papers.
     const docs = await vectorSearch.search(params.query, {
       vectorLimit: 24,
       finalLimit: 8,
+      ...(scope?.title ? { filterTitle: scope.title } : {}),
     });
     passages = (docs ?? []).map((d: any) => ({
       sourceId: d.metadata?.sourceId ?? null,
