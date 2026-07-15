@@ -188,6 +188,15 @@ export async function researchBrainSearch(params: {
   evidenceStrength?: "direct" | "indirect" | "hypothesis" | "unknown" | "all";
   sourceId?: string;
   sourceTrustTier?: ResearchTrustTier | "all";
+  /**
+   * The STABLE query to detect paper scope from — the user's original question,
+   * not the objective that reflection rewrites each iteration. Scope must be
+   * sticky: the user named the paper once, in their question, and every
+   * iteration should stay on it. Detecting from the evolving objective loses the
+   * species name by iteration two and silently drops the scope, which reopens
+   * cross-paper contamination and DOI citations. Falls back to `query`.
+   */
+  scopeQuery?: string;
 }): Promise<EvidencePack> {
   const trustTier = params.includeExternal
     ? params.trustTier || "all"
@@ -220,7 +229,7 @@ export async function researchBrainSearch(params: {
   // a null detection means "search broadly" — unchanged behaviour.
   const scope = params.sourceId
     ? null
-    : await detectPaperScope(params.query);
+    : await detectPaperScope(params.scopeQuery || params.query);
   const scopedSourceId = params.sourceId || scope?.sourceId;
   if (scope) {
     logger.info(

@@ -164,6 +164,11 @@ export function cleanTokenIdLabels(text: string): string {
  */
 export function collapseDuplicateCitations(text: string): string {
   if (!text) return text;
-  const re = /(\{\/library\/[^}]+\}|\{https?:\/\/[^}]+\})(\s*\1)+/g;
-  return text.replace(re, "$1");
+  // A citation unit is an optional [label] plus a {link}. The model cites the
+  // same passage token twice, which reaches here as either {link}{link} or the
+  // whole unit repeated — [x]{link} [x]{link}. Collapse a unit immediately
+  // repeated after itself (runs of any length, whitespace between) to one.
+  const unit =
+    /((?:\[[^\]]*\])?\{(?:\/library\/|https?:\/\/)[^}]+\})(\s*\1)+/g;
+  return text.replace(unit, "$1");
 }

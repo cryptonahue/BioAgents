@@ -74,6 +74,17 @@ describe("collapseDuplicateCitations", () => {
     );
   });
 
+  it("collapses a repeated [label]{link} unit with a space between", () => {
+    expect(
+      collapseDuplicateCitations(`[potencial KO]{${LINK1}} [potencial KO]{${LINK1}}`),
+    ).toBe(`[potencial KO]{${LINK1}}`);
+  });
+
+  it("leaves labelled citations with different labels alone", () => {
+    const s = `[a]{${LINK1}} [b]{${LINK1}}`;
+    expect(collapseDuplicateCitations(s)).toBe(s);
+  });
+
   it("runs as part of resolvePassageTokens: {P1}{P1} -> one link", () => {
     expect(resolvePassageTokens("[a]{P1}{P1}", passages)).toBe(`[a]{${LINK1}}`);
   });

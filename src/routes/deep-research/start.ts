@@ -1142,6 +1142,14 @@ async function runDeepResearch(params: {
               conversationState.values.objective ||
               currentMessage.question ||
               createdMessage.question,
+            // Detect paper scope from the ORIGINAL question, which keeps the
+            // species name across iterations — not the objective reflection
+            // rewrites. Without this, scope holds on iteration one and silently
+            // drops on the next, reopening cross-paper claims and DOI insights.
+            scopeQuery:
+              conversationState.values.objective ||
+              createdMessage.question ||
+              currentMessage.question,
             trustTier: "internal",
             includeExternal: false,
             limit: 12,
