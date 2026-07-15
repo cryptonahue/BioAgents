@@ -399,12 +399,32 @@ export function ChatPage({
   // Get current conversation mode (explicit > detected > default to deep for new)
   const currentConversationMode = conversationModes[currentSessionId] || detectedMode;
 
+  // A deep-research run is active when the PERSISTED state says so and its
+  // heartbeat has not gone stale. Unlike loadingConversationId (client-local,
+  // lost on refresh), this is read from conversationState, which useStates
+  // fetches on mount and re-polls every 2s — so it SURVIVES A PAGE RELOAD. This
+  // is what restores the "researching…" indicator when you reload mid-run
+  // instead of showing nothing until the answer lands. It clears on its own
+  // within ~2s of the server calling markRunFinished (isRunning -> false).
+  // Mirrors isActiveRun in src/services/deep-research/run-guard.ts.
+  const deepResearchRun = (conversationState?.values as any)?.deepResearchRun;
+  const runExpiresMs = deepResearchRun?.expiresAt
+    ? new Date(deepResearchRun.expiresAt).getTime()
+    : null;
+  const isRunActive = Boolean(
+    deepResearchRun?.isRunning &&
+      (runExpiresMs === null || Date.now() < runExpiresMs),
+  );
+
   // Show research panel when deep research is in progress OR has any research state (including normal chat)
-  const showResearchPanel = isDeepResearch || hasAnyResearchState;
+  const showResearchPanel = isDeepResearch || hasAnyResearchState || isRunActive;
 
   // Check if current conversation is loading
-  // loadingConversationId is set at start and cleared when done (by response handler or WebSocket)
-  const isCurrentConversationLoading = loadingConversationId === currentSessionId;
+  // loadingConversationId is set at start and cleared when done (by response
+  // handler or WebSocket); isRunActive covers the reload case, where the local
+  // flag is gone but the server still reports the run as running.
+  const isCurrentConversationLoading =
+    loadingConversationId === currentSessionId || isRunActive;
 
   // Clear loading state when loading completes (only if no WebSocket to handle it)
   // When wsConnected, the WebSocket handler clears loading when message is received
