@@ -51,7 +51,7 @@ export const INTERNAL_CITATION_RULE = [
   "CITATION RULE (single source of truth — follow it exactly):",
   "- Cite a passage by its TOKEN, exactly as shown next to it: [short label]{P1}, [short label]{P2}, and so on. The system replaces the token with a link that opens our copy of the PDF on the anchored page with the sentence boxed.",
   "- NEVER write a URL, a /library/ path, a bbox, a page number, or a fragment id yourself. You do not have the link and you cannot reconstruct it — if you type it by hand you WILL corrupt it. Write ONLY the token.",
-  "- The [short label] is a few words in the answer's own language, like a normal inline citation. NEVER paste the whole passage into the brackets: the passage is the evidence the token points AT, not the label.",
+  "- The [short label] is a few DESCRIPTIVE words in the answer's own language, like a normal inline citation (e.g. [mayor riqueza en agua de cría]). NEVER paste the whole passage into the brackets, and NEVER use the token id itself as the label — do not write [P9]{P9}. The label describes the fact; the token points at the evidence.",
   "- Prefer a passage token over a DOI for every claim a passage supports. Do NOT keep a doi.org link when a passage token for the same fact is available — cite the token instead.",
   "- Only for a source with NO passage token here (it did not anchor): cite its DOI as [short label]{https://doi.org/…} and say the exact location could not be verified.",
   "- Never invent a token, a link, a page, or a section number. Cite only tokens shown below or a real DOI from the pack.",
@@ -110,7 +110,25 @@ export function resolvePassageTokens(
     const link = passages[idx]?.citation;
     return link ? `{${link}}` : whole;
   });
-  return collapseDuplicateCitations(resolved);
+  return collapseDuplicateCitations(cleanTokenIdLabels(resolved));
+}
+
+/**
+ * Repair citations whose visible label is just the token id — [P9]{link}. The
+ * model is told to write a descriptive label and usually does, but sometimes it
+ * echoes the token as the label instead, which reaches the reader as a bare
+ * "[P9]". Replace that label with a page reference pulled from the link, so a
+ * slip degrades to "[fuente, p.2]" instead of a meaningless id.
+ */
+export function cleanTokenIdLabels(text: string): string {
+  if (!text) return text;
+  return text.replace(
+    /\[[Pp]\d+\](\{\/library\/[^}]+\})/g,
+    (_whole, link) => {
+      const page = /[?&#]page=(\d+)/.exec(link)?.[1];
+      return `[fuente${page ? `, p.${page}` : ""}]${link}`;
+    },
+  );
 }
 
 /**

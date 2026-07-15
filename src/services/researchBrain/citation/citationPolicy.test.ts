@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
+  cleanTokenIdLabels,
   collapseDuplicateCitations,
   INTERNAL_CITATION_RULE,
   passageToken,
@@ -74,6 +75,24 @@ describe("collapseDuplicateCitations", () => {
 
   it("runs as part of resolvePassageTokens: {P1}{P1} -> one link", () => {
     expect(resolvePassageTokens("[a]{P1}{P1}", passages)).toBe(`[a]{${LINK1}}`);
+  });
+});
+
+describe("cleanTokenIdLabels", () => {
+  it("rewrites a bare [P9] label to a page reference from the link", () => {
+    expect(cleanTokenIdLabels(`[P9]{${LINK2}}`)).toBe(`[fuente, p.18]{${LINK2}}`);
+  });
+
+  it("leaves a descriptive label untouched", () => {
+    expect(cleanTokenIdLabels(`[mayor riqueza]{${LINK1}}`)).toBe(
+      `[mayor riqueza]{${LINK1}}`,
+    );
+  });
+
+  it("runs inside resolvePassageTokens: [P1]{P1} -> page-labelled link", () => {
+    expect(resolvePassageTokens("[P1]{P1}", passages)).toBe(
+      `[fuente, p.20]{${LINK1}}`,
+    );
   });
 });
 
