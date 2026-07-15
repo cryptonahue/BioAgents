@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import {
+  collapseDuplicateCitations,
   INTERNAL_CITATION_RULE,
   passageToken,
   renderPassageBlock,
@@ -47,6 +48,32 @@ describe("resolvePassageTokens", () => {
     const out = resolvePassageTokens("{P1}", passages);
     expect(out).toContain("bWFyaW5lZHJ1Z3MtMjQtMDAyNDMucGRm");
     expect(out).not.toContain("marinindugs");
+  });
+});
+
+describe("collapseDuplicateCitations", () => {
+  it("collapses a link repeated immediately after itself", () => {
+    expect(collapseDuplicateCitations(`{${LINK1}}{${LINK1}}`)).toBe(`{${LINK1}}`);
+  });
+
+  it("collapses a run of three or more", () => {
+    expect(
+      collapseDuplicateCitations(`{${LINK1}}{${LINK1}}{${LINK1}}`),
+    ).toBe(`{${LINK1}}`);
+  });
+
+  it("tolerates whitespace between the duplicates", () => {
+    expect(collapseDuplicateCitations(`{${LINK1}} {${LINK1}}`)).toBe(`{${LINK1}}`);
+  });
+
+  it("leaves two DIFFERENT links alone", () => {
+    expect(collapseDuplicateCitations(`{${LINK1}}{${LINK2}}`)).toBe(
+      `{${LINK1}}{${LINK2}}`,
+    );
+  });
+
+  it("runs as part of resolvePassageTokens: {P1}{P1} -> one link", () => {
+    expect(resolvePassageTokens("[a]{P1}{P1}", passages)).toBe(`[a]{${LINK1}}`);
   });
 });
 

@@ -224,11 +224,11 @@ ${params.draft}`;
 
   const response = await llm.createChatCompletion({
     model,
-    // Internal-link citations run longer than the DOIs they replace, and a
-    // six-question answer carries many of them. 2200 truncated the rewrite
-    // mid-citation on the first question; give it room to finish. The short-
-    // display-text rule (citationPolicy) keeps this from ballooning further.
-    maxTokens: 3600,
+    // A verified six-question answer is long. The model cites short {Pn}
+    // tokens (the link is filled in later, in code, for free), so length is
+    // prose, not citations — but the prose itself needs room. Match the reply
+    // agent's own 4500 budget so the rewrite is never the tighter of the two.
+    maxTokens: 4500,
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
   });

@@ -105,9 +105,22 @@ export function resolvePassageTokens(
   passages: EvidencePackPassage[] | undefined,
 ): string {
   if (!text || !passages || passages.length === 0) return text;
-  return text.replace(/\{\s*[Pp]\s*(\d+)\s*\}/g, (whole, digits) => {
+  const resolved = text.replace(/\{\s*[Pp]\s*(\d+)\s*\}/g, (whole, digits) => {
     const idx = Number(digits) - 1;
     const link = passages[idx]?.citation;
     return link ? `{${link}}` : whole;
   });
+  return collapseDuplicateCitations(resolved);
+}
+
+/**
+ * Collapse a citation link immediately repeated after itself — {link}{link} —
+ * down to one. The model cites the same token twice ({P1}{P1}); once resolved
+ * that is two identical clickable links back to back, which is noise, not two
+ * pieces of evidence. Matches an optional space between the pair.
+ */
+export function collapseDuplicateCitations(text: string): string {
+  if (!text) return text;
+  const re = /(\{\/library\/[^}]+\}|\{https?:\/\/[^}]+\})(\s*\1)+/g;
+  return text.replace(re, "$1");
 }
