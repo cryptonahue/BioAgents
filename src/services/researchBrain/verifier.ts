@@ -3,6 +3,7 @@ import { formatEvidencePackForPrompt } from "./search";
 import {
   INTERNAL_CITATION_RULE,
   resolvePassageTokens,
+  rewriteDoiToPaperLink,
 } from "./citation/citationPolicy";
 import type { EvidencePack } from "./types";
 
@@ -68,11 +69,14 @@ export async function verifyHypothesisAgainstEvidence(params: {
     return NO_EVIDENCE_HYPOTHESIS_MESSAGE;
   }
 
+  const scopeDocId = params.evidencePack.scope?.docId;
   const { llm, model } = resolveResearchBrainLLM();
   if (!llm || !model) {
-    // No LLM available — fall back to the raw hypothesis. The caller
-    // decides what to do; we don't second-guess here.
-    return params.hypothesis;
+    // No LLM available — fall back to the raw hypothesis, but still convert its
+    // DOI citations to internal paper links when scoped, so the hypothesis panel
+    // matches the body and the insights instead of being the one place that
+    // still points at doi.org.
+    return rewriteDoiToPaperLink(params.hypothesis, scopeDocId);
   }
 
   const prompt = `You are a hypothesis grounding checker for a strict scientific assistant.
@@ -126,10 +130,13 @@ ${params.hypothesis}`;
 
   // Swap the {Pn} tokens the model cited for the real internal links. The model
   // never saw the links, so it could not corrupt them; the code fills them in.
-  return (
+  // Then convert any DOI the model kept anyway to an internal paper link when
+  // scoped — belt and suspenders so the hypothesis never shows a bare DOI while
+  // the rest of the answer is internal.
+  const resolved =
     resolvePassageTokens(grounded, params.evidencePack.passages) ||
-    params.hypothesis
-  );
+    params.hypothesis;
+  return rewriteDoiToPaperLink(resolved, scopeDocId);
 }
 
 /**
