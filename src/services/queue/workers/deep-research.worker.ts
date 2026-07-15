@@ -1291,8 +1291,15 @@ async function processDeepResearchJob(
       "iteration_reply_saved",
     );
 
-    // Notify message updated
-    await notifyMessageUpdated(job.id!, conversationId, currentMessage.id);
+    // Notify the client the answer is ready ONLY when the research is actually
+    // done. An intermediate iteration that fires this lands a "finished" answer
+    // that the next iteration then replaces — the "it looked done, then more
+    // appeared later" confusion. Progress still streams via state/activity
+    // notifications; the message lands once, on the final iteration. (Mirrors
+    // the in-process path in routes/deep-research/start.ts.)
+    if (isFinal) {
+      await notifyMessageUpdated(job.id!, conversationId, currentMessage.id);
+    }
 
     // =========================================================================
     // ENQUEUE NEXT ITERATION (if continuing)

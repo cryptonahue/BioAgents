@@ -2159,12 +2159,23 @@ These molecular changes align with established longevity pathways (Converging nu
         "iteration_reply_saved",
       );
 
-      // Notify client that message is ready
-      await notifyMessageUpdated(
-        `in-process-${currentMessage.id}`,
-        currentMessage.conversation_id,
-        currentMessage.id,
-      );
+      // Tell the client the answer is ready — but ONLY when the research is
+      // actually done. This notification clears the "researching" state and
+      // lands the message as final. An intermediate iteration that fires it
+      // makes the UI show a finished answer, which the NEXT iteration then
+      // silently replaces — the "it looked done, then a while later more
+      // appeared" confusion. Intermediate progress still streams through the
+      // state and activity notifications (phases, hypothesis, insights); the
+      // message only lands when the last iteration produces it. `isFinal` is
+      // reliably true on the final pass (no continue, or the iteration cap is
+      // reached), so the answer always lands exactly once, at the end.
+      if (isFinal) {
+        await notifyMessageUpdated(
+          `in-process-${currentMessage.id}`,
+          currentMessage.conversation_id,
+          currentMessage.id,
+        );
+      }
 
       try {
         await touchRun({
