@@ -1148,3 +1148,157 @@
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 10px;
 }
+
+/* ============================================
+   Live Progress Tracker (🔬 Investigando…)
+   Shown above the accordion while a run is active. A fixed, human-legible
+   pipeline of phases — the raw plan array reads like a log, this reads like
+   "where are we". Steps: ✓ done, ● running, ○ pending.
+   ============================================ */
+.research-progress {
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius, 8px);
+  background: linear-gradient(135deg, var(--info-subtle), var(--bg-secondary));
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.research-progress-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.research-progress-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.research-progress-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.research-progress-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.research-progress-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.research-progress-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--info-subtle-foreground);
+  white-space: nowrap;
+}
+
+.research-progress-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.research-progress-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.research-progress-glyph {
+  flex: 0 0 auto;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.research-progress-glyph[data-status="done"],
+.research-progress-glyph[data-substatus="ok"] {
+  color: var(--success);
+}
+
+.research-progress-glyph[data-status="pending"],
+.research-progress-glyph[data-substatus="empty"] {
+  color: var(--text-tertiary);
+}
+
+.research-progress-glyph[data-status="running"] {
+  color: var(--info);
+  animation: research-pulse 1.2s ease-in-out infinite;
+}
+
+.research-progress-glyph[data-substatus="failed"] {
+  color: var(--warning);
+}
+
+.research-progress-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.research-progress-step.is-done .research-progress-label {
+  color: var(--text-primary);
+}
+
+.research-progress-step.is-running .research-progress-label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.research-progress-meta {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Literature fan-out sub-steps (Base de conocimiento / Edison / …). The left
+   border is the ├─/└─ tree line of the mockup, done in CSS instead of glyphs. */
+.research-progress-substeps {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0 0 0 7px;
+  margin-left: 6px;
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.research-progress-substep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.research-progress-substep .research-progress-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+@keyframes research-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

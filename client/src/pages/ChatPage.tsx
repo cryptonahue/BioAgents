@@ -997,6 +997,8 @@ export function ChatPage({
                       isExpanded={isResearchPanelExpanded}
                       onToggle={() => setIsResearchPanelExpanded(!isResearchPanelExpanded)}
                       isLoading={isDeepResearch && !hasActiveDeepResearch}
+                      isRunActive={isRunActive}
+                      runStartedAt={deepResearchRun?.startedAt ?? null}
                     />
                   </div>
                 )}

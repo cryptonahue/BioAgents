@@ -2,6 +2,7 @@ import { useState, useEffect } from "preact/hooks";
 import { Icon } from "../icons";
 import { ExternalLink, isExternalHref } from "../../utils/externalLinks";
 import { ArtifactViewer } from "./ArtifactViewer";
+import { ResearchProgressTracker } from "./ResearchProgressTracker";
 import {
   EvidenceBySourcePanel,
   type LiteratureSource,
@@ -71,6 +72,11 @@ interface Props {
   isExpanded?: boolean;
   onToggle?: () => void;
   isLoading?: boolean;
+  /** True while the server reports the deep-research run as active. Drives the
+   *  "🔬 Investigando…" progress card above the accordion. */
+  isRunActive?: boolean;
+  /** ISO timestamp the active run started (deepResearchRun.startedAt). */
+  runStartedAt?: string | null;
 }
 
 export function ResearchStatePanel({
@@ -78,6 +84,8 @@ export function ResearchStatePanel({
   isExpanded = false,
   onToggle,
   isLoading = false,
+  isRunActive = false,
+  runStartedAt = null,
 }: Props) {
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -269,6 +277,13 @@ export function ResearchStatePanel({
      * note in research.css.
      */
     <div className="accordion research-state-panel-shell">
+      {/* The live progress card lives OUTSIDE the <details>: a closed <details>
+          natively hides everything but its <summary>, and this must stay visible
+          whether the accordion is open or not while a run is in flight. It
+          unmounts on its own when the run finishes (isRunActive -> false). */}
+      {isRunActive && (
+        <ResearchProgressTracker state={state} startedAt={runStartedAt} />
+      )}
       <details className="card research-state-panel" open={isExpanded}>
         <summary
           className="research-state-header"
