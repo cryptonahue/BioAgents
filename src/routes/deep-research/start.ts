@@ -1462,8 +1462,29 @@ async function runDeepResearch(params: {
         (t) => t.level === newLevel,
       );
       const seenTaskKeys = new Set<string>();
+      const taskKey = (t: PlanTask) =>
+        `${t.type}::${(t.objective || "").trim().toLowerCase()}`;
+
+      // Pre-seed with LITERATURE searches already completed in EARLIER iterations
+      // of this run. The same-level guard below catches a planner emitting two
+      // copies at once; this catches the continue-research loop promoting
+      // next-steps that re-ask the identical question a second time — paying
+      // again, against a flaky external service, for evidence we already have.
+      // Scoped to LITERATURE (external, costly) and to tasks that already
+      // produced output, so an EVOLVED objective still runs; only a verbatim
+      // repeat is dropped.
+      for (const t of conversationState.values.plan || []) {
+        if (
+          (t.level ?? 0) < newLevel &&
+          t.type === "LITERATURE" &&
+          (t.output || t.end)
+        ) {
+          seenTaskKeys.add(taskKey(t));
+        }
+      }
+
       tasksToExecute = levelTasks.filter((t) => {
-        const key = `${t.type}::${(t.objective || "").trim().toLowerCase()}`;
+        const key = taskKey(t);
         if (seenTaskKeys.has(key)) {
           logger.info(
             { type: t.type, objective: t.objective, level: newLevel },
