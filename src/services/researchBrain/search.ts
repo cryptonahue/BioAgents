@@ -329,10 +329,21 @@ export async function researchBrainSearch(params: {
     // When scoped to a paper, filter the passage search to that document by
     // title (documents.title === research_sources.title). This is what stops
     // the pack pulling near-identical sentences out of OTHER papers.
+    //
+    // AND retrieve MORE of it. Eight chunks is the right budget for a broad,
+    // cross-paper search — you do not want one paper flooding the pack. But once
+    // we have committed to a single paper for a six-part question, eight chunks
+    // under-covers it: the most query-similar eight landed on the title, results,
+    // limitations and conclusions, and left the Methods section out — so the
+    // verifier could not confirm the tool the paper names (PICRUSt2) and hedged
+    // every answer that depended on it, which both dulled the answer and made it
+    // long enough to truncate. Scoped, there is no contamination cost to reading
+    // more of the one paper we mean, so we do.
+    const scoped = Boolean(scope?.title);
     const docs = await vectorSearch.search(params.query, {
-      vectorLimit: 24,
-      finalLimit: 8,
-      ...(scope?.title ? { filterTitle: scope.title } : {}),
+      vectorLimit: scoped ? 48 : 24,
+      finalLimit: scoped ? 16 : 8,
+      ...(scoped ? { filterTitle: scope!.title } : {}),
     });
     passages = (docs ?? []).map((d: any) => ({
       sourceId: d.metadata?.sourceId ?? null,

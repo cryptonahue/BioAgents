@@ -224,11 +224,13 @@ ${params.draft}`;
 
   const response = await llm.createChatCompletion({
     model,
-    // A verified six-question answer is long. The model cites short {Pn}
-    // tokens (the link is filled in later, in code, for free), so length is
-    // prose, not citations — but the prose itself needs room. Match the reply
-    // agent's own 4500 budget so the rewrite is never the tighter of the two.
-    maxTokens: 4500,
+    // A verified six-question answer is long, and the primary fix for that is
+    // richer evidence (see the scoped passage budget in search.ts) so the model
+    // confirms facts instead of hedging them at length. This ceiling is the
+    // backstop: enough headroom that a legitimately long grounded answer is
+    // never cut at the tail, without masking the verbosity the evidence fix
+    // targets.
+    maxTokens: 5000,
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
   });
