@@ -1134,6 +1134,28 @@ async function runDeepResearch(params: {
         const { researchBrainSearch } = await import(
           "../../services/researchBrain"
         );
+        // The domain anchor: the user's ORIGINAL question. The objective drifts
+        // each iteration into bare mechanism names, which retrieves (and reranks)
+        // off-domain papers that merely share those names. Blending keeps the
+        // domain in the retrieval text while still following the new focus.
+        const originalQuestion =
+          conversationState.values.objective ||
+          createdMessage.question ||
+          currentMessage.question ||
+          "";
+        const activeObjective =
+          conversationState.values.currentObjective ||
+          conversationState.values.evolvingObjective ||
+          "";
+        const retrievalQuery = [
+          originalQuestion,
+          activeObjective && activeObjective !== originalQuestion
+            ? activeObjective
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
         conversationState.values.researchBrainEvidence =
           await researchBrainSearch({
             query:
@@ -1142,6 +1164,7 @@ async function runDeepResearch(params: {
               conversationState.values.objective ||
               currentMessage.question ||
               createdMessage.question,
+            retrievalQuery: retrievalQuery || undefined,
             // Detect paper scope from the ORIGINAL question, which keeps the
             // species name across iterations — not the objective reflection
             // rewrites. Without this, scope holds on iteration one and silently

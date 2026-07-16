@@ -335,6 +335,28 @@ async function processDeepResearchJob(
       const { researchBrainSearch } = await import(
         "../../../services/researchBrain"
       );
+      // Domain anchor + sticky scope, matching start.ts: the objective drifts each
+      // iteration into bare mechanism names, which retrieves off-domain papers that
+      // merely share those names. Blend the original question into the retrieval
+      // text, and detect scope from the original question only.
+      const originalQuestion =
+        conversationState.values.objective ||
+        messageRecord.question ||
+        message ||
+        "";
+      const activeObjective =
+        conversationState.values.currentObjective ||
+        conversationState.values.evolvingObjective ||
+        "";
+      const retrievalQuery = [
+        originalQuestion,
+        activeObjective && activeObjective !== originalQuestion
+          ? activeObjective
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
       conversationState.values.researchBrainEvidence = await researchBrainSearch({
         query:
           conversationState.values.currentObjective ||
@@ -342,6 +364,8 @@ async function processDeepResearchJob(
           conversationState.values.objective ||
           messageRecord.question ||
           message,
+        retrievalQuery: retrievalQuery || undefined,
+        scopeQuery: originalQuestion || undefined,
         trustTier: "internal",
         includeExternal: false,
         limit: 12,

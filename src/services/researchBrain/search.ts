@@ -197,6 +197,23 @@ export async function researchBrainSearch(params: {
    * cross-paper contamination and DOI citations. Falls back to `query`.
    */
   scopeQuery?: string;
+  /**
+   * The query to RETRIEVE passages with — the user's original question blended
+   * with the current objective, not the objective alone.
+   *
+   * `query` follows the objective reflection rewrites each iteration, and by
+   * iteration two that objective is often a list of bare mechanism names
+   * ("PI3K/AKT/mTOR, IP3/Ca2+, phosphoinositide signaling"). Embedded on its
+   * own, that text has lost the DOMAIN — no "coral", no "symbiosome" — so the
+   * vector search happily returns a type-2-diabetes paper that discusses
+   * PI3K/Akt/mTOR in mouse islets, and the reranker AGREES, because against
+   * that literal query the diabetes passage IS relevant. The reranker was not
+   * wrong; the question we asked it had drifted.
+   *
+   * Keeping the original question in the retrieval text holds the domain anchor
+   * while still following the iteration's new focus. Falls back to `query`.
+   */
+  retrievalQuery?: string;
 }): Promise<EvidencePack> {
   const trustTier = params.includeExternal
     ? params.trustTier || "all"
@@ -349,7 +366,10 @@ export async function researchBrainSearch(params: {
     // long enough to truncate. Scoped, there is no contamination cost to reading
     // more of the one paper we mean, so we do.
     const scoped = Boolean(scope?.title);
-    const docs = await vectorSearch.search(params.query, {
+    // Retrieve (and rerank) with the DOMAIN-ANCHORED text — see retrievalQuery.
+    // Searching with the drifted objective alone is what pulled a diabetes paper
+    // into a coral question.
+    const docs = await vectorSearch.search(params.retrievalQuery || params.query, {
       vectorLimit: scoped ? 48 : 24,
       finalLimit: scoped ? 16 : 8,
       ...(scoped ? { filterTitle: scope!.title } : {}),
