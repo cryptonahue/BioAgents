@@ -9,14 +9,51 @@ Given the research question, current world state, completed MAX level tasks, and
 - **keyInsights**: Maximum 10 most important insights from the entire research (prioritize quality over quantity)
 - **methodology**: Current research approach or methodology being employed
 
-CITATION RULES (CRITICAL)
-- ALWAYS preserve inline citations in the format (claim)[URL]
-- The URL must be a full URL (https://...) or DOI URL (https://doi.org/10.xxxx/xxxxx)
-- DO NOT use source names like "- PMC", "- PubMed", "- Journal Name" as citations
-- When extracting keyInsights from source documents, KEEP the actual URLs/DOIs
+GROUNDING RULES (CRITICAL — read before writing any insight)
+An insight is only as good as the evidence behind it. There are THREE tiers of
+grounding, and you MUST respect the difference between them:
+
+1. PRIMARY — a claim the provided task outputs directly state, from a paper that
+   is actually loaded. This is the strongest tier; prefer it. Cite it inline as
+   (claim)[URL] with the DOI/URL that the task output attaches to THAT claim.
+
+2. SECOND-HAND — a claim that a loaded paper attributes to ANOTHER work we do
+   NOT have (e.g. a review says "Santoro et al. 2021 found X"). You MAY report
+   it, but you MUST:
+   - attribute it as second-hand: "the loaded review reports that Santoro et al.
+     (2021) found X";
+   - flag it as not independently verified — end the insight with
+     "— second-hand; not independently verified";
+   - keep strictly to WHAT THE LOADED PAPER ACTUALLY SAYS. Do NOT add mechanism,
+     numbers, definitions, or specificity the loaded text does not contain.
+   Never present a reference-list DOI as if we had read that paper.
+
+3. UNSUPPORTED — anything the task outputs do not state. Do NOT write it — not
+   with a citation, not without one. If the research question presumes something
+   the evidence does not cover (a term, a mechanism, an entity), say so plainly
+   as an insight ("the loaded evidence does not address X") instead of inventing
+   a grounded-looking claim.
+
+HARD RULES
+- Never invent a claim, a citation, a DOI, a number, a definition, or a
+  mechanism. Never state something more specific or more confident than the
+  passage it rests on.
+- Do NOT harvest DOIs from a paper's reference list and attach them to insights
+  as if they were findings. A DOI in a bibliography points to a paper we do NOT
+  have — that is tier 2 (second-hand) at best, never tier 1.
+- An insight with no real grounding does not belong in the list. Fewer,
+  well-grounded insights beat many plausible-sounding ones — the maximum is a
+  ceiling, not a target.
+- Do NOT contradict the grounded answer: if the evidence does not define or
+  support a term the question uses, an insight must not quietly assert that it
+  is defined or supported.
+
+CITATION FORMAT (when you do cite)
+- Inline as (claim)[URL]; the URL must be a full URL (https://...) or a DOI URL
+  (https://doi.org/10.xxxx/xxxxx).
+- DO NOT use source names like "- PMC", "- PubMed", "- Journal Name" as citations.
 - Good example: "Retatrutide achieves 24% weight loss (Phase 3 trial results)[https://doi.org/10.1056/NEJMoa2301972]"
 - Bad example: "Retatrutide achieves 24% weight loss (Efficacy study - PMC)" ← NO source names!
-- If a source URL/DOI is not available, include the claim WITHOUT fake citation formatting
 
 INPUTS
 - Original Research Question: {{question}}
@@ -151,6 +188,10 @@ CONSTRAINTS
 
 SILENT SELF-CHECK (DO NOT OUTPUT)
 - Did I integrate findings from all MAX level tasks?
+- Is every insight grounded — tier 1 (loaded paper states it), tier 2 (second-hand, attributed AND flagged not verified), and NOTHING tier 3?
+- Did I avoid inflating any source beyond what its text actually says?
+- Did I avoid attaching a reference-list DOI as if it were a paper we read?
+- Does any insight contradict the grounded answer (e.g. assert a term is defined when the evidence does not define it)? If so, fix it.
 - Are keyInsights limited to 10 most important?
 - Is currentObjective specific and actionable?
 - Is evolvingObjective recognizably related to the original objective but refined by evidence?
