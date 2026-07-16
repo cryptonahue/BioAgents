@@ -51,9 +51,18 @@ interface ResearchEvidenceItem {
   status?: string;
 }
 
+interface ResearchDiscovery {
+  title?: string;
+  claim?: string;
+  summary?: string;
+  novelty?: string;
+}
+
 interface ResearchState {
   plan?: PlanStep[];
-  discoveries?: string[];
+  // Discoveries are Discovery OBJECTS (title/claim/summary/novelty), not strings.
+  // The old `string[]` type rendered every discovery as an empty row.
+  discoveries?: Array<ResearchDiscovery | string>;
   keyInsights?: string[];
   methodology?: string;
   currentObjective?: string;
@@ -244,6 +253,18 @@ export function ResearchStatePanel({
   const completedSteps = state?.plan?.filter((step) => step.end) || [];
   const currentStep = state?.plan?.find((step) => step.start && !step.end);
 
+  // Flatten the Research Brain claim buckets once, so the section can hide itself
+  // when there is nothing to show (all buckets empty — e.g. after the relevance
+  // filter drops off-topic claims) instead of rendering an empty header.
+  const brainClaims = state?.researchBrainEvidence
+    ? [
+        ...(state.researchBrainEvidence.supportedClaims || []),
+        ...(state.researchBrainEvidence.partialClaims || []),
+        ...(state.researchBrainEvidence.contradictions || []),
+        ...(state.researchBrainEvidence.openQuestions || []),
+      ]
+    : [];
+
   // Show loading state when deep research is starting but no state yet
   const showLoadingState = isLoading && (!state || !state.currentObjective);
 
@@ -326,7 +347,7 @@ export function ResearchStatePanel({
             </div>
           )}
 
-          {state?.researchBrainEvidence && (
+          {brainClaims.length > 0 && (
             <details
               className="research-section"
               open={expandedSections.brain}
@@ -344,12 +365,7 @@ export function ResearchStatePanel({
               {expandedSections.brain && (
                 <div className="research-section-body">
                   <ul className="research-insights-list">
-                    {[
-                      ...(state.researchBrainEvidence.supportedClaims || []),
-                      ...(state.researchBrainEvidence.partialClaims || []),
-                      ...(state.researchBrainEvidence.contradictions || []),
-                      ...(state.researchBrainEvidence.openQuestions || []),
-                    ].slice(0, 6).map((claim, i) => (
+                    {brainClaims.slice(0, 6).map((claim, i) => (
                       <li
                         key={i}
                         className="item research-insight-item"
@@ -432,18 +448,44 @@ export function ResearchStatePanel({
               {expandedSections.discoveries && (
                 <div className="research-section-body">
                   <ul className="research-discoveries-list">
-                    {state.discoveries.map((discovery, i) => (
-                      <li
-                        key={i}
-                        className="item research-discovery-item"
-                        data-variant="outline"
-                        data-size="sm"
-                      >
-                        <section>
-                          <span>{renderCitationText(discovery)}</span>
-                        </section>
-                      </li>
-                    ))}
+                    {state.discoveries.map((discovery, i) => {
+                      // A discovery is a Discovery object; tolerate a legacy
+                      // string too. Rendering the object as a string is what
+                      // produced empty rows.
+                      const d =
+                        typeof discovery === "string"
+                          ? { summary: discovery }
+                          : discovery;
+                      return (
+                        <li
+                          key={i}
+                          className="item research-discovery-item"
+                          data-variant="outline"
+                          data-size="sm"
+                        >
+                          <section>
+                            {d.title && (
+                              <span className="research-discovery-title">
+                                <strong>{d.title}</strong>
+                              </span>
+                            )}
+                            {d.claim && (
+                              <span>{renderCitationText(d.claim)}</span>
+                            )}
+                            {d.summary && d.summary !== d.claim && (
+                              <span className="research-discovery-summary">
+                                {renderCitationText(d.summary)}
+                              </span>
+                            )}
+                            {d.novelty && (
+                              <span className="research-discovery-novelty">
+                                {renderCitationText(d.novelty)}
+                              </span>
+                            )}
+                          </section>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}

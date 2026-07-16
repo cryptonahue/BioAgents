@@ -370,6 +370,23 @@
   border-inline-start: 3px solid var(--accent-color);
 }
 
+/* A discovery renders several stacked fields (title, claim, summary, novelty);
+   Basecoat's `.item > section` is flex-col with no gap, so add the spacing and
+   step the secondary fields back one ink level. */
+.research-discovery-item > section {
+  gap: 4px;
+}
+
+.research-discovery-title {
+  color: var(--foreground, var(--text-primary));
+}
+
+.research-discovery-summary,
+.research-discovery-novelty {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
 /* Methodology Section */
 .research-methodology-text {
   font-size: 13px;
