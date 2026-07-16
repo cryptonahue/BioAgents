@@ -54,7 +54,9 @@ export const INTERNAL_CITATION_RULE = [
   "- The [short label] is a few DESCRIPTIVE words in the answer's own language, like a normal inline citation (e.g. [mayor riqueza en agua de cría]). NEVER paste the whole passage into the brackets, and NEVER use the token id itself as the label — do not write [P9]{P9}. The label describes the fact; the token points at the evidence.",
   "- Prefer a passage token over a DOI for every claim a passage supports. Do NOT keep a doi.org link when a passage token for the same fact is available — cite the token instead.",
   "- Only for a source with NO passage token here (it did not anchor): cite its DOI as [short label]{https://doi.org/…} and say the exact location could not be verified.",
-  "- Never invent a token, a link, a page, or a section number. Cite only tokens shown below or a real DOI from the pack.",
+  "- A DOI is allowed ONLY when it appears VERBATIM in a passage or fact in this pack (for example, in a reference list you can actually see here). If you cannot point to that exact DOI in the evidence in front of you, DO NOT write it.",
+  "- For a paper we do NOT have — one named only by author and year inside a passage (a SECOND-HAND reference, e.g. 'reviewed by Weis 2008; Helgoe et al. 2024') — cite it by AUTHOR and YEAR ONLY, with no DOI and no link. NEVER reconstruct a DOI from memory: a DOI that looks plausible but is not present in this pack is a FABRICATION, even when the surrounding claim is flagged 'not independently verified'.",
+  "- Never invent a token, a link, a page, a section number, or a DOI. Cite only tokens shown below, or a DOI that literally appears in the evidence here.",
 ].join("\n");
 
 /**

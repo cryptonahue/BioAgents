@@ -41,6 +41,11 @@ HARD RULES
 - Do NOT harvest DOIs from a paper's reference list and attach them to insights
   as if they were findings. A DOI in a bibliography points to a paper we do NOT
   have — that is tier 2 (second-hand) at best, never tier 1.
+- NEVER write a DOI for a paper we do not have. Cite a second-hand reference by
+  AUTHOR and YEAR ONLY ("Weis 2008; Helgoe et al. 2024"), with no DOI — unless
+  that exact DOI appears VERBATIM in a passage here. A DOI reconstructed from
+  memory is a FABRICATION even when the claim is flagged "not independently
+  verified"; a plausible-looking wrong DOI is worse than no DOI.
 - An insight with no real grounding does not belong in the list. Fewer,
   well-grounded insights beat many plausible-sounding ones — the maximum is a
   ceiling, not a target.
