@@ -58,7 +58,6 @@ import {
 } from "../../utils/deep-research/activity";
 import {
   calculateSessionStartLevel,
-  createContinuationMessage,
   getSessionCompletedTasks,
 } from "../../utils/deep-research/continuation-utils";
 import {
@@ -2340,24 +2339,31 @@ These molecular changes align with established longevity pathways (Converging nu
           );
         }
 
-        // CREATE NEW AGENT-ONLY MESSAGE for the next iteration
-        // This allows each autonomous iteration to have its own message in the conversation
-        const agentMessage = await createContinuationMessage(
-          currentMessage,
-          stateRecord.id,
-        );
-
+        // ONE QUESTION, ONE ANSWER.
+        //
+        // This used to mint a fresh agent-only message per autonomous iteration,
+        // so a single question came back as three separate answers in the chat —
+        // overlapping, and sometimes contradicting each other (one cycle called a
+        // finding supported, the next called it unanchored). The reader cannot
+        // tell which one is THE answer, and reads the earlier ones as if they
+        // still stood.
+        //
+        // The iterations are process, not product. They already surface as
+        // process: the progress tracker, the live activity, the Research State
+        // and the Activity Log all show the cycles. So the loop now keeps
+        // refining the SAME message, and `isFinal` still gates the notification
+        // so it lands exactly once, at the end.
+        //
+        // Each iteration overwrites the previous reply, which is the point —
+        // and it also means the message is never empty if the run dies partway:
+        // it holds the most recent answer.
         logger.info(
           {
-            newMessageId: agentMessage.id,
-            previousMessageId: currentMessage.id,
+            messageId: currentMessage.id,
             iterationCount: iterationCount + 1,
           },
-          "created_agent_continuation_message",
+          "continuing_into_same_message",
         );
-
-        // Update currentMessage to point to the new message for next iteration
-        currentMessage = agentMessage;
       }
     } // END OF WHILE LOOP
 

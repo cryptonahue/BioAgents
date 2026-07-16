@@ -1429,7 +1429,16 @@ async function processDeepResearchJob(
         );
       }
 
-      // CREATE NEW AGENT-ONLY MESSAGE for the next iteration
+      // CREATE NEW AGENT-ONLY MESSAGE for the next iteration.
+      //
+      // NOTE: the in-process path (routes/deep-research/start.ts) deliberately
+      // no longer does this — it refines ONE message, so a question comes back
+      // as one answer instead of three. That collapse is NOT mirrored here,
+      // because this path keys the next iteration's JOB on the new message id
+      // (`jobId: nextMessageId` below): reusing one message would collide job
+      // ids across iterations. Doing it properly needs a different job-id
+      // scheme, so it is left alone rather than hacked. The queue path is not
+      // the deployed one.
       const agentMessage = await createContinuationMessage(
         currentMessage,
         stateId,
