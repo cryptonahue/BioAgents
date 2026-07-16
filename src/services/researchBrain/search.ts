@@ -448,17 +448,41 @@ export async function researchBrainSearch(params: {
     logger.warn({ err: error }, "evidence_pack_passage_search_failed");
   }
 
+  // Relevance guard for the claim buckets. In a BROAD (unscoped) query the claim
+  // search is lexical and can surface a well-verified but topically-unrelated
+  // paper — a ciguatoxin study leaking into a coral-bleaching question. The
+  // SEMANTIC passage search is the relevance signal we trust: only keep claims
+  // whose source paper actually contributed a passage to this pack. Join by
+  // title (the vector store carries no sourceId — see the passage-anchor note
+  // above). Skip the guard when the query is already scoped to one paper, or
+  // when there are no passages to judge relevance against (nothing to filter on,
+  // so filtering would blank the panel).
+  const passageTitles = new Set(
+    passages.map((p) => p.sourceTitle).filter((t): t is string => !!t),
+  );
+  const claimIsRelevant = (claim: EvidencePackClaim): boolean =>
+    scopedSourceId != null ||
+    passageTitles.size === 0 ||
+    (claim.sourceTitle != null && passageTitles.has(claim.sourceTitle));
+  const relevantClaims = mapped.filter(claimIsRelevant);
+  if (relevantClaims.length !== mapped.length) {
+    logger.info(
+      { before: mapped.length, after: relevantClaims.length },
+      "evidence_pack_claims_relevance_filtered",
+    );
+  }
+
   const pack: EvidencePack = {
     question: params.query,
     queryPlan,
     passages,
     bioprospectingFacts: mappedFacts,
-    supportedClaims: mapped.filter((claim) => claim.status === "supported"),
-    partialClaims: mapped.filter(
+    supportedClaims: relevantClaims.filter((claim) => claim.status === "supported"),
+    partialClaims: relevantClaims.filter(
       (claim) => claim.status === "partial" || claim.status === "hypothesis",
     ),
-    contradictions: mapped.filter((claim) => claim.status === "contradicted"),
-    openQuestions: mapped.filter((claim) => claim.status === "open_question"),
+    contradictions: relevantClaims.filter((claim) => claim.status === "contradicted"),
+    openQuestions: relevantClaims.filter((claim) => claim.status === "open_question"),
     sources: buildSources(claims, facts),
     contradictionWarnings,
     scope: scope
