@@ -35,4 +35,10 @@ export const CONFIG = {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   COHERE_API_KEY: process.env.COHERE_API_KEY || "",
+  // Opt-in LLM reranker (stage 2) for deploys without a Cohere key. When true and
+  // no COHERE_API_KEY is set, the search pipeline reranks the top vector hits with
+  // an LLM (reusing the existing provider keys) instead of falling through to raw
+  // cosine order — which lets it demote keyword-dense-but-useless chunks such as
+  // reference lists. Default false so no deploy silently gains an LLM call.
+  LLM_RERANK_ENABLED: process.env.LLM_RERANK_ENABLED === "true",
 } as const;

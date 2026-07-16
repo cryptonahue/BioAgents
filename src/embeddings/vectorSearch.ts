@@ -215,13 +215,27 @@ export class VectorSearchWithReranker {
 
     let finalResults: Document[];
 
-    if (
-      useReranking &&
-      CONFIG.COHERE_API_KEY &&
-      vectorResults.length > 1
-    ) {
-      // Stage 2: Rerank with Cohere
+    const canRerank = useReranking && vectorResults.length > 1;
+    if (canRerank && CONFIG.COHERE_API_KEY) {
+      // Stage 2: Rerank with Cohere (preferred when a key is configured)
       finalResults = await this.rerank(query, vectorResults, finalLimit);
+    } else if (canRerank && CONFIG.LLM_RERANK_ENABLED) {
+      // Stage 2 fallback: rerank with an LLM reusing existing provider keys. If
+      // it is unavailable or judges nothing relevant it returns null, and we use
+      // plain cosine order rather than blank the results.
+      const { llmRerank } = await import("./llmReranker");
+      const llmRanked = await llmRerank(query, vectorResults, finalLimit);
+      if (llmRanked && llmRanked.length > 0) {
+        finalResults = llmRanked;
+        logger.info(
+          `🧠 LLM rerank kept ${finalResults.length} of ${vectorResults.length}`,
+        );
+      } else {
+        finalResults = vectorResults.slice(0, finalLimit);
+        logger.info(
+          `⚡ LLM rerank unavailable/empty, cosine top ${finalResults.length}`,
+        );
+      }
     } else {
       finalResults = vectorResults.slice(0, finalLimit);
       logger.info(
