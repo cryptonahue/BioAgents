@@ -3,6 +3,7 @@ import { Icon } from "../icons";
 import { ExternalLink, isExternalHref } from "../../utils/externalLinks";
 import { ArtifactViewer } from "./ArtifactViewer";
 import { ResearchProgressTracker } from "./ResearchProgressTracker";
+import { EvidenceCorpusPanel } from "./EvidenceCorpusPanel";
 import {
   EvidenceBySourcePanel,
   type LiteratureSource,
@@ -73,6 +74,9 @@ interface ResearchState {
     partialClaims?: ResearchEvidenceItem[];
     contradictions?: ResearchEvidenceItem[];
     openQuestions?: ResearchEvidenceItem[];
+    /** The retrieved passages. Each knows its source paper, which is all the
+     *  corpus panel needs to say which papers a search actually matched. */
+    passages?: Array<{ sourceTitle?: string | null }>;
   };
 }
 
@@ -313,6 +317,13 @@ export function ResearchStatePanel({
           activity={currentActivity}
         />
       )}
+      {/* What the answer was actually built from. Sits above the accordion, next
+          to the tracker, because it reframes everything below it: "2 of 47
+          matched" is the difference between "the agent failed" and "my library
+          is missing those papers". */}
+      <EvidenceCorpusPanel
+        passages={state?.researchBrainEvidence?.passages}
+      />
       <details className="card research-state-panel" open={isExpanded}>
         <summary
           className="research-state-header"

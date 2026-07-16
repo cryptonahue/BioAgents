@@ -34,7 +34,9 @@ interface TrackerState {
   plan?: TrackerPlanStep[];
   currentHypothesis?: string;
   keyInsights?: string[];
-  discoveries?: string[];
+  /** Only ever counted here (discoveries are objects, not strings — see the
+   *  panel's ResearchDiscovery), so the element type is deliberately open. */
+  discoveries?: unknown[];
 }
 
 interface Props {

@@ -232,6 +232,41 @@ export function useLibraryList(query: LibraryQuery) {
  * only change when a paper is added or removed. `refetch` exists so an upload
  * or a delete can refresh them.
  */
+/**
+ * Just the SIZE of the library — how many papers a search runs against. Fetches
+ * one page of one paper and reads `total`, so it costs a single tiny request.
+ *
+ * The research panel uses it to say "2 of 47 papers matched". That one number is
+ * what turns "this agent could not answer me" into "my library does not have
+ * those papers" — the same fact, but only one of them is actionable. Returns
+ * null while loading or on failure, and the panel simply omits the "of N".
+ */
+export function useLibraryTotal(): number | null {
+  const [total, setTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/library?page=1&pageSize=1", {
+          headers: authHeaders(),
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setTotal(Number(data.total) || 0);
+      } catch {
+        // Leave null — the headline degrades to "N papers matched".
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return total;
+}
+
 export function useLibraryFacets() {
   const [facets, setFacets] = useState<LibraryFacets>(EMPTY_FACETS);
 

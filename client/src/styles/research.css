@@ -1175,6 +1175,67 @@
 }
 
 /* ============================================
+   Evidence Corpus ("Searched your library — 2 of 47 papers matched")
+   Sits above the accordion. Basecoat `.card` + `.item` rows, same as the
+   tracker; only the spacing and the trailing count are ours.
+   ============================================ */
+.research-corpus {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.research-corpus-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.research-corpus-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.research-corpus-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground, var(--text-primary));
+}
+
+.research-corpus-list {
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.research-corpus-item {
+  border-inline-start: 2px solid var(--accent-color);
+}
+
+.research-corpus-glyph {
+  width: 16px;
+  justify-content: center;
+  color: var(--success);
+}
+
+/* The paper title is the row's subject, so it keeps full ink; Lyra clamps it. */
+.research-corpus-paper {
+  color: var(--foreground, var(--text-primary));
+  font-weight: 400;
+}
+
+/* Trailing metadata, read as a column — monospaced and right-aligned like the
+   Activity Log's duration. */
+.research-corpus-count {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 10px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* ============================================
    Live Progress Tracker ("Researching…")
    Shown above the accordion while a run is active. A fixed, human-legible
    pipeline of phases — the raw plan array reads like a log, this reads like
