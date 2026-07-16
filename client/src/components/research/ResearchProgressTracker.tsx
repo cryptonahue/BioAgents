@@ -1,18 +1,26 @@
 import { useState, useEffect } from "preact/hooks";
-import type { LiteratureSource } from "./EvidenceBySourcePanel";
+import { Icon } from "../icons";
+import {
+  SOURCE_META,
+  statusGlyph,
+  type LiteratureSource,
+} from "./EvidenceBySourcePanel";
 
 /**
- * The "🔬 Investigando…" progress card shown at the top of the research panel
- * WHILE a deep-research run is active. It is deliberately NOT the raw `plan`
- * array — that array holds one row per real task (often several literature
- * fan-outs) and reads like a log. This card presents the run as a fixed,
- * human-legible PIPELINE of canonical phases, so the reader sees "where are we"
- * at a glance: the first unfinished phase is running (●), earlier ones are done
- * (✓), later ones are pending (○).
+ * The in-progress research card shown at the top of the research panel WHILE a
+ * deep-research run is active. It is deliberately NOT the raw `plan` array —
+ * that array holds one row per real task (often several literature fan-outs)
+ * and reads like a log. This card presents the run as a fixed, human-legible
+ * PIPELINE of canonical phases, so the reader sees "where are we" at a glance:
+ * the first unfinished phase is running, earlier ones are done, later ones pend.
  *
  * Everything here is derived from state the client already polls every 2s
- * (conversationState), so it updates live and — because `startedAt` and the
- * plan live on the server — it survives a page reload mid-run.
+ * (conversationState) and from `startedAt`, both of which live on the server —
+ * so it updates live AND survives a page reload mid-run.
+ *
+ * It is built from Basecoat's `.item` row (figure / section / aside), the same
+ * component the Activity Log wears, and every glyph is a Phosphor `Icon` — no
+ * emoji, so nothing depends on a system emoji font being installed.
  */
 
 interface TrackerPlanStep {
@@ -31,7 +39,7 @@ interface TrackerState {
 
 interface Props {
   state: TrackerState | null;
-  /** ISO timestamp the run started (deepResearchRun.startedAt). Drives the ⏱. */
+  /** ISO timestamp the run started (deepResearchRun.startedAt). Drives the timer. */
   startedAt?: string | null;
 }
 
@@ -49,20 +57,12 @@ interface Phase {
   /** Header subtitle shown while THIS phase is the running one. */
   runningLabel: string;
   status: PhaseStatus;
-  /** Right-aligned meta for a finished phase (e.g. "20 fragmentos"). */
+  /** Right-aligned meta for a finished phase (e.g. "20 chunks"). */
   meta?: string;
   substeps?: Substep[];
 }
 
-const SOURCE_LABELS: Record<LiteratureSource["sourceName"], string> = {
-  KNOWLEDGE: "Base de conocimiento",
-  EDISON: "Edison",
-  OPENSCHOLAR: "OpenScholar",
-  BIOLIT: "BioAgents",
-  BIOLITDEEP: "BioAgents Deep",
-};
-
-// mm:ss — matches the "0:03" / "1:12" shape of the approved design.
+// mm:ss — a compact elapsed clock ("0:03", "1:12").
 function formatClock(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);
@@ -71,9 +71,17 @@ function formatClock(ms: number): string {
 }
 
 function substepMeta(source: LiteratureSource): string {
-  if (source.status === "ok") return `${source.count} fragmentos`;
-  if (source.status === "empty") return "sin resultados";
-  return source.error ? "falló" : "no disponible";
+  if (source.status === "ok") return `${source.count} chunks`;
+  if (source.status === "empty") return "no matches";
+  return source.error ? "failed" : "unavailable";
+}
+
+/** The icon + color for a phase glyph, mirroring the Activity Log's state hues. */
+function phaseGlyph(status: PhaseStatus): { icon: string; color: string } {
+  if (status === "done")
+    return { icon: "checkCircle", color: "var(--success)" };
+  if (status === "running") return { icon: "spinner", color: "var(--info)" };
+  return { icon: "circle", color: "var(--text-tertiary)" };
 }
 
 /**
@@ -93,7 +101,7 @@ function buildPhases(state: TrackerState | null): Phase[] {
   const totalChunks = sources.reduce((acc, s) => acc + (s.count || 0), 0);
   const substeps: Substep[] = sources.map((s) => ({
     status: s.status,
-    label: SOURCE_LABELS[s.sourceName] ?? s.sourceName,
+    label: SOURCE_META[s.sourceName]?.label ?? s.sourceName,
     meta: substepMeta(s),
   }));
 
@@ -104,47 +112,47 @@ function buildPhases(state: TrackerState | null): Phase[] {
 
   raw.push({
     key: "plan",
-    label: "Planificación",
-    runningLabel: "El asistente está trabajando en tu pregunta",
+    label: "Planning",
+    runningLabel: "Working on your question",
     done: plan.length > 0,
   });
 
   raw.push({
     key: "lit",
-    label: "Búsqueda de literatura",
-    runningLabel: "Buscando en la biblioteca interna",
+    label: "Literature search",
+    runningLabel: "Searching the internal library",
     done: endedOfType("LITERATURE").length > 0,
-    meta: totalChunks ? `${totalChunks} fragmentos` : undefined,
+    meta: totalChunks ? `${totalChunks} chunks` : undefined,
     substeps: substeps.length ? substeps : undefined,
   });
 
   if (hasType("ANALYSIS")) {
     raw.push({
       key: "analysis",
-      label: "Análisis de datos",
-      runningLabel: "Analizando los datos…",
+      label: "Data analysis",
+      runningLabel: "Analyzing the data",
       done: endedOfType("ANALYSIS").length > 0,
     });
   }
 
   raw.push({
     key: "hyp",
-    label: "Formular hipótesis",
-    runningLabel: "Formulando hipótesis…",
+    label: "Hypothesis",
+    runningLabel: "Formulating a hypothesis",
     done: !!state?.currentHypothesis,
   });
 
   raw.push({
     key: "concl",
-    label: "Extraer conclusiones",
-    runningLabel: "Extrayendo conclusiones…",
+    label: "Conclusions",
+    runningLabel: "Drawing conclusions",
     done: conclusionsCount > 0,
   });
 
   raw.push({
     key: "reply",
-    label: "Redactar respuesta",
-    runningLabel: "Redactando la respuesta…",
+    label: "Answer",
+    runningLabel: "Writing the answer",
     done: false,
   });
 
@@ -161,21 +169,9 @@ function buildPhases(state: TrackerState | null): Phase[] {
   });
 }
 
-function glyphFor(status: PhaseStatus): string {
-  if (status === "done") return "✓";
-  if (status === "running") return "●";
-  return "○";
-}
-
-function substepGlyph(status: LiteratureSource["status"]): string {
-  if (status === "ok") return "✓";
-  if (status === "failed") return "⚠";
-  return "○";
-}
-
 export function ResearchProgressTracker({ state, startedAt }: Props) {
-  // Live ⏱ — re-renders every second while mounted (the card only mounts while
-  // the run is active, so the interval is naturally short-lived).
+  // Live timer — re-renders every second while mounted (the card only mounts
+  // while the run is active, so the interval is naturally short-lived).
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -189,69 +185,85 @@ export function ResearchProgressTracker({ state, startedAt }: Props) {
   const clock = !isNaN(startMs) ? formatClock(now - startMs) : null;
 
   return (
-    <div className="research-progress">
+    <div className="card research-progress">
       <div className="research-progress-head">
-        <span className="research-progress-emoji" aria-hidden="true">
-          🔬
-        </span>
-        <div className="research-progress-head-text">
-          <div className="research-progress-title">Investigando…</div>
-          <div className="research-progress-subtitle">
-            {running?.runningLabel ??
-              "El asistente está trabajando en tu pregunta"}
-          </div>
-        </div>
+        <figure className="research-progress-head-icon">
+          <Icon name="flask" size={16} />
+        </figure>
+        <section className="research-progress-head-text">
+          <h4 className="research-progress-title">Researching…</h4>
+          <p className="research-progress-subtitle">
+            {running?.runningLabel ?? "Working on your question"}
+          </p>
+        </section>
         {clock && (
-          <span className="research-progress-timer" aria-label="Tiempo transcurrido">
-            <span aria-hidden="true">⏱</span> {clock}
-          </span>
+          <aside
+            className="research-progress-timer"
+            aria-label="Elapsed time"
+          >
+            {clock}
+          </aside>
         )}
       </div>
 
-      <ol className="research-progress-steps">
-        {phases.map((p) => (
-          <li key={p.key} className={`research-progress-step is-${p.status}`}>
-            <div className="research-progress-row">
-              <span
+      <div className="item-group research-progress-steps">
+        {phases.map((p) => {
+          const glyph = phaseGlyph(p.status);
+          return [
+            <div
+              key={p.key}
+              className={`item research-progress-step ${p.status}`}
+              data-variant="outline"
+              data-size="xs"
+            >
+              <figure
                 className="research-progress-glyph"
-                data-status={p.status}
-                aria-hidden="true"
+                style={{ color: glyph.color }}
               >
-                {glyphFor(p.status)}
-              </span>
-              <span className="research-progress-label">
-                {p.label}
-                {p.status === "running" ? "…" : ""}
-              </span>
+                <Icon
+                  name={glyph.icon}
+                  size={13}
+                  className={
+                    p.status === "running"
+                      ? "research-progress-spin"
+                      : undefined
+                  }
+                />
+              </figure>
+              <section>
+                <h4 className="research-progress-step-label">{p.label}</h4>
+              </section>
               {p.meta && (
-                <span className="research-progress-meta">{p.meta}</span>
+                <aside className="research-progress-meta">{p.meta}</aside>
               )}
-            </div>
-
-            {p.substeps && p.substeps.length > 0 && (
-              <ul className="research-progress-substeps">
-                {p.substeps.map((sub, i) => (
-                  <li
-                    key={i}
-                    className="research-progress-substep"
-                    data-status={sub.status}
+            </div>,
+            ...(p.substeps ?? []).map((sub, i) => {
+              const sg = statusGlyph(sub.status);
+              return (
+                <div
+                  key={`${p.key}-sub-${i}`}
+                  className="item research-progress-substep"
+                  data-variant="outline"
+                  data-size="xs"
+                >
+                  <figure
+                    className="research-progress-glyph"
+                    style={{ color: sg.color }}
                   >
-                    <span
-                      className="research-progress-glyph"
-                      data-substatus={sub.status}
-                      aria-hidden="true"
-                    >
-                      {substepGlyph(sub.status)}
-                    </span>
-                    <span className="research-progress-label">{sub.label}</span>
-                    <span className="research-progress-meta">{sub.meta}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ol>
+                    <Icon name={sg.icon} size={12} />
+                  </figure>
+                  <section>
+                    <h4 className="research-progress-step-label">
+                      {sub.label}
+                    </h4>
+                  </section>
+                  <aside className="research-progress-meta">{sub.meta}</aside>
+                </div>
+              );
+            }),
+          ];
+        })}
+      </div>
     </div>
   );
 }

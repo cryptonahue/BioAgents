@@ -1150,42 +1150,55 @@
 }
 
 /* ============================================
-   Live Progress Tracker (🔬 Investigando…)
+   Live Progress Tracker ("Researching…")
    Shown above the accordion while a run is active. A fixed, human-legible
    pipeline of phases — the raw plan array reads like a log, this reads like
-   "where are we". Steps: ✓ done, ● running, ○ pending.
+   "where are we". Built from Basecoat's `.card` and `.item` rows; every glyph
+   is a Phosphor Icon, so nothing depends on a system emoji font.
    ============================================ */
+
+/* Basecoat's `.card` carries the border, radius and surface. The root has no
+   padding of its own (Lyra pads via header/section slots), so the card supplies
+   its own here, plus the info tint that marks it as an in-flight state and the
+   spacing that separates it from the accordion below. */
 .research-progress {
-  border: 1px solid var(--info-border);
-  border-radius: var(--radius, 8px);
-  background: linear-gradient(135deg, var(--info-subtle), var(--bg-secondary));
   padding: 14px 16px;
   margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--info-subtle), var(--bg-secondary));
+  border-color: var(--info-border);
 }
 
+/* The header is the same figure / section / aside shape as an `.item`, but
+   without the row border — it is the card's own heading, not a list row. */
 .research-progress-head {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.research-progress-emoji {
-  font-size: 20px;
-  line-height: 1;
+.research-progress-head-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--info);
 }
 
 .research-progress-head-text {
+  display: flex;
   flex: 1;
   min-width: 0;
+  flex-direction: column;
 }
 
 .research-progress-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground, var(--text-primary));
 }
 
 .research-progress-subtitle {
+  margin: 0;
   font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
@@ -1193,10 +1206,10 @@
   white-space: nowrap;
 }
 
+/* `.item > aside` is `flex items-center`; the elapsed clock is trailing metadata
+   read as a column, so it stays monospaced, tabular and reserves its width. */
 .research-progress-timer {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  flex: 0 0 auto;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -1204,101 +1217,58 @@
   white-space: nowrap;
 }
 
+/* `.item-group` is Basecoat's `flex w-full flex-col`; add the gap the phase rows
+   need so each `.item` reads as its own bordered row (like the Activity Log). */
 .research-progress-steps {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  gap: 5px;
+  margin-top: 12px;
 }
 
-.research-progress-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+/* The step rows ARE Basecoat's `.item`, `data-variant="outline"`, `data-size="xs"`
+   — the same component the Activity Log wears. Only the state colour is ours, and
+   the same rule the log records applies: an active row recolours its border along
+   with its fill so Lyra does not ring a filled row in grey. */
+.research-progress-step.done {
+  border-inline-start: 2px solid var(--accent-color);
 }
 
-.research-progress-glyph {
-  flex: 0 0 auto;
-  width: 14px;
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.3;
+.research-progress-step.running {
+  background-color: var(--info-subtle);
+  border-color: var(--info-border);
+  border-inline-start: 2px solid var(--info);
 }
 
-.research-progress-glyph[data-status="done"],
-.research-progress-glyph[data-substatus="ok"] {
-  color: var(--success);
-}
-
-.research-progress-glyph[data-status="pending"],
-.research-progress-glyph[data-substatus="empty"] {
-  color: var(--text-tertiary);
-}
-
-.research-progress-glyph[data-status="running"] {
-  color: var(--info);
-  animation: research-pulse 1.2s ease-in-out infinite;
-}
-
-.research-progress-glyph[data-substatus="failed"] {
-  color: var(--warning);
-}
-
-.research-progress-label {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
+.research-progress-step.pending .research-progress-step-label {
   color: var(--text-secondary);
 }
 
-.research-progress-step.is-done .research-progress-label {
-  color: var(--text-primary);
+/* Lyra sizes `> figure` for an icon; keep an explicit width so the labels of
+   every row stay left-aligned regardless of glyph. */
+.research-progress-glyph {
+  width: 16px;
+  justify-content: center;
 }
 
-.research-progress-step.is-running .research-progress-label {
-  color: var(--text-primary);
-  font-weight: 600;
+/* The literature fan-out sub-steps sit under their phase, indented, and dimmed
+   one step so they read as children rather than peers. */
+.research-progress-substep {
+  margin-inline-start: 16px;
+}
+
+.research-progress-substep .research-progress-step-label {
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .research-progress-meta {
-  flex: 0 0 auto;
+  color: var(--text-tertiary);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  font-size: 11px;
-  color: var(--text-tertiary);
+  font-size: 10px;
+  justify-content: flex-end;
 }
 
-/* Literature fan-out sub-steps (Base de conocimiento / Edison / …). The left
-   border is the ├─/└─ tree line of the mockup, done in CSS instead of glyphs. */
-.research-progress-substeps {
-  list-style: none;
-  margin: 6px 0 2px;
-  padding: 0 0 0 7px;
-  margin-left: 6px;
-  border-left: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.research-progress-substep {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.research-progress-substep .research-progress-label {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-@keyframes research-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+/* Basecoat has no spin animation; the running glyph borrows the global `spin`
+   keyframe (global.css), the same one `.research-step-spinner` uses. */
+.research-progress-spin {
+  animation: spin 0.8s linear infinite;
 }

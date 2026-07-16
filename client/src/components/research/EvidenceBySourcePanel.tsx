@@ -24,7 +24,7 @@ interface Props {
   defaultExpanded?: boolean;
 }
 
-const SOURCE_META: Record<
+export const SOURCE_META: Record<
   LiteratureSource["sourceName"],
   { label: string; icon: string; description: string }
 > = {
@@ -61,7 +61,7 @@ function formatDuration(ms: number): string {
   return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`;
 }
 
-function statusGlyph(status: LiteratureSource["status"]): {
+export function statusGlyph(status: LiteratureSource["status"]): {
   icon: string;
   color: string;
   label: string;
