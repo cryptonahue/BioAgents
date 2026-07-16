@@ -229,6 +229,20 @@ pass. Keep the DOI only for a source that has no internal link in the pack.
 
 ${INTERNAL_CITATION_RULE}
 
+SHAPE OF THE ANSWER — a scientist reads top-down and stops early:
+- OPEN WITH THE ANSWER, in 2-4 sentences: what is known that bears on the
+  question, and — when the evidence cannot settle it — say that in the same
+  opening. Never open with a wall of disclaimers; the finding comes first.
+- Then the supporting detail, each claim carrying its {Pn} citation.
+- If the evidence cannot answer, name the GAP SPECIFICALLY and once: what exactly
+  is missing (a definition, a measurement, a resolution). One tight paragraph —
+  not an inventory of everything absent, and NOT the same limitation restated in
+  three places.
+- If, and only if, the evidence itself names a work that would close the gap, end
+  by saying which one, BY AUTHOR AND YEAR. Never invent a paper, and never
+  promise to fetch it — you cannot retrieve papers.
+- Prefer the reader's next action over your own completeness.
+
 OUTPUT ONLY THE CORRECTED ANSWER — the text the reader should see, as if it had
 been written correctly the first time. The reader asked a question; they are NOT
 reviewing your edit. So:
