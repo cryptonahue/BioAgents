@@ -472,11 +472,30 @@ export async function researchBrainSearch(params: {
     );
   }
 
+  // Relevance guard for bioprospecting facts, using each fact's OWN query
+  // classification rather than the passage join (a bioprospecting paper
+  // legitimately has facts but no vector-store passage). A fact classified as
+  // "keyword_match" with an empty queryMatches list matched NOTHING structural
+  // in the query — no species, genus, family, compound, bioactivity, geography,
+  // or ecosystem — so it is off-topic noise (the urchin/chitosan/gelatin facts
+  // that leak into a coral question). Drop those; keep every fact that matched
+  // something the query actually asked about.
+  const relevantFacts = mappedFacts.filter(
+    (f) =>
+      !(f.matchType === "keyword_match" && (f.queryMatches?.length ?? 0) === 0),
+  );
+  if (relevantFacts.length !== mappedFacts.length) {
+    logger.info(
+      { before: mappedFacts.length, after: relevantFacts.length },
+      "evidence_pack_facts_relevance_filtered",
+    );
+  }
+
   const pack: EvidencePack = {
     question: params.query,
     queryPlan,
     passages,
-    bioprospectingFacts: mappedFacts,
+    bioprospectingFacts: relevantFacts,
     supportedClaims: relevantClaims.filter((claim) => claim.status === "supported"),
     partialClaims: relevantClaims.filter(
       (claim) => claim.status === "partial" || claim.status === "hypothesis",

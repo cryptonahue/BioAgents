@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import { resolveResearchBrainLLM } from "./llm";
 import { formatEvidencePackForPrompt } from "./search";
 import {
@@ -82,27 +83,45 @@ export async function verifyHypothesisAgainstEvidence(params: {
   const prompt = `You are a hypothesis grounding checker for a strict scientific assistant.
 
 Your job is to REWRITE the candidate hypothesis so that every specific factual claim
-(compound class, mechanism, quantitative endpoint, organism strain, assay system)
 is grounded in the evidence pack. When the evidence pack cannot support a claim,
-REMOVE the specificity rather than keep it.
+REMOVE the specificity rather than keep it. This is DOMAIN-NEUTRAL: the same rule
+applies to molecular biology, ecology, chemistry, physiology, or any field — do NOT
+assume the hypothesis is about natural-product bioprospecting.
+
+WHAT COUNTS AS "SPECIFICITY TO STRIP" (examples across domains, non-exhaustive):
+- a quantitative figure or endpoint ("1200% increase", "IC₅₀ 1–10 μM", "39 years old", "p < 0.01");
+- a named molecule, pathway, or cascade ("IP₃/phospholipase C", "NF-κB", "Rab7 trafficking", "LuxR antagonism");
+- a mechanism, subcellular localization, or timepoint ("at the symbiosome membrane", "by day 9 post-offset");
+- a compound class, organism strain, or assay system ("macrocyclic dodecalactone", "BB170/BB120").
+If a detail like these is NOT in the evidence pack, REMOVE it and rewrite the sentence to be honest.
+
+THREE TIERS OF GROUNDING — apply to every claim, including inside the Rationale:
+1. PRIMARY — a loaded passage/fact in the pack directly supports it → keep it, cite the {Pn} token.
+2. SECOND-HAND — a loaded paper attributes it to a work NOT in the pack (e.g. "per Santoro et al. 2021")
+   → keep ONLY if you attribute it as second-hand AND flag "— second-hand; not independently verified",
+   and strip any number, mechanism, or definition the loaded text does not itself contain. NEVER attach
+   a specific figure or cascade to a paper the pack does not actually contain.
+3. UNSUPPORTED — nothing in the pack supports it → remove it; say the evidence does not establish it.
+
+IF THE PACK IS ONLY BACKGROUND: when the evidence pack holds only reference-list entries, tangential
+background, or general review statements — and no mechanistic or quantitative data for the hypothesis —
+the hypothesis MUST NOT present a specific mechanism, cascade, or figure as grounded. State plainly that
+the mechanism is a proposal the loaded evidence cannot yet support.
 
 Rules:
 - Do NOT introduce facts not present in the evidence pack.
-- If the candidate hypothesis names a compound class (e.g. "macrocyclic dodecalactone"),
-  a mechanism (e.g. "LuxR-type receptor antagonism"), a strain (e.g. "BB170/BB120"),
-  a quantitative endpoint (e.g. "IC₅₀ in the 1–10 μM range"), or any other specific
-  detail NOT present in the evidence pack, REMOVE that detail and rewrite the
-  surrounding sentence to be honest about the gap.
-- Replace invented specifics with phrases like "the literature does not directly
-  establish", "no prior data is available for", or "this remains untested".
-- Keep the structure (Hypothesis / Rationale / Novelty Statement / Experimental
-  Design / Follow-Up Analyses) but every section must be honest about what the
-  evidence supports and what it does not.
-- Do NOT manufacture citations. Only cite sources present in the evidence pack.
-- If the candidate hypothesis is already well-grounded, return it with minimal
-  changes (you may tighten the wording).
+- A hypothesis MAY propose an untested mechanism — that is its purpose — but it must be framed clearly
+  as a PROPOSAL TO TEST, never as a grounded finding, whenever the pack does not support it.
+- Replace invented specifics with phrases like "the loaded evidence does not establish", "no data is
+  available in the pack for", or "this remains untested".
+- Keep the structure (Hypothesis / Rationale / Novelty Statement / Experimental Design / Follow-Up
+  Analyses) but every section must be honest about what the evidence supports and what it does not.
+- Do NOT manufacture citations. Cite only sources present in the evidence pack, by their {Pn} token.
+- If the candidate is already well-grounded, return it with minimal changes (you may tighten wording).
 - Do NOT output anything outside the five required sections.
 - Answer in the same language as the candidate hypothesis (Spanish if Spanish).
+
+${INTERNAL_CITATION_RULE}
 
 ${formatEvidencePackForPrompt(params.evidencePack)}
 
@@ -351,6 +370,16 @@ Return ONLY a JSON array of strings (the corrected insights), no prose, no markd
     !parsed.every((x): x is string => typeof x === "string")
   ) {
     return fallback();
+  }
+
+  // Log how many insights survived — the way to tell "correctly empty because
+  // the pack was background-only" from "over-filtering". Pairs with the claim
+  // and fact relevance logs.
+  if (parsed.length !== params.insights.length) {
+    logger.info(
+      { before: params.insights.length, after: parsed.length },
+      "key_insights_grounding_filtered",
+    );
   }
 
   // Resolve the {Pn} tokens the model cited to real internal links, then convert
