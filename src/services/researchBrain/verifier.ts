@@ -229,6 +229,19 @@ pass. Keep the DOI only for a source that has no internal link in the pack.
 
 ${INTERNAL_CITATION_RULE}
 
+OUTPUT ONLY THE CORRECTED ANSWER — the text the reader should see, as if it had
+been written correctly the first time. The reader asked a question; they are NOT
+reviewing your edit. So:
+- NEVER mention "the draft", and never write a section like "What the draft gets
+  wrong", "Claims that are NOT supported", or "removed because…". Silently drop
+  or fix an unsupported claim — do not narrate the surgery.
+- Do NOT explain your own process, corrections, or reasoning about the evidence
+  pack as an object.
+- You SHOULD still state the limits of the ANSWER ("the loaded papers do not
+  characterise X at single-cell resolution") — that is honest scope, and it reads
+  as part of the answer. The difference is subject: describe what is KNOWN and
+  NOT KNOWN about the topic, never what a draft said or what you edited.
+
 Rules:
 - Do not introduce facts not present in the evidence pack.
 - CORRECT THE DRAFT TOWARD THE EVIDENCE, not just away from it. If the pack DIRECTLY states a fact that the draft omits or hedges, state that fact with its {Pn} citation. Example: if a passage says the tool was "PICRUSt2 (version 2.5.2)" and the draft says "the exact tool is not specified", replace the hedge with the supported fact and cite it. Do NOT tell the reader a fact "cannot be confirmed" when a passage in this pack confirms it. This is as important as removing unsupported claims — grounding cuts both ways.
