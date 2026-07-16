@@ -244,6 +244,14 @@
   margin: 0;
 }
 
+/* Shown only once the run is over: says plainly that the objective above is a
+   proposal for the next cycle, not something in flight. */
+.research-objective-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 .research-section-toggle {
   padding: 12px 14px;
 }

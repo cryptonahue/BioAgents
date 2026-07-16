@@ -342,16 +342,24 @@ export function ResearchStatePanel({
             </div>
           )}
 
-          {/* Current Objective */}
+          {/* Objective. This field is written by the reflection/planning agents as
+              the NEXT research direction — it is a proposal, not a live action. So
+              once the run is over it must not read as "what I am doing now": it is
+              a suggestion sitting there waiting for the user to approve or steer. */}
           {state?.currentObjective && (
             <div className="research-section research-current-objective">
               <div className="research-section-label">
                 <Icon name="target" size={14} className="research-section-icon" />
-                Current Objective
+                {isRunActive ? "Current Objective" : "Next planned objective"}
               </div>
               <p className="research-objective-text">
                 {state?.currentObjective}
               </p>
+              {!isRunActive && (
+                <p className="research-objective-hint">
+                  Proposed for the next cycle — not run yet.
+                </p>
+              )}
             </div>
           )}
 
