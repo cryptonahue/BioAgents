@@ -999,6 +999,7 @@ export function ChatPage({
                       isLoading={isDeepResearch && !hasActiveDeepResearch}
                       isRunActive={isRunActive}
                       runStartedAt={deepResearchRun?.startedAt ?? null}
+                      currentActivity={(conversationState?.values as any)?.currentActivity ?? null}
                     />
                   </div>
                 )}

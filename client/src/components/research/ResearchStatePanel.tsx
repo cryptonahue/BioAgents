@@ -86,6 +86,9 @@ interface Props {
   isRunActive?: boolean;
   /** ISO timestamp the active run started (deepResearchRun.startedAt). */
   runStartedAt?: string | null;
+  /** Server's live activity (values.currentActivity) — drives the tracker's
+   *  real-time subtitle during the slow synthesis tail. */
+  currentActivity?: { label?: string; objective?: string } | null;
 }
 
 export function ResearchStatePanel({
@@ -95,6 +98,7 @@ export function ResearchStatePanel({
   isLoading = false,
   isRunActive = false,
   runStartedAt = null,
+  currentActivity = null,
 }: Props) {
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -303,7 +307,11 @@ export function ResearchStatePanel({
           whether the accordion is open or not while a run is in flight. It
           unmounts on its own when the run finishes (isRunActive -> false). */}
       {isRunActive && (
-        <ResearchProgressTracker state={state} startedAt={runStartedAt} />
+        <ResearchProgressTracker
+          state={state}
+          startedAt={runStartedAt}
+          activity={currentActivity}
+        />
       )}
       <details className="card research-state-panel" open={isExpanded}>
         <summary

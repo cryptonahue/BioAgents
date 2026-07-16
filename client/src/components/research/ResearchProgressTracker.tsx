@@ -41,6 +41,11 @@ interface Props {
   state: TrackerState | null;
   /** ISO timestamp the run started (deepResearchRun.startedAt). Drives the timer. */
   startedAt?: string | null;
+  /** The server's live activity (values.currentActivity). Its label is the real-
+   *  time "what is happening now" — especially during the slow synthesis tail
+   *  (Synthesizing findings → Drafting response) where the derived phase alone
+   *  sits on one step. When present it drives the header subtitle. */
+  activity?: { label?: string; objective?: string } | null;
 }
 
 type PhaseStatus = "done" | "running" | "pending";
@@ -169,7 +174,7 @@ function buildPhases(state: TrackerState | null): Phase[] {
   });
 }
 
-export function ResearchProgressTracker({ state, startedAt }: Props) {
+export function ResearchProgressTracker({ state, startedAt, activity }: Props) {
   // Live timer — re-renders every second while mounted (the card only mounts
   // while the run is active, so the interval is naturally short-lived).
   const [now, setNow] = useState(Date.now());
@@ -193,7 +198,7 @@ export function ResearchProgressTracker({ state, startedAt }: Props) {
         <section className="research-progress-head-text">
           <h4 className="research-progress-title">Researching…</h4>
           <p className="research-progress-subtitle">
-            {running?.runningLabel ?? "Working on your question"}
+            {activity?.label || running?.runningLabel || "Working on your question"}
           </p>
         </section>
         {clock && (
