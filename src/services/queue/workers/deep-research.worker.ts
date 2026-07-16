@@ -759,30 +759,43 @@ async function processDeepResearchJob(
           literaturePromises.push(openScholarPromise);
         }
 
-        // Primary literature (Edison or BioLit) - always enabled
-        const primaryLiteraturePromise = literatureAgent({
-          objective: task.objective,
-          type: primaryLiteratureType,
-          onPollUpdate,
-        }).then(async (result) => {
-          appendSource(result);
-          await notifyAgentSourceCompleted(
-            job.id!,
-            conversationId,
-            {
-              sourceName: result.sourceName,
-              status: result.status,
-              count: result.count ?? 0,
-              durationMs: result.durationMs,
-              error: result.error,
-              iteration: currentIteration,
-            },
+        // Primary literature (Edison or BioLit). Edison only runs when it is
+        // actually configured — otherwise it lands in task.sources[] as a failed
+        // source and the UI shows a failed Edison. A source we cannot run is not
+        // a failure, so we skip it (same env-gated idiom as OpenScholar/Knowledge).
+        const edisonConfigured = !!(
+          process.env.EDISON_API_URL && process.env.EDISON_API_KEY
+        );
+        if (primaryLiteratureType !== "EDISON" || edisonConfigured) {
+          const primaryLiteraturePromise = literatureAgent({
+            objective: task.objective,
+            type: primaryLiteratureType,
+            onPollUpdate,
+          }).then(async (result) => {
+            appendSource(result);
+            await notifyAgentSourceCompleted(
+              job.id!,
+              conversationId,
+              {
+                sourceName: result.sourceName,
+                status: result.status,
+                count: result.count ?? 0,
+                durationMs: result.durationMs,
+                error: result.error,
+                iteration: currentIteration,
+              },
+            );
+            if (activeConversationState.id) {
+              await writeStateSerialized!();
+            }
+          });
+          literaturePromises.push(primaryLiteraturePromise);
+        } else {
+          logger.info(
+            { taskObjective: task.objective },
+            "primary_literature_skipped_edison_not_configured",
           );
-          if (activeConversationState.id) {
-            await writeStateSerialized!();
-          }
-        });
-        literaturePromises.push(primaryLiteraturePromise);
+        }
 
         // Knowledge base (enabled if KNOWLEDGE_DOCS_PATH is configured)
         if (process.env.KNOWLEDGE_DOCS_PATH) {
