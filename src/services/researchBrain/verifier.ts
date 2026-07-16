@@ -3,10 +3,32 @@ import { resolveResearchBrainLLM } from "./llm";
 import { formatEvidencePackForPrompt } from "./search";
 import {
   INTERNAL_CITATION_RULE,
+  collectAllowedDois,
   resolvePassageTokens,
   rewriteDoiToPaperLink,
+  stripUngroundedDois,
 } from "./citation/citationPolicy";
 import type { EvidencePack } from "./types";
+
+/**
+ * Every DOI the pack can actually vouch for: the ones written in the passages we
+ * loaded (a reference list we can see), plus the DOIs the facts and sources
+ * carry as data. Anything else the model writes was invented — see
+ * stripUngroundedDois.
+ */
+function allowedDoisFor(pack: EvidencePack): Set<string> {
+  const parts: string[] = [];
+  for (const passage of pack.passages ?? []) {
+    if (passage.content) parts.push(passage.content);
+  }
+  for (const fact of pack.bioprospectingFacts ?? []) {
+    if ((fact as any).doi) parts.push(String((fact as any).doi));
+  }
+  for (const source of pack.sources ?? []) {
+    if ((source as any).doi) parts.push(String((source as any).doi));
+  }
+  return collectAllowedDois(parts.join("\n"));
+}
 
 const NO_EVIDENCE_MESSAGE =
   "I cannot find enough evidence in the loaded papers to answer this question as a scientific fact.";
@@ -155,7 +177,10 @@ ${params.hypothesis}`;
   const resolved =
     resolvePassageTokens(grounded, params.evidencePack.passages) ||
     params.hypothesis;
-  return rewriteDoiToPaperLink(resolved, scopeDocId);
+  return stripUngroundedDois(
+    rewriteDoiToPaperLink(resolved, scopeDocId),
+    allowedDoisFor(params.evidencePack),
+  );
 }
 
 /**
@@ -295,7 +320,10 @@ ${params.draft}`;
     response.content.trim(),
     params.evidencePack.passages,
   );
-  return grounded || appendEvidenceNotice(params.draft, params.evidencePack);
+  if (!grounded) {
+    return appendEvidenceNotice(params.draft, params.evidencePack);
+  }
+  return stripUngroundedDois(grounded, allowedDoisFor(params.evidencePack));
 }
 
 /**
@@ -412,10 +440,14 @@ Return ONLY a JSON array of strings (the corrected insights), no prose, no markd
   // Resolve the {Pn} tokens the model cited to real internal links, then convert
   // any DOI it kept to an internal paper link when scoped — same two-step the
   // body and hypothesis verifiers use.
+  const allowedDois = allowedDoisFor(params.evidencePack);
   return parsed.map((insight) =>
-    rewriteDoiToPaperLink(
-      resolvePassageTokens(insight, params.evidencePack.passages),
-      scopeDocId,
+    stripUngroundedDois(
+      rewriteDoiToPaperLink(
+        resolvePassageTokens(insight, params.evidencePack.passages),
+        scopeDocId,
+      ),
+      allowedDois,
     ),
   );
 }

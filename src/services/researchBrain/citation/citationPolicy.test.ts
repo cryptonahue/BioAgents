@@ -2,11 +2,13 @@ import { describe, it, expect } from "bun:test";
 import {
   cleanTokenIdLabels,
   collapseDuplicateCitations,
+  collectAllowedDois,
   INTERNAL_CITATION_RULE,
   passageToken,
   renderPassageBlock,
   resolvePassageTokens,
   rewriteDoiToPaperLink,
+  stripUngroundedDois,
 } from "./citationPolicy";
 import type { EvidencePackPassage } from "../types";
 
@@ -169,6 +171,72 @@ describe("renderPassageBlock", () => {
   it("returns nothing when there are no passages", () => {
     expect(renderPassageBlock([])).toEqual([]);
     expect(renderPassageBlock(undefined)).toEqual([]);
+  });
+});
+
+describe("stripUngroundedDois", () => {
+  // The DOI the loaded reference list actually contains.
+  const allowed = collectAllowedDois(
+    "Santoro et al. 2021. Sci Adv 7:eabg3088. https://doi.org/10.1126/sciadv.abg3088",
+  );
+
+  it("collects the DOI out of a reference-list passage", () => {
+    expect(allowed.has("10.1126/sciadv.abg3088")).toBe(true);
+  });
+
+  it("keeps a DOI that IS in the evidence", () => {
+    const s = "(Santoro et al. 2021)[https://doi.org/10.1126/sciadv.abg3088]";
+    expect(stripUngroundedDois(s, allowed)).toBe(s);
+  });
+
+  // The real regression: the model invented a Coral Reefs DOI for a paper it
+  // had cited as brv.13042 the run before. The attribution stays; the id goes.
+  it("drops a fabricated DOI but keeps the attribution", () => {
+    expect(
+      stripUngroundedDois(
+        "reviewed by (Helgoe et al. 2024)[https://doi.org/10.1111/brv.13040]",
+        allowed,
+      ),
+    ).toBe("reviewed by (Helgoe et al. 2024)");
+  });
+
+  it("drops a bare bracketed DOI with no doi.org prefix", () => {
+    expect(
+      stripUngroundedDois("as shown[10.1242/jeb.009597].", allowed),
+    ).toBe("as shown.");
+  });
+
+  it("drops a corrupted DOI — the transcription error we actually saw", () => {
+    expect(
+      stripUngroundedDois(
+        "glucose[https://doi.org/10.1007/s11306-017-13006-8]",
+        allowed,
+      ),
+    ).toBe("glucose");
+  });
+
+  it("unwraps [label]{doi} to the plain label when the DOI is invented", () => {
+    expect(
+      stripUngroundedDois(
+        "[inositol accumulation]{https://doi.org/10.1007/s11306-017-1306-8}",
+        allowed,
+      ),
+    ).toBe("inositol accumulation");
+  });
+
+  it("NEVER touches an internal /library link", () => {
+    const s = `[riqueza]{${LINK1}}`;
+    expect(stripUngroundedDois(s, allowed)).toBe(s);
+  });
+
+  it("removes a bare doi.org URL left in prose", () => {
+    expect(
+      stripUngroundedDois("see https://doi.org/10.9999/fake.1 for more", allowed),
+    ).toBe("see for more");
+  });
+
+  it("is a no-op on text with no DOI", () => {
+    expect(stripUngroundedDois("plain text", allowed)).toBe("plain text");
   });
 });
 

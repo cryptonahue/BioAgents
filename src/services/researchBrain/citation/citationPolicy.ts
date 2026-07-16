@@ -167,6 +167,91 @@ export function cleanTokenIdLabels(text: string): string {
   );
 }
 
+/** Any DOI-looking string, wherever it appears. */
+const DOI_ANYWHERE = /10\.\d{4,9}\/[^\s"'<>()[\]{}]+/gi;
+
+function normalizeDoi(raw: string): string {
+  return raw.replace(/[.,;:)\]}]+$/, "").toLowerCase();
+}
+
+/**
+ * Every DOI that literally appears in the evidence we loaded — passage text
+ * (a reference list we can actually see), fact DOIs, source DOIs. Anything the
+ * model emits that is NOT in this set was reconstructed from memory.
+ */
+export function collectAllowedDois(evidenceText: string): Set<string> {
+  const allowed = new Set<string>();
+  if (!evidenceText) return allowed;
+  for (const match of evidenceText.matchAll(DOI_ANYWHERE)) {
+    allowed.add(normalizeDoi(match[0]));
+  }
+  return allowed;
+}
+
+/**
+ * Delete every DOI the evidence cannot vouch for, keeping the human-readable
+ * attribution around it.
+ *
+ * WHY THIS IS CODE AND NOT A PROMPT RULE. A DOI is an OPAQUE STRING, and we
+ * already know the law: a language model cannot transcribe one — it regenerates
+ * something that looks right and corrupts the part that must be exact. That is
+ * why passages are cited by {Pn} token and resolved here instead of being typed.
+ * We then tried to fix DOIs with a prompt ("only write a DOI that appears in the
+ * evidence") and it failed exactly as it had to: checking an opaque string
+ * against the evidence is not something the model can do by introspection. The
+ * same run emitted brv.13040 for a paper it had called brv.13042 before, gave
+ * Hillyer's DOI to "Bertucci et al.", and typo'd s11306-017-1306-8 into
+ * s11306-017-13006-8.
+ *
+ * So the check moves into code, where a string comparison is a string
+ * comparison. The attribution survives — "Helgoe et al. 2024" is still there and
+ * still useful — only the fabricated identifier goes. A wrong DOI is worse than
+ * no DOI: it looks authoritative and it resolves to nothing, or worse, to
+ * something else.
+ */
+export function stripUngroundedDois(
+  text: string,
+  allowed: Set<string>,
+): string {
+  if (!text) return text;
+
+  const isAllowed = (doi: string) => allowed.has(normalizeDoi(doi));
+  const DOI_BODY = String.raw`(?:https?:\/\/(?:dx\.)?doi\.org\/)?(10\.\d{4,9}\/[^\s\]}]+?)`;
+
+  return (
+    text
+      // [label]{doi} -> label
+      .replace(
+        new RegExp(String.raw`\[([^\]]+)\]\{\s*${DOI_BODY}\s*\}`, "gi"),
+        (whole, label: string, doi: string) => (isAllowed(doi) ? whole : label),
+      )
+      // (label)[doi] -> (label)
+      .replace(
+        new RegExp(String.raw`\(([^)]+)\)\s*\[\s*${DOI_BODY}\s*\]`, "gi"),
+        (whole, label: string, doi: string) =>
+          isAllowed(doi) ? whole : `(${label})`,
+      )
+      // trailing [doi] or {doi} -> gone
+      .replace(
+        new RegExp(String.raw`\[\s*${DOI_BODY}\s*\]`, "gi"),
+        (whole, doi: string) => (isAllowed(doi) ? whole : ""),
+      )
+      .replace(
+        new RegExp(String.raw`\{\s*${DOI_BODY}\s*\}`, "gi"),
+        (whole, doi: string) => (isAllowed(doi) ? whole : ""),
+      )
+      // a bare doi.org URL left in prose
+      .replace(
+        new RegExp(String.raw`https?:\/\/(?:dx\.)?doi\.org\/(10\.\d{4,9}\/[^\s)\]}]+)`, "gi"),
+        (whole, doi: string) => (isAllowed(doi) ? whole : ""),
+      )
+      // tidy the punctuation a removed citation leaves behind
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\(\s*\)/g, "")
+      .replace(/[ \t]+([.,;:])/g, "$1")
+  );
+}
+
 /**
  * Collapse a citation link immediately repeated after itself — {link}{link} —
  * down to one. The model cites the same token twice ({P1}{P1}); once resolved
