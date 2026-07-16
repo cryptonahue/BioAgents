@@ -2,8 +2,39 @@
  * Shared utility functions for LLM adapters
  */
 
+// Hosts whose pages never yield readable static content: DOI resolvers and the
+// major academic paywalls return a cookie/login shell, not the manuscript. Every
+// citation in a research prompt is a doi.org link, so fetching them only burned
+// the per-URL timeout (5s each, in series) on every synthesis LLM call — the main
+// cause of the slow "answer" step. We skip them here; a real scraper (Firecrawl
+// or similar) can reintroduce fetching for these later through its own path.
+const UNFETCHABLE_URL_HOSTS = [
+  "doi.org",
+  "dx.doi.org",
+  "sciencedirect.com",
+  "springer.com",
+  "link.springer.com",
+  "nature.com",
+  "onlinelibrary.wiley.com",
+  "science.org",
+  "tandfonline.com",
+  "academic.oup.com",
+];
+
+function isFetchableUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    return !UNFETCHABLE_URL_HOSTS.some(
+      (bad) => host === bad || host.endsWith(`.${bad}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Extracts all URLs from the last message only
+ * Extracts all fetchable URLs from the last message only. Known-unfetchable
+ * hosts (DOI resolvers, academic paywalls) are dropped — see UNFETCHABLE_URL_HOSTS.
  */
 export function extractUrlsFromMessages(
   messages: Array<{ role: string; content: string }>
@@ -17,7 +48,7 @@ export function extractUrlsFromMessages(
   }
 
   const lastMessage = messages[messages.length - 1];
-  
+
   if(!lastMessage) {
     return urls;
   }
@@ -28,7 +59,9 @@ export function extractUrlsFromMessages(
     matches.forEach((url) => {
       // Clean up URL (remove trailing punctuation)
       const cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-      urls.add(cleanUrl);
+      if (isFetchableUrl(cleanUrl)) {
+        urls.add(cleanUrl);
+      }
     });
   }
 
@@ -36,20 +69,12 @@ export function extractUrlsFromMessages(
 }
 
 /**
- * Checks if the last message contains a URL
+ * Checks if the last message contains a FETCHABLE URL. Reuses the filtered
+ * extraction so a prompt whose only links are DOIs/paywalls (every research
+ * synthesis prompt) does not trigger URL enrichment at all.
  */
 export function hasUrlInMessages(messages: Array<{ role: string; content: string }>): boolean {
-  const urlPattern = /https?:\/\/[^\s]+/;
-
-  if (messages.length === 0) {
-    return false;
-  }
-
-  const lastMessage = messages[messages.length - 1];
-  if(!lastMessage) {
-    return false;
-  }
-  return urlPattern.test(lastMessage.content);
+  return extractUrlsFromMessages(messages).size > 0;
 }
 
 /**
@@ -58,7 +83,7 @@ export function hasUrlInMessages(messages: Array<{ role: string; content: string
 export async function fetchStaticContent(url: string): Promise<string | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
     const response = await fetch(url, {
       method: 'GET',
@@ -132,23 +157,21 @@ export async function enrichMessagesWithUrlContent(
     return messages;
   }
 
-  // Fetch content from each URL
-  const urlResults: Array<{ url: string; content: string | null }> = [];
-
-  for (const url of urls) {
-    try {
-      const content = await fetchStaticContent(url);
-      if (content && content.trim().length > 0) {
-        urlResults.push({ url, content });
-      } else {
-        urlResults.push({ url, content: null });
+  // Fetch content from each URL — in PARALLEL, so N URLs cost one timeout, not N.
+  const urlResults: Array<{ url: string; content: string | null }> = await Promise.all(
+    [...urls].map(async (url) => {
+      try {
+        const content = await fetchStaticContent(url);
+        return {
+          url,
+          content: content && content.trim().length > 0 ? content : null,
+        };
+      } catch (error) {
+        console.debug(`Failed to fetch content from ${url}:`, error);
+        return { url, content: null };
       }
-    } catch (error) {
-      // Mark as failed to fetch
-      console.debug(`Failed to fetch content from ${url}:`, error);
-      urlResults.push({ url, content: null });
-    }
-  }
+    }),
+  );
 
   // Build enrichment message
   const enrichmentParts = urlResults.map(({ url, content }) => {
