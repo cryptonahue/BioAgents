@@ -1066,7 +1066,31 @@ async function processDeepResearchJob(
     }
     conversationState.values.currentObjective =
       reflectionResult.currentObjective;
-    conversationState.values.keyInsights = reflectionResult.keyInsights;
+
+    // Ground the Key Insights against the evidence pack — the hard guarantee
+    // behind the reflection prompt's grounding policy (parity with start.ts).
+    // Removes unsupported insights, flags second-hand ones, upgrades DOIs to
+    // internal links. Falls back to the raw insights on any failure.
+    let groundedInsights = reflectionResult.keyInsights;
+    const insightEvidencePack = conversationState.values.researchBrainEvidence;
+    if (insightEvidencePack && reflectionResult.keyInsights?.length) {
+      try {
+        const { verifyKeyInsightsAgainstEvidence } = await import(
+          "../../researchBrain/verifier"
+        );
+        groundedInsights = await verifyKeyInsightsAgainstEvidence({
+          question:
+            currentMessage.question ||
+            conversationState.values.objective ||
+            "",
+          insights: reflectionResult.keyInsights,
+          evidencePack: insightEvidencePack,
+        });
+      } catch (err) {
+        logger.warn({ err }, "key_insights_grounding_failed");
+      }
+    }
+    conversationState.values.keyInsights = groundedInsights;
     conversationState.values.methodology = reflectionResult.methodology;
 
     // Update conversation state with discovery results if discovery ran

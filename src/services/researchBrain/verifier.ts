@@ -252,6 +252,118 @@ ${params.draft}`;
   return grounded || appendEvidenceNotice(params.draft, params.evidencePack);
 }
 
+/**
+ * Ground the reflection agent's Key Insights against the evidence pack — the
+ * "hard guarantee" behind the reflection prompt's grounding policy. Reflection
+ * writes from flat task-output text and can still drift: assert a term the
+ * evidence never defines, or attach a reference-list DOI as if the paper were
+ * read. This pass judges each insight against the SAME evidence the body was
+ * verified against, and returns a corrected list — ungrounded insights removed,
+ * second-hand ones flagged, DOIs upgraded to internal links where a passage
+ * supports them.
+ *
+ * Returns the corrected insights. On any failure (no LLM, no evidence, unpar-
+ * seable output) it falls back to the input insights with DOI→internal rewrite
+ * applied, exactly as the reflection agent already did — the verifier only ever
+ * makes the insights MORE grounded, never blanks them.
+ */
+export async function verifyKeyInsightsAgainstEvidence(params: {
+  question: string;
+  insights: string[];
+  evidencePack: EvidencePack;
+}): Promise<string[]> {
+  const scopeDocId = params.evidencePack.scope?.docId;
+  const fallback = () =>
+    params.insights.map((i) => rewriteDoiToPaperLink(i, scopeDocId));
+
+  if (!params.insights || params.insights.length === 0) return [];
+
+  const hasEvidence =
+    params.evidencePack.passages?.length > 0 ||
+    params.evidencePack.bioprospectingFacts.length > 0 ||
+    params.evidencePack.supportedClaims.length > 0 ||
+    params.evidencePack.partialClaims.length > 0 ||
+    params.evidencePack.contradictions.length > 0;
+
+  // No evidence to judge against, or no model — do not touch the list beyond the
+  // DOI rewrite. The prompt-level grounding policy still applied upstream.
+  if (!hasEvidence) return fallback();
+  const { llm, model } = resolveResearchBrainLLM();
+  if (!llm || !model) return fallback();
+
+  const prompt = `You are a grounding checker for the Key Insights of a strict scientific assistant.
+
+You are given a list of candidate insights and the evidence pack they must stand on.
+Return a corrected list. Judge every insight against the THREE tiers of grounding:
+
+1. PRIMARY — a loaded paper in the evidence pack directly supports it. Keep it, and
+   cite the supporting passage by its {Pn} token (see the citation rule below).
+2. SECOND-HAND — a loaded paper attributes it to a work NOT in the pack (e.g. a review
+   says "Santoro et al. 2021 found X"). Keep it ONLY if you rewrite it to: attribute it
+   as second-hand, end it with "— second-hand; not independently verified", and strip any
+   specificity (mechanism, numbers, definitions) the loaded text does not contain.
+3. UNSUPPORTED — nothing in the pack supports it. REMOVE it from the list entirely.
+
+Hard rules:
+- Do NOT introduce facts, citations, DOIs, numbers, or definitions not in the pack.
+- Do NOT let an insight be more specific or more confident than the evidence it rests on.
+- Do NOT keep a reference-list DOI as if that paper were read — that is tier 2 at best.
+- An insight must not assert that a term/mechanism is defined or established when the
+  evidence pack does not define or establish it.
+- Prefer fewer, well-grounded insights. Returning fewer items than you were given is
+  correct when some were unsupported.
+- Keep each insight to 1–2 sentences. Answer in the same language as the insights.
+
+${INTERNAL_CITATION_RULE}
+
+${formatEvidencePackForPrompt(params.evidencePack)}
+
+Original research question:
+${params.question}
+
+Candidate insights (JSON array of strings):
+${JSON.stringify(params.insights, null, 2)}
+
+Return ONLY a JSON array of strings (the corrected insights), no prose, no markdown.`;
+
+  let response;
+  try {
+    response = await llm.createChatCompletion({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: 2500,
+      temperature: 0,
+    });
+  } catch {
+    return fallback();
+  }
+
+  // Parse the JSON array; tolerate the model wrapping it in ```json fences.
+  const raw = response.content.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return fallback();
+  }
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every((x): x is string => typeof x === "string")
+  ) {
+    return fallback();
+  }
+
+  // Resolve the {Pn} tokens the model cited to real internal links, then convert
+  // any DOI it kept to an internal paper link when scoped — same two-step the
+  // body and hypothesis verifiers use.
+  return parsed.map((insight) =>
+    rewriteDoiToPaperLink(
+      resolvePassageTokens(insight, params.evidencePack.passages),
+      scopeDocId,
+    ),
+  );
+}
+
 function appendEvidenceNotice(draft: string, pack: EvidencePack): string {
   if (pack.contradictions.length > 0) {
     return `${draft}\n\nEvidence note: Research Brain holds contradictory claims; treat this answer as a provisional synthesis.`;

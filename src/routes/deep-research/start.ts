@@ -1955,7 +1955,32 @@ These molecular changes align with established longevity pathways (Converging nu
       }
       conversationState.values.currentObjective =
         reflectionResult.currentObjective;
-      conversationState.values.keyInsights = reflectionResult.keyInsights;
+
+      // Ground the Key Insights against the evidence pack — the hard guarantee
+      // behind the reflection prompt's grounding policy. Removes unsupported
+      // insights, flags second-hand ones, and upgrades DOIs to internal links
+      // where a passage supports them. Falls back to the raw insights on any
+      // failure, so it never blanks the panel.
+      let groundedInsights = reflectionResult.keyInsights;
+      const insightEvidencePack = conversationState.values.researchBrainEvidence;
+      if (insightEvidencePack && reflectionResult.keyInsights?.length) {
+        try {
+          const { verifyKeyInsightsAgainstEvidence } = await import(
+            "../../services/researchBrain/verifier"
+          );
+          groundedInsights = await verifyKeyInsightsAgainstEvidence({
+            question:
+              createdMessage.question ||
+              conversationState.values.objective ||
+              "",
+            insights: reflectionResult.keyInsights,
+            evidencePack: insightEvidencePack,
+          });
+        } catch (err) {
+          logger.warn({ err }, "key_insights_grounding_failed");
+        }
+      }
+      conversationState.values.keyInsights = groundedInsights;
       conversationState.values.methodology = reflectionResult.methodology;
 
       // Update conversation state with discovery results if discovery ran
