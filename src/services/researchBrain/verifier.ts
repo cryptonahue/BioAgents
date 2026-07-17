@@ -131,7 +131,7 @@ Rules:
 - Do NOT manufacture citations. Cite only sources present in the evidence pack, by their {Pn} token.
 - If the candidate is already well-grounded, return it with minimal changes (you may tighten wording).
 - Do NOT output anything outside the five required sections.
-- Answer in the same language as the candidate hypothesis (Spanish if Spanish).
+- Write ENTIRELY in the language of the user's question below — every section, every citation label. If the draft drifted into another language (a Spanish label in an English answer), translate it back. Do not mix languages.
 
 ${INTERNAL_CITATION_RULE}
 
@@ -373,7 +373,7 @@ Hard rules:
   evidence pack does not define or establish it.
 - Prefer fewer, well-grounded insights. Returning fewer items than you were given is
   correct when some were unsupported.
-- Keep each insight to 1–2 sentences. Answer in the same language as the insights.
+- Keep each insight to 1–2 sentences. Write every insight and every citation label in the language of the user's question; if an insight drifted into another language, translate it back — do not mix languages.
 
 ${INTERNAL_CITATION_RULE}
 
