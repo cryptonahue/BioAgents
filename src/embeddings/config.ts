@@ -41,4 +41,11 @@ export const CONFIG = {
   // cosine order — which lets it demote keyword-dense-but-useless chunks such as
   // reference lists. Default false so no deploy silently gains an LLM call.
   LLM_RERANK_ENABLED: process.env.LLM_RERANK_ENABLED === "true",
+  // Hybrid retrieval: run a lexical (keyword) search alongside the semantic vector
+  // search and fuse both, so a paper whose relevant finding is one buried sentence
+  // (e.g. "antifungal" in a mostly-structural chemistry paper) still enters the
+  // candidate pool — semantic search alone misses it. Default true. Uses ILIKE
+  // (no index); for very large corpora add an FTS index and disable with
+  // USE_KEYWORD_SEARCH=false if it gets slow.
+  USE_KEYWORD_SEARCH: process.env.USE_KEYWORD_SEARCH !== "false",
 } as const;

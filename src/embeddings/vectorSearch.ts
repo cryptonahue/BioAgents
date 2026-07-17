@@ -22,6 +22,55 @@ export interface Document {
   relevanceScore?: number;
 }
 
+// Words too generic to discriminate a paper — dropped from the lexical query so
+// it keys on the terms that matter ("antifungal", "ciguatoxin", a species name).
+const KEYWORD_STOPWORDS = new Set([
+  "the","and","for","from","with","what","which","that","this","these","those",
+  "are","was","were","how","does","did","your","have","has","had","can","not",
+  "all","any","its","into","near","over","onto","upon","about","across","among",
+  "between","during","under","within","their","them","they","there","other",
+  "compounds","compound","organisms","organism","evidence","level","levels",
+  "study","studies","data","paper","papers","library","specific","reported",
+  "report","using","described","describe","activity","potency","source","sources",
+  "against","show","shows","showed","some","most","more","also","such","each",
+]);
+
+/** The query's distinctive lexical terms — alphanumeric, ≥4 chars, non-stopword. */
+function extractKeywordTerms(query: string): string[] {
+  return [
+    ...new Set(
+      (query || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, " ")
+        .split(/\s+/)
+        .map((w) => w.trim())
+        .filter((w) => w.length >= 4 && !KEYWORD_STOPWORDS.has(w)),
+    ),
+  ].slice(0, 12);
+}
+
+/**
+ * Reciprocal Rank Fusion — the standard way to blend two ranked lists (semantic
+ * + lexical) without a shared score. A doc's fused score is Σ 1/(k + rank) over
+ * every list it appears in, so a doc ranked well by EITHER retriever rises, and
+ * one ranked by BOTH rises most. Deduplicated by id (falling back to title).
+ */
+function reciprocalRankFusion(lists: Document[][], k = 60): Document[] {
+  const scores = new Map<string, { doc: Document; score: number }>();
+  for (const list of lists) {
+    list.forEach((doc, i) => {
+      const key = doc.id || `${doc.title}:${(doc.content || "").slice(0, 60)}`;
+      const add = 1 / (k + i + 1);
+      const prev = scores.get(key);
+      if (prev) prev.score += add;
+      else scores.set(key, { doc, score: add });
+    });
+  }
+  return [...scores.values()]
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.doc);
+}
+
 export class VectorSearchWithReranker {
   private embeddingProvider: EmbeddingProvider;
   private cache: SimpleCache<Document[]>;
@@ -138,6 +187,65 @@ export class VectorSearchWithReranker {
     return results;
   }
 
+  /**
+   * LEXICAL half of hybrid retrieval. Semantic search compares meaning, which
+   * rewards a chunk whose whole topic is the query — and misses a paper whose
+   * relevant finding is one buried sentence ("Anthoteibinene I and J were the
+   * only compounds with antifungal activity") inside pages of structure
+   * elucidation. A keyword search finds that sentence by the word, and catches
+   * exact names (compounds, species, genes) an embedding blurs.
+   *
+   * Deliberately simple: ILIKE over title + content on the query's distinctive
+   * terms, ranked by how many terms a chunk hits. No index (fine for a small
+   * library; add an FTS index for scale). Its job is only to put missed
+   * candidates into the pool — the reranker then judges them.
+   */
+  async keywordSearch(
+    query: string,
+    limit = 20,
+    filterTitle?: string,
+  ): Promise<Document[]> {
+    const terms = extractKeywordTerms(query);
+    if (terms.length === 0) return [];
+
+    const orClauses = terms
+      .flatMap((t) => [`content.ilike.%${t}%`, `title.ilike.%${t}%`])
+      .join(",");
+
+    let q = supabase
+      .from("documents")
+      .select("id,title,content,metadata")
+      .or(orClauses);
+    if (filterTitle) q = q.eq("title", filterTitle);
+
+    const { data, error } = await q.limit(Math.max(limit * 5, 100));
+    if (error) {
+      logger.warn(`keyword search failed (${error.message}); skipping lexical half`);
+      return [];
+    }
+
+    const scored = (data || [])
+      .map((doc: any) => {
+        const hay = `${doc.title ?? ""} ${doc.content ?? ""}`.toLowerCase();
+        const matched = terms.filter((t) => hay.includes(t)).length;
+        return { doc, matched };
+      })
+      .filter((x) => x.matched > 0)
+      .sort((a, b) => b.matched - a.matched)
+      .slice(0, limit)
+      .map((x) => ({
+        id: x.doc.id,
+        title: x.doc.title,
+        content: x.doc.content,
+        metadata: x.doc.metadata,
+      }));
+
+    logger.info(
+      `🔤 Keyword search matched ${scored.length} chunks on [${terms.join(", ")}]`,
+    );
+    return scored;
+  }
+
   // Rerank results using Cohere (second stage)
   async rerank(
     query: string,
@@ -200,46 +308,56 @@ export class VectorSearchWithReranker {
     logger.info(`🚀 Starting search pipeline for: "${query}"`);
     const startTime = Date.now();
 
-    // Stage 1: Vector search
-    const vectorResults = await this.vectorSearch(
-      query,
-      vectorLimit,
-      filterTitle,
-      matchThreshold,
-    );
+    // Stage 1: hybrid retrieval — semantic (vector) AND lexical (keyword) in
+    // parallel, fused by Reciprocal Rank Fusion. The lexical half catches papers
+    // whose relevant finding is a buried sentence the embedding blurs past.
+    const [vectorResults, keywordResults] = await Promise.all([
+      this.vectorSearch(query, vectorLimit, filterTitle, matchThreshold),
+      CONFIG.USE_KEYWORD_SEARCH
+        ? this.keywordSearch(query, vectorLimit, filterTitle)
+        : Promise.resolve([] as Document[]),
+    ]);
 
-    if (vectorResults.length === 0) {
-      logger.info("❌ No vector search results found");
+    if (vectorResults.length === 0 && keywordResults.length === 0) {
+      logger.info("❌ No search results found (vector or keyword)");
       return [];
     }
 
+    const candidates = reciprocalRankFusion([vectorResults, keywordResults]).slice(
+      0,
+      Math.max(vectorLimit, finalLimit),
+    );
+    logger.info(
+      `🔀 Hybrid pool: ${vectorResults.length} vector + ${keywordResults.length} keyword → ${candidates.length} fused`,
+    );
+
     let finalResults: Document[];
 
-    const canRerank = useReranking && vectorResults.length > 1;
+    const canRerank = useReranking && candidates.length > 1;
     if (canRerank && CONFIG.COHERE_API_KEY) {
       // Stage 2: Rerank with Cohere (preferred when a key is configured)
-      finalResults = await this.rerank(query, vectorResults, finalLimit);
+      finalResults = await this.rerank(query, candidates, finalLimit);
     } else if (canRerank && CONFIG.LLM_RERANK_ENABLED) {
       // Stage 2 fallback: rerank with an LLM reusing existing provider keys. If
       // it is unavailable or judges nothing relevant it returns null, and we use
-      // plain cosine order rather than blank the results.
+      // the fused order rather than blank the results.
       const { llmRerank } = await import("./llmReranker");
-      const llmRanked = await llmRerank(query, vectorResults, finalLimit);
+      const llmRanked = await llmRerank(query, candidates, finalLimit);
       if (llmRanked && llmRanked.length > 0) {
         finalResults = llmRanked;
         logger.info(
-          `🧠 LLM rerank kept ${finalResults.length} of ${vectorResults.length}`,
+          `🧠 LLM rerank kept ${finalResults.length} of ${candidates.length}`,
         );
       } else {
-        finalResults = vectorResults.slice(0, finalLimit);
+        finalResults = candidates.slice(0, finalLimit);
         logger.info(
-          `⚡ LLM rerank unavailable/empty, cosine top ${finalResults.length}`,
+          `⚡ LLM rerank unavailable/empty, fused top ${finalResults.length}`,
         );
       }
     } else {
-      finalResults = vectorResults.slice(0, finalLimit);
+      finalResults = candidates.slice(0, finalLimit);
       logger.info(
-        `⚡ Skipping reranking, returning top ${finalResults.length} vector results`,
+        `⚡ Skipping reranking, returning fused top ${finalResults.length}`,
       );
     }
 
