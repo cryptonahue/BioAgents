@@ -24,19 +24,29 @@ interface CorpusPassage {
 
 interface Props {
   passages?: CorpusPassage[];
+  /** Papers the literature searches retrieved (from the KNOWLEDGE source), with
+   *  fragment counts. The answer is built on these AS WELL as the evidence-pack
+   *  passages, so the corpus unions both — otherwise it says "1 of 17 matched"
+   *  while the reply cites two papers, which reads as a contradiction. */
+  literaturePapers?: { title: string; chunks: number }[];
 }
 
-export function EvidenceCorpusPanel({ passages }: Props) {
+export function EvidenceCorpusPanel({ passages, literaturePapers }: Props) {
   // Hook first: it must run on every render, before any early return.
   const libraryTotal = useLibraryTotal();
 
-  if (!passages || passages.length === 0) return null;
-
+  // Union both retrievals by paper title, keeping the larger fragment count when
+  // a paper shows up in both (they are different searches over the same store).
   const byTitle = new Map<string, number>();
-  for (const passage of passages) {
+  for (const passage of passages ?? []) {
     const title = passage.sourceTitle?.trim();
     if (!title) continue;
     byTitle.set(title, (byTitle.get(title) ?? 0) + 1);
+  }
+  for (const paper of literaturePapers ?? []) {
+    const title = paper.title?.trim();
+    if (!title) continue;
+    byTitle.set(title, Math.max(byTitle.get(title) ?? 0, paper.chunks || 0));
   }
 
   const matched = [...byTitle.entries()].sort((a, b) => b[1] - a[1]);

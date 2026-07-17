@@ -62,6 +62,11 @@ export type LiteratureSourceResult = {
   error?: string;
   /** External job id when the source was Edison/BioLit. */
   jobId?: string;
+  /** For the KNOWLEDGE source: the distinct library papers this search actually
+   *  retrieved, with how many fragments came from each. This is what the answer
+   *  was built on — the corpus panel unions it with the evidence-pack passages so
+   *  it stops undercounting ("1 of 17" when the reply cited two papers). */
+  papers?: { title: string; chunks: number }[];
 };
 
 export type PlanTask = {

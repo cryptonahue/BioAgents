@@ -14,6 +14,8 @@ export type LiteratureSource = {
   output?: string;
   error?: string;
   jobId?: string;
+  /** KNOWLEDGE source: the distinct library papers this search retrieved. */
+  papers?: { title: string; chunks: number }[];
 };
 
 interface Props {

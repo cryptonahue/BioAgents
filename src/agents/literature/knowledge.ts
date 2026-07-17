@@ -67,8 +67,21 @@ export async function searchKnowledge(
           )
           .join("\n\n")}`;
 
+  // The distinct library papers this search drew on, with per-paper fragment
+  // counts — so the corpus panel can show what the answer was actually built on.
+  const paperCounts = new Map<string, number>();
+  for (const doc of searchResults as any[]) {
+    const title = typeof doc?.title === "string" ? doc.title.trim() : "";
+    if (!title) continue;
+    paperCounts.set(title, (paperCounts.get(title) ?? 0) + 1);
+  }
+  const papers = [...paperCounts.entries()]
+    .map(([title, chunks]) => ({ title, chunks }))
+    .sort((a, b) => b.chunks - a.chunks);
+
   return {
     output,
     count: searchResults.length,
+    papers,
   };
 }

@@ -1609,6 +1609,7 @@ async function runDeepResearch(params: {
               output: result.output,
               error: result.error,
               jobId: result.jobId,
+              papers: result.papers,
             });
             if (result.jobId && !task.jobId) {
               task.jobId = result.jobId;

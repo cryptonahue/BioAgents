@@ -273,6 +273,13 @@ export function ResearchStatePanel({
       ]
     : [];
 
+  // Papers the literature searches actually retrieved (KNOWLEDGE source). The
+  // reply is built on these as well as the evidence-pack passages, so the corpus
+  // panel unions both — see EvidenceCorpusPanel.
+  const literaturePapers = (state?.plan ?? [])
+    .flatMap((step) => step.sources ?? [])
+    .flatMap((source) => source.papers ?? []);
+
   // Show loading state when deep research is starting but no state yet
   const showLoadingState = isLoading && (!state || !state.currentObjective);
 
@@ -323,6 +330,7 @@ export function ResearchStatePanel({
           is missing those papers". */}
       <EvidenceCorpusPanel
         passages={state?.researchBrainEvidence?.passages}
+        literaturePapers={literaturePapers}
       />
       <details className="card research-state-panel" open={isExpanded}>
         <summary

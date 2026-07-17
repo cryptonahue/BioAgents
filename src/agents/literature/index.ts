@@ -36,6 +36,8 @@ export type LiteratureResult = {
   status: LiteratureSourceStatus;
   durationMs: number;
   error?: string;
+  /** Distinct library papers retrieved (KNOWLEDGE source only). */
+  papers?: { title: string; chunks: number }[];
 };
 
 /**
@@ -72,6 +74,7 @@ export async function literatureAgent(input: {
   let reasoning: string[] | undefined;
   let status: LiteratureSourceStatus = "ok";
   let error: string | undefined;
+  let papers: { title: string; chunks: number }[] | undefined;
 
   try {
     switch (type) {
@@ -86,6 +89,7 @@ export async function literatureAgent(input: {
         const result = await searchKnowledge(objective);
         output = result.output;
         count = result.count;
+        papers = result.papers;
         if ((count ?? 0) === 0) status = "empty";
         break;
       }
@@ -154,5 +158,6 @@ export async function literatureAgent(input: {
     status,
     durationMs,
     error,
+    papers,
   };
 }

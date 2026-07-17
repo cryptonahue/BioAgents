@@ -749,6 +749,7 @@ async function processDeepResearchJob(
             output: result.output,
             error: result.error,
             jobId: result.jobId,
+            papers: result.papers,
           });
           // Persist jobId from primary literature (Edison/BioLit) at the task
           // level too so existing callers that read task.jobId keep working.
