@@ -1812,15 +1812,38 @@ These molecular changes align with established longevity pathways (Converging nu
                 process.env.PRIMARY_ANALYSIS_AGENT?.toUpperCase() === "BIO"
                   ? "BIO"
                   : "EDISON";
-              const conversationStateId = conversationState.id!; // Use conversation_state ID to match upload path
-              analysisResult = await analysisAgent({
-                objective: task.objective,
-                datasets: task.datasets,
-                type,
-                userId: createdMessage.user_id,
-                conversationStateId: conversationStateId,
-                onPollUpdate,
-              });
+              const edisonConfigured = !!(
+                process.env.EDISON_API_URL && process.env.EDISON_API_KEY
+              );
+              if (type === "EDISON" && !edisonConfigured) {
+                // No analysis engine configured — skip, don't fail. A failed
+                // Edison analysis only injected "Error performing analysis:
+                // Edison API URL or API key not configured" into the answer.
+                // The literature/knowledge search already reads these library
+                // papers, so the reply loses nothing by skipping. Same gate as
+                // the literature Edison source.
+                logger.info(
+                  { taskObjective: task.objective },
+                  "analysis_skipped_edison_not_configured",
+                );
+                analysisResult = {
+                  objective: task.objective,
+                  output: "",
+                  artifacts: [],
+                  start: new Date().toISOString(),
+                  end: new Date().toISOString(),
+                };
+              } else {
+                const conversationStateId = conversationState.id!; // Use conversation_state ID to match upload path
+                analysisResult = await analysisAgent({
+                  objective: task.objective,
+                  datasets: task.datasets,
+                  type,
+                  userId: createdMessage.user_id,
+                  conversationStateId: conversationStateId,
+                  onPollUpdate,
+                });
+              }
             }
 
             task.output = `${analysisResult.output}\n\n`;

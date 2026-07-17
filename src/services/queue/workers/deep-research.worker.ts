@@ -908,15 +908,31 @@ async function processDeepResearchJob(
             process.env.PRIMARY_ANALYSIS_AGENT?.toUpperCase() === "BIO"
               ? "BIO"
               : "EDISON";
+          const edisonConfigured = !!(
+            process.env.EDISON_API_URL && process.env.EDISON_API_KEY
+          );
 
-          const analysisResult = await analysisAgent({
-            objective: task.objective,
-            datasets: task.datasets,
-            type,
-            userId: messageRecord.user_id,
-            conversationStateId: activeConversationState.id!,
-            onPollUpdate,
-          });
+          const analysisResult =
+            type === "EDISON" && !edisonConfigured
+              ? // No analysis engine configured — skip, don't fail (parity with
+                // start.ts). A failed Edison analysis only injects an error into
+                // the answer; the literature search already reads these papers.
+                {
+                  objective: task.objective,
+                  output: "",
+                  artifacts: [] as any[],
+                  jobId: undefined as string | undefined,
+                  start: new Date().toISOString(),
+                  end: new Date().toISOString(),
+                }
+              : await analysisAgent({
+                  objective: task.objective,
+                  datasets: task.datasets,
+                  type,
+                  userId: messageRecord.user_id,
+                  conversationStateId: activeConversationState.id!,
+                  onPollUpdate,
+                });
 
           task.output = `${analysisResult.output}\n\n`;
           task.artifacts = analysisResult.artifacts || [];
