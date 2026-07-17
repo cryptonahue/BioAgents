@@ -35,17 +35,18 @@ describe("resolvePassageTokens", () => {
     expect(resolvePassageTokens("[b]{ P2 }", passages)).toBe(`[b]{${LINK2}}`);
   });
 
-  it("leaves an out-of-range token untouched rather than inventing a target", () => {
-    expect(resolvePassageTokens("[x]{P9}", passages)).toBe("[x]{P9}");
+  it("strips an out-of-range token to its label rather than leaking {P9}", () => {
+    expect(resolvePassageTokens("[x]{P9}", passages)).toBe("x");
   });
 
-  it("leaves a token for a non-anchored passage untouched (it has no link)", () => {
-    expect(resolvePassageTokens("[x]{P3}", passages)).toBe("[x]{P3}");
+  it("strips a token for a non-anchored passage to its label", () => {
+    // passage 3 has citation: null, so {P3} cannot resolve — keep the label only.
+    expect(resolvePassageTokens("[x]{P3}", passages)).toBe("x");
   });
 
-  it("is a no-op when there are no passages", () => {
-    expect(resolvePassageTokens("[x]{P1}", [])).toBe("[x]{P1}");
-    expect(resolvePassageTokens("[x]{P1}", undefined)).toBe("[x]{P1}");
+  it("strips unresolved tokens even when there are no passages", () => {
+    expect(resolvePassageTokens("[x]{P1}", [])).toBe("x");
+    expect(resolvePassageTokens("[x]{P1}", undefined)).toBe("x");
   });
 
   it("never leaks a corruptible base64 into resolution — the link is verbatim", () => {

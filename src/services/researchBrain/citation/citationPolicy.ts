@@ -107,13 +107,35 @@ export function resolvePassageTokens(
   text: string,
   passages: EvidencePackPassage[] | undefined,
 ): string {
-  if (!text || !passages || passages.length === 0) return text;
-  const resolved = text.replace(/\{\s*[Pp]\s*(\d+)\s*\}/g, (whole, digits) => {
-    const idx = Number(digits) - 1;
-    const link = passages[idx]?.citation;
-    return link ? `{${link}}` : whole;
-  });
+  if (!text) return text;
+  let resolved = text;
+  if (passages && passages.length > 0) {
+    resolved = text.replace(/\{\s*[Pp]\s*(\d+)\s*\}/g, (whole, digits) => {
+      const idx = Number(digits) - 1;
+      const link = passages[idx]?.citation;
+      return link ? `{${link}}` : whole;
+    });
+  }
+  // A token that did not resolve — the passage never anchored, the index is past
+  // the end, or there were no passages at all — used to be left in the text, and
+  // it reached the reader as a literal "{P7}". A raw token is worse than no
+  // citation: it is visible machinery. Strip any leftover, keeping the label.
+  resolved = stripUnresolvedPassageTokens(resolved);
   return collapseDuplicateCitations(cleanTokenIdLabels(resolved));
+}
+
+/**
+ * Remove any passage token the resolver could not turn into a link — `[label]{P7}`
+ * becomes `[label]`, a bare `{P7}` disappears. Only targets `{Pn}` tokens, so a
+ * resolved `{/library/…}` link is never touched.
+ */
+export function stripUnresolvedPassageTokens(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/\[([^\]]*)\]\s*\{\s*[Pp]\s*\d+\s*\}/g, "$1")
+    .replace(/\{\s*[Pp]\s*\d+\s*\}/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+([.,;:])/g, "$1");
 }
 
 /**
