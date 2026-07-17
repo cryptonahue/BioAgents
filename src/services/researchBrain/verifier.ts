@@ -42,6 +42,17 @@ export async function verifyHypothesisAgainstEvidence(params: {
   hypothesis: string;
   evidencePack: EvidencePack;
 }): Promise<string> {
+  // NOTHING TO VERIFY. A factual/review question ("which fish carry the most
+  // ciguatoxin?") is not hypothesis-shaped, so the hypothesis agent returns
+  // nothing. Running the verifier on an empty hypothesis made the model answer
+  // conversationally — "you did not give me a hypothesis, please resend it" —
+  // and that reply, INCLUDING the verifier's own prompt wording, landed in the
+  // Hypothesis panel. There is no hypothesis to ground; return empty so the
+  // panel simply does not render.
+  if (!params.hypothesis || !params.hypothesis.trim()) {
+    return "";
+  }
+
   /*
     THE PAPER'S TEXT IS EVIDENCE. This gate used to say otherwise.
 
