@@ -275,6 +275,27 @@ export function stripUngroundedDois(
 }
 
 /**
+ * Strip EVERY raw DOI from an answer, keeping the attribution around it.
+ *
+ * The stronger sibling of stripUngroundedDois, and the one the verifiers use.
+ * "In the pack" turned out not to be enough: the model would take a DOI that IS
+ * in the pack — the book chapter's, or the one loaded paper's — and staple it to
+ * the WRONG reference, so "(Krueger et al. 2015)" got the Coral Reef Microbiome
+ * chapter's DOI and "(Wakefield et al. 2000)" got Hillyer's. A real DOI on the
+ * wrong paper is worse than a fabricated one: it looks verifiable and resolves to
+ * a real, wrong source.
+ *
+ * The law is the same as for {Pn} tokens, taken to its end: the model cannot be
+ * trusted with an opaque identifier — not to transcribe it, and not to attribute
+ * it. So it writes none. Loaded evidence is cited by its internal /library link
+ * (never matched here); everything else stands on its author and year, which the
+ * model CAN get right. A raw DOI in a finished answer is never the correct form.
+ */
+export function stripAllDois(text: string): string {
+  return stripUngroundedDois(text, new Set<string>());
+}
+
+/**
  * Collapse a citation link immediately repeated after itself — {link}{link} —
  * down to one. The model cites the same token twice ({P1}{P1}); once resolved
  * that is two identical clickable links back to back, which is noise, not two

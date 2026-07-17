@@ -8,6 +8,7 @@ import {
   renderPassageBlock,
   resolvePassageTokens,
   rewriteDoiToPaperLink,
+  stripAllDois,
   stripUngroundedDois,
 } from "./citationPolicy";
 import type { EvidencePackPassage } from "../types";
@@ -238,6 +239,50 @@ describe("stripUngroundedDois", () => {
 
   it("is a no-op on text with no DOI", () => {
     expect(stripUngroundedDois("plain text", allowed)).toBe("plain text");
+  });
+});
+
+describe("stripAllDois", () => {
+  // The exact misattributions from a real run: a DOI that IS in the pack, stapled
+  // to the wrong second-hand reference.
+  it("strips the chapter DOI misattributed to a second-hand author", () => {
+    expect(
+      stripAllDois(
+        "persist after stress (Krueger et al. 2015)[https://doi.org/10.1007/978-3-031-59155-2_13].",
+      ),
+    ).toBe("persist after stress (Krueger et al. 2015).");
+  });
+
+  it("strips Hillyer's DOI misattributed to Wakefield", () => {
+    expect(
+      stripAllDois(
+        "the symbiosome membrane (Wakefield et al. 2000)[https://doi.org/10.1007/s11306-017-1306-8]",
+      ),
+    ).toBe("the symbiosome membrane (Wakefield et al. 2000)");
+  });
+
+  it("strips a DOI even when it is a real, loaded paper's DOI", () => {
+    // The whole point: 'in the pack' is not enough — attribution can't be trusted.
+    expect(
+      stripAllDois("(Hillyer et al. 2018)[https://doi.org/10.1007/s11306-017-1306-8]"),
+    ).toBe("(Hillyer et al. 2018)");
+  });
+
+  it("unwraps [label]{doi} to the label", () => {
+    expect(
+      stripAllDois("[inositol accumulation]{https://doi.org/10.1007/s11306-017-1306-8}"),
+    ).toBe("inositol accumulation");
+  });
+
+  it("NEVER touches an internal /library link", () => {
+    const s = `[riqueza]{${LINK1}}`;
+    expect(stripAllDois(s)).toBe(s);
+  });
+
+  it("is a no-op on text with no DOI", () => {
+    expect(stripAllDois("bleaching persists after stress")).toBe(
+      "bleaching persists after stress",
+    );
   });
 });
 
