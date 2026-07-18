@@ -54,7 +54,7 @@ export async function decideContinuation(
   const model =
     process.env.CONTINUE_RESEARCH_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   // Build document content (all task outputs)
   const allTaskOutputs = documents

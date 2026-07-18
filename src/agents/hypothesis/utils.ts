@@ -37,7 +37,7 @@ export async function generateHypothesis(
   const model =
     process.env.HYP_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
   const mode = options.mode ?? "create";
 
   // Build document content

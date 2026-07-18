@@ -36,7 +36,7 @@ export async function extractDiscoveries(
   const model =
     process.env.DISCOVERY_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   // Build document content
   const documentText = documents

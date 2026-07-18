@@ -19,10 +19,10 @@ export const DEEP_RESEARCH_MODELS: SelectableModel[] = [
 
 /**
  * Fallback used when no global model has been selected. Kept in sync with the
- * hardcoded `"minimax/minimax-m3"` default the deep-research agents fall back
+ * hardcoded `"z-ai/glm-5.2"` default the deep-research agents fall back
  * to at the end of their model-resolution chain.
  */
-export const DEFAULT_DEEP_RESEARCH_MODEL = "minimax/minimax-m3";
+export const DEFAULT_DEEP_RESEARCH_MODEL = "z-ai/glm-5.2";
 
 /**
  * True when `id` is one of the curated, selectable models. Used to reject

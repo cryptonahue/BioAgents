@@ -177,7 +177,7 @@ async function generateInitialPlan(
     model:
       process.env.PLANNING_LLM_MODEL ||
       (await getGlobalDeepResearchModel()) ||
-      "minimax/minimax-m3",
+      "z-ai/glm-5.2",
     messages: [
       {
         role: "user" as const,
@@ -260,7 +260,7 @@ async function generatePlan(
     model:
       process.env.PLANNING_LLM_MODEL ||
       (await getGlobalDeepResearchModel()) ||
-      "minimax/minimax-m3",
+      "z-ai/glm-5.2",
     messages: [
       {
         role: "user" as const,

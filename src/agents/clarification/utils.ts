@@ -54,7 +54,7 @@ export async function generateQuestions(
     process.env.CLARIFICATION_LLM_MODEL ||
     process.env.PLANNING_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   const llmProvider = new LLM({
     name: CLARIFICATION_LLM_PROVIDER,

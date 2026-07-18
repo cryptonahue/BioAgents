@@ -60,7 +60,7 @@ export async function generateReply(
   const model =
     process.env.REPLY_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   // 1. Determine reply mode
   // - Intermediate replies (isFinal=false): Always REPORT (progress update)
@@ -237,7 +237,7 @@ export async function generateChatReply(
   const model =
     process.env.REPLY_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   // Format completed tasks with full output (not truncated for chat)
   const completedTasksText = context.completedTasks

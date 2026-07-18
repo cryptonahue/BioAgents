@@ -49,7 +49,7 @@ export async function reflectOnWorld(
   const model =
     process.env.REFLECTION_LLM_MODEL ||
     (await getGlobalDeepResearchModel()) ||
-    "minimax/minimax-m3";
+    "z-ai/glm-5.2";
 
   // Build document content
   const documentText = documents
