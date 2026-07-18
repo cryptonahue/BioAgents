@@ -223,7 +223,9 @@ export async function verifyEvidenceGroundedResponse(params: {
 
   const { llm, model } = resolveResearchBrainLLM();
   if (!llm || !model) {
-    return appendEvidenceNotice(params.draft, params.evidencePack);
+    return stripAllDois(
+      appendEvidenceNotice(params.draft, params.evidencePack),
+    );
   }
 
   const prompt = `You are an evidence verifier for a strict scientific assistant.
@@ -307,7 +309,9 @@ ${params.draft}`;
     params.evidencePack.passages,
   );
   if (!grounded) {
-    return appendEvidenceNotice(params.draft, params.evidencePack);
+    return stripAllDois(
+      appendEvidenceNotice(params.draft, params.evidencePack),
+    );
   }
   return stripAllDois(grounded);
 }
