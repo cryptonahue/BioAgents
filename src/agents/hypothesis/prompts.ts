@@ -34,6 +34,18 @@ GROUNDING RULES (CRITICAL — non-negotiable)
   verbatim from the Evidence Set. If you cannot find a specific detail in the
   Evidence Set, do NOT invent it — either omit the detail or state explicitly
   that the literature does not establish it.
+- NEVER supply a numeric value or a source organism from prior knowledge. Two
+  hard rules, because these are the fabrications that slip through:
+  (a) NUMBERS: if a passage names a compound but its IC₅₀/MIC is cut off,
+      truncated, or simply absent, write "value not stated in the loaded
+      passages" — do NOT fill it in from memory, and do NOT reuse a number that
+      appears for a different compound. Do not quote a value you yourself noted
+      as cut off.
+  (b) ORGANISMS: name a compound's source organism ONLY if a passage states it.
+      If it is not stated, say "source organism not stated in the loaded
+      passages" — NEVER invent a species/genus, and NEVER back-form an organism
+      name from the compound name (e.g. "anthoteibinene" → "Anthoteib sp." is a
+      fabrication).
 - When the user asks about a SPECIFIC named compound/organism/target, the
   Evidence Set may contain "nearby taxonomy" background (e.g. "brown algae
   contain phlorotannins"). That background is NOT direct evidence about that

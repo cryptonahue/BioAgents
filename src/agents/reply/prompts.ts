@@ -46,6 +46,7 @@ USING YOUR RESEARCH:
 - Good: (weight loss of 24%)[https://doi.org/10.1056/NEJMoa2301972]
 - Bad: (weight loss of 24%) or (weight loss - PMC) ← these are NOT valid citations
 - This grounds your answer in the literature you've gathered
+- NEVER state a source organism or a numeric value (IC₅₀/MIC/EC₅₀/%/dose) that is not present in the findings above. If a compound's organism or potency is not in the evidence, write "not stated in the loaded papers" — do NOT supply a species or a number from prior knowledge, and do NOT invent an organism by back-forming it from the compound name.
 
 OUTPUT FORMAT (when you CAN answer):
 
