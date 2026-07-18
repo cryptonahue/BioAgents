@@ -35,6 +35,11 @@ const KEYWORD_STOPWORDS = new Set([
   "against","show","shows","showed","some","most","more","also","such","each",
 ]);
 
+/** Escape ilike wildcards so a term is matched literally (mirrors db.ts). */
+function escapeIlike(value: string): string {
+  return value.replace(/[%_\\]/g, (m) => `\\${m}`);
+}
+
 /** The query's distinctive lexical terms — alphanumeric, ≥4 chars, non-stopword. */
 function extractKeywordTerms(query: string): string[] {
   return [
@@ -208,11 +213,16 @@ export class VectorSearchWithReranker {
     const terms = extractKeywordTerms(query);
     if (terms.length === 0) return [];
 
-    // PostgREST's ilike wildcard inside .or() is `*`, NOT SQL's `%` — with `%`
-    // it matched the literal string "%antifungal%" and found nothing, which
-    // silently killed the whole lexical half of hybrid search.
+    // `%` IS the wildcard for ilike inside a PostgREST .or() here — the rest of
+    // this codebase does the same (see db.ts searchClaims). escapeIlike guards
+    // any %, _ or \ in a term (extractKeywordTerms already strips them, but keep
+    // the pattern honest). An earlier commit "fixed" this to `*`, which matched
+    // the literal string "*antifungal*" and broke the lexical search entirely.
     const orClauses = terms
-      .flatMap((t) => [`content.ilike.*${t}*`, `title.ilike.*${t}*`])
+      .flatMap((t) => [
+        `content.ilike.%${escapeIlike(t)}%`,
+        `title.ilike.%${escapeIlike(t)}%`,
+      ])
       .join(",");
 
     let q = supabase
