@@ -33,7 +33,7 @@ export async function generateHypothesis(
   documents: HypothesisDoc[],
   options: HypothesisOptions = {},
 ): Promise<HypothesisResult> {
-  const model = process.env.HYP_LLM_MODEL || "gemini-2.5-pro";
+  const model = process.env.HYP_LLM_MODEL || "minimax/minimax-m3";
   const mode = options.mode ?? "create";
 
   // Build document content
@@ -53,7 +53,7 @@ export async function generateHypothesis(
   }
 
   const HYP_LLM_PROVIDER: LLMProvider =
-    (process.env.HYP_LLM_PROVIDER as LLMProvider) || "google";
+    (process.env.HYP_LLM_PROVIDER as LLMProvider) || "openrouter";
   const llmApiKey = process.env[`${HYP_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
   if (!llmApiKey) {
