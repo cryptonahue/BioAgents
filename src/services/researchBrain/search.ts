@@ -447,7 +447,13 @@ export async function researchBrainSearch(params: {
           if (hit) {
             const { x, y, w, h } = hit.bbox;
             p.page = hit.page;
-            p.citation = `/library/${docId}/viewer#bbox=${x},${y},${w},${h}&page=${hit.page}&type=chunk`;
+            // Encode the bbox commas (%2C). Citations are stored as
+            // `[text]{url1,url2,…}` and parseCitations splits the URL list on
+            // raw commas — a bbox written `x,y,w,h` gets truncated to just `x`
+            // (a single float parseViewerHash then rejects → no highlight).
+            // URLSearchParams decodes %2C back to "," so parseViewerHash's
+            // split(",") still yields four parts.
+            p.citation = `/library/${docId}/viewer#bbox=${x}%2C${y}%2C${w}%2C${h}&page=${hit.page}&type=chunk`;
             anchored++;
           } else {
             // The passage did not anchor to a bbox, so a plain deep link would

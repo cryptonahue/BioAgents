@@ -151,26 +151,6 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
 
-  // TEMP DIAG (citation-highlight): log what the viewer received and decided,
-  // so we can see WHERE the highlight is lost (hash parse / page jump / search).
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[viewer-diag]", {
-      rawHash: window.location.hash,
-      parsedBbox: initialHash.bbox,
-      parsedPage: initialHash.page,
-      parsedType: initialHash.type,
-      parsedQ: initialHash.q ? String(initialHash.q).slice(0, 50) : null,
-      docReady: !!doc,
-      searchActive,
-      chunkResult: chunkHighlight?.bbox ? "HIT" : (chunkHighlight?.type ?? "none"),
-      effectiveBbox,
-      effectivePage,
-      effectiveType,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc, searchActive, effectiveBbox, effectivePage, effectiveType]);
-
   // Feature: breadcrumb back to the originating conversation. Citation links
   // append `?from=<encoded conversation path>` before the hash; when present
   // we offer a direct route back instead of the generic library back button.
