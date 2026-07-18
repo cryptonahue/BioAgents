@@ -1902,6 +1902,9 @@ These molecular changes align with established longevity pathways (Converging nu
         message: createdMessage,
         conversationState,
         completedTasks: tasksToExecute, // All tasks from current level
+        // Same grounded passages the reply agent and verifier see. Without this
+        // the hypothesis starves to world-state only and contradicts the answer.
+        evidencePack: conversationState.values.researchBrainEvidence,
       });
 
       // Ground the hypothesis against the evidence pack so the user does

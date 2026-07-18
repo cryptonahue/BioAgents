@@ -1,4 +1,5 @@
 import type { ConversationState, Message, PlanTask } from "../../types/core";
+import type { EvidencePack } from "../../services/researchBrain/types";
 import logger from "../../utils/logger";
 import { generateHypothesis, type HypothesisDoc } from "./utils";
 
@@ -26,8 +27,11 @@ export async function hypothesisAgent(input: {
   message: Message;
   conversationState: ConversationState;
   completedTasks: PlanTask[];
+  evidencePack?: EvidencePack | null;
 }): Promise<HypothesisResult> {
   const { objective, message, conversationState, completedTasks } = input;
+  const evidencePack =
+    input.evidencePack ?? conversationState.values.researchBrainEvidence ?? null;
   const start = new Date().toISOString();
 
   // Determine if we're creating or updating
@@ -47,6 +51,26 @@ export async function hypothesisAgent(input: {
   try {
     // Build simple docs from task outputs
     const hypDocs: HypothesisDoc[] = [];
+
+    // The researchBrain passages are the paper text the reply agent and the
+    // verifier reason from — the SAME grounded evidence that produced the
+    // answer the user sees. Without them, when the current level's task.output
+    // is empty (a level whose literature returned nothing, or an output not yet
+    // populated on this task reference) the hypothesis prompt collapses to
+    // world-state only and the model declares "insufficient evidence / no
+    // hits", flatly contradicting the answer. Feed the passages in so the
+    // hypothesis is grounded in the same evidence, not starved beside it.
+    const passages = evidencePack?.passages ?? [];
+    passages.slice(0, 24).forEach((p, index) => {
+      if (!p.content?.trim()) return;
+      hypDocs.push({
+        title: p.sourceTitle
+          ? `Evidence Passage — ${p.sourceTitle}`
+          : `Evidence Passage ${index + 1}`,
+        text: p.content,
+        context: "Paper text retrieved for this question — treat as evidence",
+      });
+    });
 
     // Add task outputs with their objectives
     completedTasks.forEach((task, index) => {
