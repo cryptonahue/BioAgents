@@ -199,6 +199,10 @@ export interface HashState {
   bbox: BBox | null;
   page: number;
   type: ProvenanceType;
+  // Optional passage quote. Citation deep-links append `&q=<quote>` so the
+  // viewer can text-search for the highlight when the bbox is missing or
+  // fails to anchor. Optional so `buildViewerHash` callers need not supply it.
+  q?: string | null;
 }
 
 export function parseViewerHash(hash: string): HashState {
@@ -206,6 +210,7 @@ export function parseViewerHash(hash: string): HashState {
   const bboxRaw = params.get("bbox");
   const pageRaw = params.get("page");
   const typeRaw = params.get("type");
+  const qRaw = params.get("q");
 
   let bbox: BBox | null = null;
   if (bboxRaw) {
@@ -235,7 +240,10 @@ export function parseViewerHash(hash: string): HashState {
       ? typeRaw
       : "chunk";
 
-  return { bbox, page, type };
+  // `URLSearchParams` already percent-decodes, so `qRaw` is the plain quote.
+  const q = qRaw && qRaw.trim() ? qRaw : null;
+
+  return { bbox, page, type, q };
 }
 
 /**

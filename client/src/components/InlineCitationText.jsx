@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import { useState, useRef, useEffect, useMemo } from 'preact/hooks';
+import { route } from 'preact-router';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { parseCitationsFromText, extractDomainName } from '../utils/parseCitations';
@@ -89,12 +90,70 @@ function doiFromUrl(url) {
 }
 
 /**
+ * Turn a `/library/<base64 title>/viewer#…&page=N…` deep link into a human
+ * paper name + page, so the preview shows "Marinedrugs 24 00206 · page 20"
+ * instead of the raw base64 URL.
+ *
+ * The docId is `atob`-decoded to the original filename, then prettified:
+ * drop a trailing `.pdf`, turn `-`/`_` into spaces, collapse whitespace. We
+ * DO NOT force uppercase — that would wreck an already-cased title like
+ * "Coral Reef Microbiome". Only when the decoded name is entirely lowercase
+ * do we Title-Case it, so "coral reef microbiome.pdf" → "Coral Reef
+ * Microbiome" while "Coral Reef Microbiome.pdf" is left untouched.
+ *
+ * Pure and defensive: a non-library URL, invalid base64, or a missing page
+ * all degrade to `{ title: null, page: null }` — never a thrown error and
+ * never the raw URL.
+ */
+function prettyLibraryLabel(url) {
+  let title = null;
+  let page = null;
+  if (typeof url !== 'string') return { title, page };
+
+  const match = /^\/library\/([^/]+)\/viewer/.exec(url);
+  if (match) {
+    try {
+      const decoded = atob(match[1]);
+      let s = decoded
+        .replace(/\.pdf$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (s) {
+        // All-lowercase (e.g. slug-style filenames) → Title-Case each word.
+        // Anything already carrying case is left as the author wrote it.
+        if (s === s.toLowerCase()) {
+          s = s.replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+        title = s;
+      }
+    } catch {
+      // Not valid base64 — fall through with a null title.
+    }
+  }
+
+  const hashIdx = url.indexOf('#');
+  if (hashIdx >= 0) {
+    const p = new URLSearchParams(url.slice(hashIdx + 1)).get('page');
+    if (p && Number.isFinite(Number(p))) page = Number(p);
+  }
+
+  return { title, page };
+}
+
+/**
  * Classify a citation URL into the three things a citation in this app can be.
  * `kind` drives the badge, the action row and the click routing.
  */
 function describeSource(url) {
   if (typeof url === 'string' && url.startsWith('/library')) {
-    return { kind: 'library', label: 'Library', doi: null, detail: url };
+    // NEVER surface the raw base64 URL. Prefer a human paper name + page;
+    // fall back to a clean "Library" label if the docId cannot be decoded.
+    const { title, page } = prettyLibraryLabel(url);
+    const detail = title
+      ? `${title}${page ? ` · page ${page}` : ''}`
+      : 'Library';
+    return { kind: 'library', label: 'Library', doi: null, detail };
   }
   const doi = doiFromUrl(url);
   if (doi) return { kind: 'doi', label: 'DOI', doi, detail: doi };
@@ -109,6 +168,25 @@ function describeSource(url) {
   } catch {
     return { kind: 'web', label: 'Source', doi: null, detail: String(url) };
   }
+}
+
+/**
+ * Thread the current conversation path into an in-app viewer link as a `from`
+ * query param, so the viewer can render a "Back to conversation" breadcrumb.
+ *
+ * The link already carries a `#bbox…` hash, and the `from` must sit on the
+ * PATH (query), not inside the hash — so we split on '#', append `?from=` (or
+ * `&from=` if a query already exists) to the path part, then re-attach the
+ * hash. Only in-app links (`/…`) are threaded; external URLs pass through.
+ */
+function withConversationFrom(url) {
+  if (typeof url !== 'string' || !url.startsWith('/')) return url;
+  const enc = encodeURIComponent(window.location.pathname);
+  const hashIdx = url.indexOf('#');
+  const beforeHash = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
+  const hash = hashIdx >= 0 ? url.slice(hashIdx) : '';
+  const sep = beforeHash.includes('?') ? '&' : '?';
+  return `${beforeHash}${sep}from=${enc}${hash}`;
 }
 
 /**
@@ -187,7 +265,9 @@ function Citation({ citation }) {
       return;
     }
     if (first.startsWith('/')) {
-      window.location.assign(first);
+      // SPA navigation (preact-router) so the conversation stays in history
+      // and the viewer's "Back to conversation" breadcrumb can return to it.
+      route(withConversationFrom(first));
     } else {
       window.open(first, '_blank', 'noopener,noreferrer');
     }
@@ -328,7 +408,7 @@ function Citation({ citation }) {
               Open source
             </ExternalLink>
           ) : (
-            <a className="btn citation-preview-open" data-variant="outline" data-size="xs" href={url}>
+            <a className="btn citation-preview-open" data-variant="outline" data-size="xs" href={withConversationFrom(url)}>
               Open in library
             </a>
           )}

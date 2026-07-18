@@ -444,11 +444,20 @@ export async function researchBrainSearch(params: {
 
         for (const p of group) {
           const hit = anchorInIndex(index, p.content);
-          if (!hit) continue;
-          const { x, y, w, h } = hit.bbox;
-          p.page = hit.page;
-          p.citation = `/library/${docId}/viewer#bbox=${x},${y},${w},${h}&page=${hit.page}&type=chunk`;
-          anchored++;
+          if (hit) {
+            const { x, y, w, h } = hit.bbox;
+            p.page = hit.page;
+            p.citation = `/library/${docId}/viewer#bbox=${x},${y},${w},${h}&page=${hit.page}&type=chunk`;
+            anchored++;
+          } else {
+            // The passage did not anchor to a bbox, so a plain deep link would
+            // land on the paper with nothing highlighted. Carry the quote (`q`)
+            // instead: on mount the viewer text-searches the layer for it — the
+            // SAME all-pages fallback the evidence sidebar uses — and draws the
+            // highlight. This is exactly the case the citation click was missing.
+            const q = encodeURIComponent(p.content.trim().slice(0, 160));
+            p.citation = `/library/${docId}/viewer#type=chunk&q=${q}`;
+          }
         }
       } catch (error) {
         logger.warn(

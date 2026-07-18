@@ -22,7 +22,7 @@
  * table list now shows a "Part X of N" suffix on chain members,
  * computed from the cached evidence via `useTableChain`.
  */
-import { useState } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { route } from "preact-router";
 
 import { EvidenceViewer } from "../components/EvidenceViewer";
@@ -133,6 +133,29 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
     setSearchContent(content);
   }
 
+  // Deep-link text fallback. A citation link may arrive with no valid bbox
+  // (partial/missing coords) but WITH a passage quote (`#…&q=<quote>`). The
+  // hash-seeded bbox highlight only fires for a valid 4-float bbox, so those
+  // links would land on the page with nothing highlighted. When there is no
+  // bbox but there is a quote, reuse the SAME machinery the sidebar uses —
+  // `highlightChunk` → `useTextChunkHighlight` — to search the text layer.
+  // Runs once, after the doc is ready, and only when no valid bbox exists.
+  const didAnchorFromQuote = useRef(false);
+  useEffect(() => {
+    if (didAnchorFromQuote.current) return;
+    if (!doc) return;
+    if (initialHash.bbox) return; // a valid bbox already drives the highlight
+    if (!initialHash.q) return;
+    didAnchorFromQuote.current = true;
+    highlightChunk(initialHash.page, initialHash.q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc]);
+
+  // Feature: breadcrumb back to the originating conversation. Citation links
+  // append `?from=<encoded conversation path>` before the hash; when present
+  // we offer a direct route back instead of the generic library back button.
+  const fromParam = new URLSearchParams(window.location.search).get("from");
+
   if (!id) {
     return (
       <div className="empty viewer-page__empty">
@@ -177,22 +200,35 @@ export function ViewerPage({ sourceId }: ViewerPageProps) {
   return (
     <div className="viewer-page">
       <header className="viewer-page__topbar">
-        <button
-          type="button"
-          className="btn viewer-page__back"
-          data-variant="outline"
-          data-size="sm"
-          onClick={() => {
-            if (window.history.length > 1) {
-              history.back();
-            } else {
-              route("/library", true);
-            }
-          }}
-          aria-label="Back to library"
-        >
-          ‹ Back
-        </button>
+        {fromParam ? (
+          <button
+            type="button"
+            className="btn viewer-page__back"
+            data-variant="outline"
+            data-size="sm"
+            onClick={() => route(decodeURIComponent(fromParam))}
+            aria-label="Back to conversation"
+          >
+            ‹ Back to conversation
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn viewer-page__back"
+            data-variant="outline"
+            data-size="sm"
+            onClick={() => {
+              if (window.history.length > 1) {
+                history.back();
+              } else {
+                route("/library", true);
+              }
+            }}
+            aria-label="Back to library"
+          >
+            ‹ Back
+          </button>
+        )}
         <h1 className="viewer-page__title">{sourceTitle ?? `Source ${id.slice(0, 8)}`}</h1>
         <div className="viewer-page__spacer" />
       </header>
