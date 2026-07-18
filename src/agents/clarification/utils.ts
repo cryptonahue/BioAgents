@@ -9,6 +9,7 @@ import type { ClarificationQuestion } from "../../types/clarification";
 import type { LLMProvider } from "../../types/core";
 import logger from "../../utils/logger";
 import { GENERATE_QUESTIONS_PROMPT } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type DatasetInfo = {
   filename: string;
@@ -52,6 +53,7 @@ export async function generateQuestions(
     options.model ||
     process.env.CLARIFICATION_LLM_MODEL ||
     process.env.PLANNING_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
     "minimax/minimax-m3";
 
   const llmProvider = new LLM({

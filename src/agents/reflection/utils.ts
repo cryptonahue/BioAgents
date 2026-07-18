@@ -2,6 +2,7 @@ import { LLM } from "../../llm/provider";
 import type { LLMProvider } from "../../types/core";
 import logger from "../../utils/logger";
 import { reflectionPrompt } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type ReflectionDoc = {
   title: string;
@@ -45,7 +46,10 @@ export async function reflectOnWorld(
   documents: ReflectionDoc[],
   options: ReflectionOptions = {},
 ): Promise<ReflectionResult> {
-  const model = process.env.REFLECTION_LLM_MODEL || "minimax/minimax-m3";
+  const model =
+    process.env.REFLECTION_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
 
   // Build document content
   const documentText = documents

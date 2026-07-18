@@ -711,3 +711,44 @@ export async function createTokenUsage(
   }
   return data;
 }
+
+// Global app settings (key/value) operations
+
+/**
+ * Read a single global setting value by key. Returns null when the key is
+ * unset. PGRST116 (no rows) is treated as "unset", not an error.
+ */
+export async function getGlobalSetting(key: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", key)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // not found
+    logger.error(`[getGlobalSetting] Error reading ${key}: ${error.message}`);
+    throw error;
+  }
+  return data?.value ?? null;
+}
+
+/**
+ * Upsert a single global setting value by key (bumps updated_at).
+ */
+export async function setGlobalSetting(
+  key: string,
+  value: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("app_settings")
+    .upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+
+  if (error) {
+    logger.error(`[setGlobalSetting] Error writing ${key}: ${error.message}`);
+    throw error;
+  }
+}

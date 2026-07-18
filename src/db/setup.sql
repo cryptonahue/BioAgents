@@ -220,6 +220,16 @@ CREATE TABLE x402_external (
 );
 
 
+-- Global application settings (key/value, not per-user). First consumer is the
+-- runtime-selectable deep-research model. See supabase/migrations/
+-- 20260718000000_create_app_settings.sql.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+COMMENT ON TABLE app_settings IS 'Global key/value application settings (not per-user)';
 COMMENT ON TABLE users IS 'User accounts and profile information';
 COMMENT ON TABLE conversations IS 'Conversation threads between users and the agent';
 COMMENT ON TABLE conversation_states IS 'Persistent state for each conversation (summarized context, key takeaways, etc.)';

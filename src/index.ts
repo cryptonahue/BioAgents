@@ -41,6 +41,7 @@ import { adminJobsRoute } from "./routes/admin/jobs";
 import { costTotalsRoute } from "./routes/admin/cost-totals";
 import { whitelistRoute } from "./routes/admin/whitelist";
 import { versionRoute } from "./routes/version";
+import { settingsRoute } from "./routes/settings";
 
 // ============================================================================
 // CORS Configuration - Security Critical
@@ -431,6 +432,7 @@ const app = new Elysia()
   .use(tableMergesRoute) // POST/DELETE/GET /api/research-brain/tables/* for admin table-merge overrides (PR #3 of bioprospecting-multipage-table-merge)
   .use(filesRoute) // POST /api/files/* for direct S3 file uploads
   .use(versionRoute) // GET /api/version for build metadata (version, sha, buildDate)
+  .use(settingsRoute) // GET/PUT /api/settings/deep-research-model for the global deep-research model selector
 
   // x402 payment routes - Base (USDC)
   .use(x402Route) // GET /api/x402/* for config, pricing, payments, health

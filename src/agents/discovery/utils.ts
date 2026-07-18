@@ -2,6 +2,7 @@ import { LLM } from "../../llm/provider";
 import type { Discovery, LLMProvider, PlanTask, AnalysisArtifact } from "../../types/core";
 import logger from "../../utils/logger";
 import { discoveryPrompt } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type DiscoveryDoc = {
   title: string;
@@ -32,7 +33,10 @@ export async function extractDiscoveries(
   documents: DiscoveryDoc[],
   options: DiscoveryOptions = {},
 ): Promise<DiscoveryResult> {
-  const model = process.env.DISCOVERY_LLM_MODEL || "minimax/minimax-m3";
+  const model =
+    process.env.DISCOVERY_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
 
   // Build document content
   const documentText = documents

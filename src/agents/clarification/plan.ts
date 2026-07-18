@@ -14,6 +14,7 @@ import type {
 import type { LLMProvider } from "../../types/core";
 import logger from "../../utils/logger";
 import { GENERATE_PLAN_PROMPT, REGENERATE_PLAN_PROMPT } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type DatasetInfo = {
   filename: string;
@@ -105,6 +106,7 @@ export async function generatePlanFromContext(input: {
     options.model ||
     process.env.CLARIFICATION_LLM_MODEL ||
     process.env.PLANNING_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
     "minimax/minimax-m3";
 
   const llmProvider = new LLM({
@@ -211,6 +213,7 @@ export async function regeneratePlanFromFeedback(input: {
     options.model ||
     process.env.CLARIFICATION_LLM_MODEL ||
     process.env.PLANNING_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
     "minimax/minimax-m3";
 
   const llmProvider = new LLM({

@@ -11,6 +11,7 @@ import logger from "../../utils/logger";
 import { extractPlanningResult } from "../../utils/planningJsonExtractor";
 import { loadDiscoveriesForConversation } from "../../services/researchBrain/discoveryPersistence";
 import { formatFileSize } from "../fileUpload/utils";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 import {
   INITIAL_PLANNING_NO_PLAN_PROMPT,
   INITIAL_PLANNING_PROMPT,
@@ -173,7 +174,10 @@ async function generateInitialPlan(
     .replace("{researchModeGuidance}", getResearchModeGuidance(researchMode));
 
   const response = await llmProvider.createChatCompletion({
-    model: process.env.PLANNING_LLM_MODEL || "minimax/minimax-m3",
+    model:
+      process.env.PLANNING_LLM_MODEL ||
+      (await getGlobalDeepResearchModel()) ||
+      "minimax/minimax-m3",
     messages: [
       {
         role: "user" as const,
@@ -253,7 +257,10 @@ async function generatePlan(
     .replace("{researchModeGuidance}", getResearchModeGuidance(researchMode));
 
   const response = await llmProvider.createChatCompletion({
-    model: process.env.PLANNING_LLM_MODEL || "minimax/minimax-m3",
+    model:
+      process.env.PLANNING_LLM_MODEL ||
+      (await getGlobalDeepResearchModel()) ||
+      "minimax/minimax-m3",
     messages: [
       {
         role: "user" as const,

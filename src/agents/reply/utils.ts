@@ -1,5 +1,6 @@
 import character from "../../character";
 import { LLM } from "../../llm/provider";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 import type { LLMRequest } from "../../llm/types";
 import type { Discovery, LLMProvider, PlanTask } from "../../types/core";
 import logger from "../../utils/logger";
@@ -56,7 +57,10 @@ export async function generateReply(
   context: ReplyContext,
   options: ReplyOptions = {},
 ): Promise<string> {
-  const model = process.env.REPLY_LLM_MODEL || "minimax/minimax-m3";
+  const model =
+    process.env.REPLY_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
 
   // 1. Determine reply mode
   // - Intermediate replies (isFinal=false): Always REPORT (progress update)
@@ -230,7 +234,10 @@ export async function generateChatReply(
   context: ReplyContext,
   options: ReplyOptions = {},
 ): Promise<string> {
-  const model = process.env.REPLY_LLM_MODEL || "minimax/minimax-m3";
+  const model =
+    process.env.REPLY_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
 
   // Format completed tasks with full output (not truncated for chat)
   const completedTasksText = context.completedTasks

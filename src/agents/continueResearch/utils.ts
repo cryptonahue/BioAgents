@@ -3,6 +3,7 @@ import type { Discovery, LLMProvider } from "../../types/core";
 import logger from "../../utils/logger";
 import { formatFileSize } from "../fileUpload/utils";
 import { continueResearchPrompt } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type ContinueResearchDoc = {
   title: string;
@@ -51,7 +52,9 @@ export async function decideContinuation(
   options: ContinueResearchOptions = {},
 ): Promise<ContinueResearchDecision> {
   const model =
-    process.env.CONTINUE_RESEARCH_LLM_MODEL || "minimax/minimax-m3";
+    process.env.CONTINUE_RESEARCH_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
 
   // Build document content (all task outputs)
   const allTaskOutputs = documents

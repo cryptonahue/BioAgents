@@ -2,6 +2,7 @@ import { LLM } from "../../llm/provider";
 import type { LLMProvider } from "../../types/core";
 import logger from "../../utils/logger";
 import { hypGenDeepResearchPrompt } from "./prompts";
+import { getGlobalDeepResearchModel } from "../../config/deepResearchModel";
 
 export type HypothesisDoc = {
   title: string;
@@ -33,7 +34,10 @@ export async function generateHypothesis(
   documents: HypothesisDoc[],
   options: HypothesisOptions = {},
 ): Promise<HypothesisResult> {
-  const model = process.env.HYP_LLM_MODEL || "minimax/minimax-m3";
+  const model =
+    process.env.HYP_LLM_MODEL ||
+    (await getGlobalDeepResearchModel()) ||
+    "minimax/minimax-m3";
   const mode = options.mode ?? "create";
 
   // Build document content
