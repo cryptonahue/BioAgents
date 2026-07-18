@@ -59,6 +59,27 @@ export class OpenRouterAdapter extends LLMAdapter {
     this.defaultReasoning = provider.reasoningEffort;
   }
 
+  /**
+   * Map a Gemini/Anthropic-style thinkingBudget (token count) to an OpenRouter
+   * reasoning effort. Agents pass thinkingBudget, not reasoningEffort, so
+   * without this a reasoning model (e.g. minimax/minimax-m3) would run with no
+   * reasoning at all. Mirrors the OpenAI adapter's mapping.
+   */
+  private mapThinkingBudgetToReasoningEffort(
+    thinkingBudget: number | undefined,
+  ): 'low' | 'medium' | 'high' | undefined {
+    if (thinkingBudget === undefined || thinkingBudget <= 0) {
+      return undefined;
+    }
+    if (thinkingBudget <= 2000) {
+      return 'low';
+    }
+    if (thinkingBudget <= 4000) {
+      return 'medium';
+    }
+    return 'high';
+  }
+
   async createChatCompletion(request: LLMRequest): Promise<LLMResponse> {
     const payload = await this.transformRequest(request);
     const response = await this.executeRequest(payload);
@@ -102,7 +123,10 @@ export class OpenRouterAdapter extends LLMAdapter {
       payload.temperature = request.temperature;
     }
 
-    const reasoningEffort = request.reasoningEffort ?? this.defaultReasoning;
+    const reasoningEffort =
+      request.reasoningEffort ??
+      this.defaultReasoning ??
+      this.mapThinkingBudgetToReasoningEffort(request.thinkingBudget);
     if (reasoningEffort) {
       payload.reasoning = { effort: reasoningEffort };
     }
@@ -139,7 +163,10 @@ export class OpenRouterAdapter extends LLMAdapter {
       payload.temperature = request.temperature;
     }
 
-    const reasoningEffort = request.reasoningEffort ?? this.defaultReasoning;
+    const reasoningEffort =
+      request.reasoningEffort ??
+      this.defaultReasoning ??
+      this.mapThinkingBudgetToReasoningEffort(request.thinkingBudget);
     if (reasoningEffort) {
       payload.reasoning = { effort: reasoningEffort };
     }

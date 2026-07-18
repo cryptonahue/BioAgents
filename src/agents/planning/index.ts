@@ -142,7 +142,7 @@ async function generateInitialPlan(
   usageType?: TokenUsageType,
   researchMode: ResearchMode = "semi-autonomous",
 ): Promise<PlanningResult> {
-  const PLANNING_LLM_PROVIDER = process.env.PLANNING_LLM_PROVIDER || "google";
+  const PLANNING_LLM_PROVIDER = process.env.PLANNING_LLM_PROVIDER || "openrouter";
   const planningApiKey =
     process.env[`${PLANNING_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
@@ -173,7 +173,7 @@ async function generateInitialPlan(
     .replace("{researchModeGuidance}", getResearchModeGuidance(researchMode));
 
   const response = await llmProvider.createChatCompletion({
-    model: process.env.PLANNING_LLM_MODEL || "gemini-2.5-pro",
+    model: process.env.PLANNING_LLM_MODEL || "minimax/minimax-m3",
     messages: [
       {
         role: "user" as const,
@@ -218,7 +218,7 @@ async function generatePlan(
   usageType?: TokenUsageType,
   researchMode: ResearchMode = "semi-autonomous",
 ): Promise<PlanningResult> {
-  const PLANNING_LLM_PROVIDER = process.env.PLANNING_LLM_PROVIDER || "google";
+  const PLANNING_LLM_PROVIDER = process.env.PLANNING_LLM_PROVIDER || "openrouter";
   const planningApiKey =
     process.env[`${PLANNING_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
@@ -253,7 +253,7 @@ async function generatePlan(
     .replace("{researchModeGuidance}", getResearchModeGuidance(researchMode));
 
   const response = await llmProvider.createChatCompletion({
-    model: process.env.PLANNING_LLM_MODEL || "gemini-2.5-pro",
+    model: process.env.PLANNING_LLM_MODEL || "minimax/minimax-m3",
     messages: [
       {
         role: "user" as const,

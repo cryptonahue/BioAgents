@@ -37,7 +37,7 @@ export async function generateQuestions(
   const CLARIFICATION_LLM_PROVIDER: LLMProvider =
     (process.env.CLARIFICATION_LLM_PROVIDER as LLMProvider) ||
     (process.env.PLANNING_LLM_PROVIDER as LLMProvider) ||
-    "google";
+    "openrouter";
 
   const llmApiKey =
     process.env[`${CLARIFICATION_LLM_PROVIDER.toUpperCase()}_API_KEY`];
@@ -52,7 +52,7 @@ export async function generateQuestions(
     options.model ||
     process.env.CLARIFICATION_LLM_MODEL ||
     process.env.PLANNING_LLM_MODEL ||
-    "gemini-2.5-pro";
+    "minimax/minimax-m3";
 
   const llmProvider = new LLM({
     name: CLARIFICATION_LLM_PROVIDER,

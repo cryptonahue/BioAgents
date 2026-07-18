@@ -32,7 +32,7 @@ export async function extractDiscoveries(
   documents: DiscoveryDoc[],
   options: DiscoveryOptions = {},
 ): Promise<DiscoveryResult> {
-  const model = process.env.DISCOVERY_LLM_MODEL || "gemini-2.5-pro";
+  const model = process.env.DISCOVERY_LLM_MODEL || "minimax/minimax-m3";
 
   // Build document content
   const documentText = documents
@@ -53,7 +53,7 @@ export async function extractDiscoveries(
     .replace("{{documents}}", documentText);
 
   const DISCOVERY_LLM_PROVIDER: LLMProvider =
-    (process.env.DISCOVERY_LLM_PROVIDER as LLMProvider) || "google";
+    (process.env.DISCOVERY_LLM_PROVIDER as LLMProvider) || "openrouter";
   const llmApiKey =
     process.env[`${DISCOVERY_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 

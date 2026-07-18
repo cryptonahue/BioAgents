@@ -56,7 +56,7 @@ export async function generateReply(
   context: ReplyContext,
   options: ReplyOptions = {},
 ): Promise<string> {
-  const model = process.env.REPLY_LLM_MODEL || "gemini-2.5-pro";
+  const model = process.env.REPLY_LLM_MODEL || "minimax/minimax-m3";
 
   // 1. Determine reply mode
   // - Intermediate replies (isFinal=false): Always REPORT (progress update)
@@ -170,7 +170,7 @@ ${evidenceText}${discovery.novelty ? `\n   Novelty: ${discovery.novelty}` : ""}`
   }
 
   const REPLY_LLM_PROVIDER: LLMProvider =
-    (process.env.REPLY_LLM_PROVIDER as LLMProvider) || "google";
+    (process.env.REPLY_LLM_PROVIDER as LLMProvider) || "openrouter";
   const llmApiKey = process.env[`${REPLY_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
   if (!llmApiKey) {
@@ -230,7 +230,7 @@ export async function generateChatReply(
   context: ReplyContext,
   options: ReplyOptions = {},
 ): Promise<string> {
-  const model = process.env.REPLY_LLM_MODEL || "gemini-2.5-pro";
+  const model = process.env.REPLY_LLM_MODEL || "minimax/minimax-m3";
 
   // Format completed tasks with full output (not truncated for chat)
   const completedTasksText = context.completedTasks
@@ -280,7 +280,7 @@ export async function generateChatReply(
     .replace("{{uploadedDatasets}}", uploadedDatasetsText);
 
   const REPLY_LLM_PROVIDER: LLMProvider =
-    (process.env.REPLY_LLM_PROVIDER as LLMProvider) || "google";
+    (process.env.REPLY_LLM_PROVIDER as LLMProvider) || "openrouter";
   const llmApiKey = process.env[`${REPLY_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
   if (!llmApiKey) {
