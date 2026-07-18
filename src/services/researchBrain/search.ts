@@ -580,6 +580,9 @@ export async function researchBrainSearch(params: {
 export function formatEvidencePackForPrompt(pack: EvidencePack): string {
   const lines: string[] = [];
   lines.push("Research Brain evidence pack:");
+  lines.push(
+    'Scope: this evidence pack IS the user\'s library — the papers they already loaded and that retrieval just searched. "My library" / "my papers" means exactly this pack; it is the subject of the question, not third-party background. Never treat the question as "blocked" or awaiting an uploaded compound list / inventory / spreadsheet; if a specific requested fact is absent, say that fact is not in the loaded papers, not that the library itself is missing.',
+  );
   lines.push(`Question: ${pack.question}`);
   lines.push(
     `Query plan: ${pack.queryPlan.intentLabel}. Type: ${pack.queryPlan.questionType}. Strategy: ${pack.queryPlan.strategy}`,

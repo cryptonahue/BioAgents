@@ -28,6 +28,9 @@ UPCOMING PLAN (for Next Steps):
 MULTI-ITERATION CONTEXT:
 The completed tasks above may span multiple research iterations. As research progressed, the objective may have evolved or refined based on findings. This is normal - initial questions often lead to more specific investigations. Your answer should primarily focus on the QUESTION posed, but also include closely related findings from the work done. Don't limit yourself to just the most recent work - synthesize everything relevant to give a comprehensive response.
 
+LIBRARY SCOPE (read before assessing):
+The evidence above (key insights, hypothesis, KNOWLEDGE / completed-task outputs) IS the user's library — the papers they already loaded into this workspace and that retrieval just searched. When they say "my library", "my papers", or "the papers I loaded", they mean exactly this evidence; it is the SUBJECT of the question, not third-party background. Answer directly from it. NEVER ask the user to upload, send, or provide a compound list, inventory, SDF, or spreadsheet to define their library, and NEVER call the research "blocked pending" or "awaiting" such an input — there is nothing to wait for. A library survey ("what antifungal compounds does my library describe?") is ANSWERED by reporting what the evidence contains. If a specific requested fact is absent, say that fact is not in the loaded papers — do NOT say the library itself is missing or unavailable.
+
 CRITICAL: FIRST assess if you can actually answer the question with the available evidence.
 
 ---
