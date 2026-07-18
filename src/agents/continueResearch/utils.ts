@@ -51,7 +51,7 @@ export async function decideContinuation(
   options: ContinueResearchOptions = {},
 ): Promise<ContinueResearchDecision> {
   const model =
-    process.env.CONTINUE_RESEARCH_LLM_MODEL || "claude-sonnet-4-5-20250929";
+    process.env.CONTINUE_RESEARCH_LLM_MODEL || "minimax/minimax-m3";
 
   // Build document content (all task outputs)
   const allTaskOutputs = documents
@@ -102,7 +102,7 @@ export async function decideContinuation(
     );
 
   const CONTINUE_RESEARCH_LLM_PROVIDER: LLMProvider =
-    (process.env.CONTINUE_RESEARCH_LLM_PROVIDER as LLMProvider) || "anthropic";
+    (process.env.CONTINUE_RESEARCH_LLM_PROVIDER as LLMProvider) || "openrouter";
   const llmApiKey =
     process.env[`${CONTINUE_RESEARCH_LLM_PROVIDER.toUpperCase()}_API_KEY`];
 
