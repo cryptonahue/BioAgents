@@ -265,6 +265,8 @@ function Citation({ citation }) {
       return;
     }
     if (first.startsWith('/')) {
+      // TEMP DIAG (citation-highlight): what URL are we actually opening?
+      console.log('[cite-diag] click →', first, '| withFrom →', withConversationFrom(first));
       // SPA navigation (preact-router) so the conversation stays in history
       // and the viewer's "Back to conversation" breadcrumb can return to it.
       route(withConversationFrom(first));
