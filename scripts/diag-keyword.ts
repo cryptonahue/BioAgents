@@ -1,50 +1,45 @@
 #!/usr/bin/env bun
 /**
- * TEMP diagnostic — is the Anthothela paper findable by keyword search?
- * Queries the `documents` (vector chunk) table directly. Safe, read-only.
- * Delete after use.
+ * TEMP diagnostic — WHERE in the hybrid pipeline does the Anthothela paper drop?
+ * Runs the real vector / keyword / full-search stages and prints which papers
+ * each returns. Read-only. Delete after use.
+ *
+ * Needs the `%` keyword fix deployed (commit 2898c6e).
  *
  *   bun run scripts/diag-keyword.ts
  */
-import { getServiceClient } from "../src/db/client";
+import { VectorSearchWithDocuments } from "../src/embeddings/vectorSearchWithDocs";
 
-const supabase = getServiceClient();
+const vs = new VectorSearchWithDocuments();
+const Q =
+  "What antifungal compounds or extracts from marine organisms does my library describe, from which source organisms, and what activity or potency was reported?";
 
-// 1. How many chunks does the Anthothela paper have, and under what title?
-const { data: anth, error: e1 } = await supabase
-  .from("documents")
-  .select("id,title")
-  .ilike("title", "%23-00044%");
-if (e1) console.error("query 1 error:", e1.message);
-const anthTitles = [...new Set((anth ?? []).map((d: any) => d.title))];
-console.log(`\n[1] Anthothela (23-00044) chunks in 'documents': ${anth?.length ?? 0}`);
-console.log(`    stored under title(s): ${JSON.stringify(anthTitles)}`);
+const titles = (arr: any[]) => [...new Set(arr.map((d) => d.title))];
+const hasAnth = (arr: any[]) =>
+  arr.some((d) => (d.title ?? "").includes("23-00044"));
 
-// 2. How many chunks (any paper) contain the word "antifungal"?
-const { data: af, error: e2 } = await supabase
-  .from("documents")
-  .select("id,title")
-  .ilike("content", "%antifungal%")
-  .limit(500);
-if (e2) console.error("query 2 error:", e2.message);
-const afByTitle = new Map<string, number>();
-for (const d of af ?? []) afByTitle.set((d as any).title, (afByTitle.get((d as any).title) ?? 0) + 1);
-console.log(`\n[2] chunks whose CONTENT contains "antifungal": ${af?.length ?? 0}`);
-for (const [t, n] of [...afByTitle.entries()].sort((a, b) => b[1] - a[1]))
-  console.log(`    ${n.toString().padStart(3)}  ${t}`);
+console.log(`\nQUERY: ${Q}\n`);
 
-// 3. The exact .or() the keyword search runs — does it return Anthothela?
-const { data: kw, error: e3 } = await supabase
-  .from("documents")
-  .select("id,title")
-  .or("content.ilike.%antifungal%,title.ilike.%antifungal%")
-  .limit(200);
-if (e3) console.error("query 3 (.or ilike %) error:", e3.message);
-const kwTitles = [...new Set((kw ?? []).map((d: any) => d.title))];
-console.log(`\n[3] .or(content.ilike.%antifungal%) returned ${kw?.length ?? 0} chunks across ${kwTitles.length} papers:`);
-for (const t of kwTitles) console.log(`    ${t}`);
+const vec = await vs.vectorSearch(Q, 24);
+console.log(`[VECTOR]  ${vec.length} chunks · Anthothela? ${hasAnth(vec) ? "YES" : "NO"}`);
+titles(vec).forEach((t) => console.log(`    ${t}`));
+
+const kw = await (vs as any).keywordSearch(Q, 24);
+console.log(`\n[KEYWORD] ${kw.length} chunks · Anthothela? ${hasAnth(kw) ? "YES" : "NO"}`);
+titles(kw).forEach((t) => console.log(`    ${t}`));
+
+const fin = await vs.search(Q, { vectorLimit: 24, finalLimit: 8 });
+console.log(`\n[FINAL]   ${fin.length} chunks · Anthothela? ${hasAnth(fin) ? "YES" : "NO"}`);
+titles(fin).forEach((t) => console.log(`    ${t}`));
+
 console.log(
-  `\n>>> Anthothela in the .or() result? ${kwTitles.some((t) => (t ?? "").includes("23-00044")) ? "YES" : "NO"}`,
+  `\n>>> DROP POINT: ${
+    hasAnth(fin)
+      ? "none — it survives (was a deploy/other issue)"
+      : hasAnth(kw)
+        ? "AFTER keyword — the RRF/reranker/finalLimit cuts it"
+        : "keyword itself does not return it (ranking/limit in keywordSearch)"
+  }`,
 );
 
 process.exit(0);
