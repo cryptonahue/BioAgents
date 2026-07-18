@@ -29,7 +29,7 @@ const DEEP_RESEARCH_MODEL_KEY = "deep_research_model";
 export const settingsRoute = new Elysia()
   .get(
     "/api/settings/deep-research-model",
-    async ({ set }) => {
+    async () => {
       try {
         const current = await getGlobalSetting(DEEP_RESEARCH_MODEL_KEY);
         return {
@@ -37,9 +37,15 @@ export const settingsRoute = new Elysia()
           models: DEEP_RESEARCH_MODELS,
         };
       } catch (err) {
+        // A read failure (most commonly: the app_settings table has not been
+        // migrated yet) must not break the Settings page. Fall back to the
+        // default so the dropdown still renders; saving will surface the real
+        // error once an admin tries to persist.
         logger.error({ err }, "settings_get_deep_research_model_failed");
-        set.status = 500;
-        return { error: "Failed to read deep-research model setting" };
+        return {
+          current: DEFAULT_DEEP_RESEARCH_MODEL,
+          models: DEEP_RESEARCH_MODELS,
+        };
       }
     },
     { beforeHandle: authResolver({ required: true }) },
