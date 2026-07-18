@@ -267,13 +267,40 @@ export class VectorSearchWithReranker {
     const scoreOf = (hit: { terms: Set<string> }) =>
       [...hit.terms].reduce((s, t) => s + (weight.get(t) ?? 0), 0);
 
-    const scored = [...byId.values()]
-      .sort((a, b) => scoreOf(b) - scoreOf(a))
-      .slice(0, limit)
-      .map((h) => h.doc);
+    // Round-robin across PAPERS, not a flat top-`limit`. A flat cut lets one
+    // paper with many keyword hits (a review dense in common words) take every
+    // slot, starving a paper whose single relevant chunk matched the rare term.
+    // Group chunks by paper, order papers by their best chunk, then take one
+    // chunk from each paper before any paper's second — so the pool spans as
+    // many papers as possible. The corpus and the reranker both reason over
+    // papers, so breadth here is what lets a buried finding survive.
+    const byPaper = new Map<string, { doc: Document; score: number }[]>();
+    for (const hit of byId.values()) {
+      const key = hit.doc.title ?? hit.doc.id;
+      const arr = byPaper.get(key) ?? [];
+      arr.push({ doc: hit.doc, score: scoreOf(hit) });
+      byPaper.set(key, arr);
+    }
+    const papers = [...byPaper.values()].map((arr) =>
+      arr.sort((a, b) => b.score - a.score),
+    );
+    papers.sort((a, b) => b[0].score - a[0].score);
+
+    const scored: Document[] = [];
+    for (let rank = 0; scored.length < limit; rank++) {
+      let advanced = false;
+      for (const arr of papers) {
+        if (rank < arr.length) {
+          scored.push(arr[rank].doc);
+          advanced = true;
+          if (scored.length >= limit) break;
+        }
+      }
+      if (!advanced) break;
+    }
 
     logger.info(
-      `🔤 Keyword search matched ${byId.size} chunks on [${terms.join(", ")}] → top ${scored.length}`,
+      `🔤 Keyword search matched ${byId.size} chunks across ${papers.length} papers on [${terms.join(", ")}] → top ${scored.length}`,
     );
     return scored;
   }
