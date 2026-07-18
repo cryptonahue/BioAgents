@@ -90,12 +90,17 @@ export async function generateHypothesis(
   try {
     const response = await llmProvider.createChatCompletion(llmRequest);
 
-    // Parse JSON if needed
-    let finalText = response.content;
+    // Parse JSON if needed. Only adopt the parsed `.message` when it is a
+    // non-empty string — a model that returns `{"message":""}` (or JSON with no
+    // message) must NOT blank a hypothesis that came through as raw content.
+    let finalText = response.content ?? "";
     try {
-      finalText = JSON.parse(
+      const parsed = JSON.parse(
         response.content.replace(/```json\n?/, "").replace(/\n?```$/, ""),
-      ).message;
+      );
+      if (typeof parsed?.message === "string" && parsed.message.trim()) {
+        finalText = parsed.message;
+      }
     } catch {
       // Keep raw text if not JSON
     }

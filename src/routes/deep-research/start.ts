@@ -1931,7 +1931,10 @@ These molecular changes align with established longevity pathways (Converging nu
               "hypothesis_grounded_against_evidence",
             );
           }
-          hypothesisResult = { ...hypothesisResult, hypothesis: grounded };
+          // Never let an empty grounding blank a real hypothesis — keep raw.
+          if (grounded && grounded.trim()) {
+            hypothesisResult = { ...hypothesisResult, hypothesis: grounded };
+          }
         }
       } catch (error) {
         logger.warn(
@@ -1940,8 +1943,13 @@ These molecular changes align with established longevity pathways (Converging nu
         );
       }
 
-      // Update conversation state with new hypothesis
-      conversationState.values.currentHypothesis = hypothesisResult.hypothesis;
+      // Update conversation state with new hypothesis. Guard against an empty
+      // result overwriting a good one: the panel hides the section on a falsy
+      // currentHypothesis, so writing "" would blank it (and wipe a prior good
+      // hypothesis in update mode). Only persist a non-empty hypothesis.
+      if (hypothesisResult.hypothesis && hypothesisResult.hypothesis.trim()) {
+        conversationState.values.currentHypothesis = hypothesisResult.hypothesis;
+      }
       if (conversationState.id) {
         await persistConversationState();
         logger.info(

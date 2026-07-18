@@ -60,14 +60,19 @@ export async function hypothesisAgent(input: {
     // world-state only and the model declares "insufficient evidence / no
     // hits", flatly contradicting the answer. Feed the passages in so the
     // hypothesis is grounded in the same evidence, not starved beside it.
+    // Cap the passages: they are similarity-ranked, so the top few carry the
+    // answer, and dumping all ~20 verbatim chunks bloats the prompt enough to
+    // push the model into an empty/truncated response (which downstream blanks
+    // the whole hypothesis). Top 10, each trimmed, keeps it grounded and lean.
     const passages = evidencePack?.passages ?? [];
-    passages.slice(0, 24).forEach((p, index) => {
-      if (!p.content?.trim()) return;
+    passages.slice(0, 10).forEach((p, index) => {
+      const content = p.content?.trim();
+      if (!content) return;
       hypDocs.push({
         title: p.sourceTitle
           ? `Evidence Passage — ${p.sourceTitle}`
           : `Evidence Passage ${index + 1}`,
-        text: p.content,
+        text: content.length > 1500 ? `${content.slice(0, 1500)}…` : content,
         context: "Paper text retrieved for this question — treat as evidence",
       });
     });
