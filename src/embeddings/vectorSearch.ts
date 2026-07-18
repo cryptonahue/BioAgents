@@ -213,48 +213,67 @@ export class VectorSearchWithReranker {
     const terms = extractKeywordTerms(query);
     if (terms.length === 0) return [];
 
-    // `%` IS the wildcard for ilike inside a PostgREST .or() here — the rest of
-    // this codebase does the same (see db.ts searchClaims). escapeIlike guards
-    // any %, _ or \ in a term (extractKeywordTerms already strips them, but keep
-    // the pattern honest). An earlier commit "fixed" this to `*`, which matched
-    // the literal string "*antifungal*" and broke the lexical search entirely.
-    const orClauses = terms
-      .flatMap((t) => [
-        `content.ilike.%${escapeIlike(t)}%`,
-        `title.ilike.%${escapeIlike(t)}%`,
-      ])
-      .join(",");
+    // Search PER TERM, not in one big .or([antifungal,marine,extracts,…]). A
+    // single .or() with .limit(N) and no ORDER lets a COMMON term (marine —
+    // thousands of chunks) flood the N rows fetched, so a RARE discriminative
+    // term (antifungal — dozens of chunks) never enters the pool and the one
+    // paper we wanted is dropped before ranking ever runs. Per-term fetch
+    // guarantees the rare term's chunks are pulled; an IDF weight (from each
+    // term's exact match count) then makes those rare hits outrank chunks that
+    // only match noise words. `%` IS the ilike wildcard inside a PostgREST
+    // .or() here — escapeIlike guards any %, _ or \ in a term.
+    const PER_TERM = Math.max(limit * 4, 80);
+    const byId = new Map<string, { doc: Document; terms: Set<string> }>();
+    const weight = new Map<string, number>();
 
-    let q = supabase
-      .from("documents")
-      .select("id,title,content,metadata")
-      .or(orClauses);
-    if (filterTitle) q = q.eq("title", filterTitle);
+    await Promise.all(
+      terms.map(async (t) => {
+        const pat = escapeIlike(t);
+        let q = supabase
+          .from("documents")
+          .select("id,title,content,metadata", { count: "exact" })
+          .or(`content.ilike.%${pat}%,title.ilike.%${pat}%`)
+          .limit(PER_TERM);
+        if (filterTitle) q = q.eq("title", filterTitle);
 
-    const { data, error } = await q.limit(Math.max(limit * 5, 100));
-    if (error) {
-      logger.warn(`keyword search failed (${error.message}); skipping lexical half`);
-      return [];
-    }
+        const { data, count, error } = await q;
+        if (error) {
+          logger.warn(`keyword term "${t}" failed (${error.message}); skipping it`);
+          return;
+        }
+        const rows = data || [];
+        // IDF: a term matching few chunks is discriminative → weight it high; a
+        // term matching many is noise → weight it low. `count` is the TOTAL
+        // match count (unaffected by .limit), so the weight reflects true
+        // rarity. 1/sqrt(df) strongly favors rare terms without letting a single
+        // ultra-rare match dwarf everything.
+        weight.set(t, 1 / Math.sqrt(Math.max(count ?? rows.length, 1)));
+        for (const doc of rows) {
+          const entry = byId.get(doc.id) ?? {
+            doc: {
+              id: doc.id,
+              title: doc.title,
+              content: doc.content,
+              metadata: doc.metadata,
+            },
+            terms: new Set<string>(),
+          };
+          entry.terms.add(t);
+          byId.set(doc.id, entry);
+        }
+      }),
+    );
 
-    const scored = (data || [])
-      .map((doc: any) => {
-        const hay = `${doc.title ?? ""} ${doc.content ?? ""}`.toLowerCase();
-        const matched = terms.filter((t) => hay.includes(t)).length;
-        return { doc, matched };
-      })
-      .filter((x) => x.matched > 0)
-      .sort((a, b) => b.matched - a.matched)
+    const scoreOf = (hit: { terms: Set<string> }) =>
+      [...hit.terms].reduce((s, t) => s + (weight.get(t) ?? 0), 0);
+
+    const scored = [...byId.values()]
+      .sort((a, b) => scoreOf(b) - scoreOf(a))
       .slice(0, limit)
-      .map((x) => ({
-        id: x.doc.id,
-        title: x.doc.title,
-        content: x.doc.content,
-        metadata: x.doc.metadata,
-      }));
+      .map((h) => h.doc);
 
     logger.info(
-      `🔤 Keyword search matched ${scored.length} chunks on [${terms.join(", ")}]`,
+      `🔤 Keyword search matched ${byId.size} chunks on [${terms.join(", ")}] → top ${scored.length}`,
     );
     return scored;
   }
