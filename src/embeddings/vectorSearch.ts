@@ -231,7 +231,7 @@ export class VectorSearchWithReranker {
         const pat = escapeIlike(t);
         let q = supabase
           .from("documents")
-          .select("id,title,content,metadata", { count: "exact" })
+          .select("id,title,content,metadata", { count: "estimated" })
           .or(`content.ilike.%${pat}%,title.ilike.%${pat}%`)
           .limit(PER_TERM);
         if (filterTitle) q = q.eq("title", filterTitle);
@@ -243,10 +243,12 @@ export class VectorSearchWithReranker {
         }
         const rows = data || [];
         // IDF: a term matching few chunks is discriminative → weight it high; a
-        // term matching many is noise → weight it low. `count` is the TOTAL
-        // match count (unaffected by .limit), so the weight reflects true
-        // rarity. 1/sqrt(df) strongly favors rare terms without letting a single
-        // ultra-rare match dwarf everything.
+        // term matching many is noise → weight it low. Use an ESTIMATED count
+        // (planner statistic, no table scan) — `exact` forces a full ILIKE seq
+        // scan of `documents` per term per search, which multiplied across a run
+        // hung the pipeline for tens of minutes. An approximate df is plenty for
+        // relative rarity. 1/sqrt(df) favors rare terms without one ultra-rare
+        // match dwarfing everything.
         weight.set(t, 1 / Math.sqrt(Math.max(count ?? rows.length, 1)));
         for (const doc of rows) {
           const entry = byId.get(doc.id) ?? {
