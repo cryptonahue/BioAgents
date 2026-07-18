@@ -208,8 +208,11 @@ export class VectorSearchWithReranker {
     const terms = extractKeywordTerms(query);
     if (terms.length === 0) return [];
 
+    // PostgREST's ilike wildcard inside .or() is `*`, NOT SQL's `%` — with `%`
+    // it matched the literal string "%antifungal%" and found nothing, which
+    // silently killed the whole lexical half of hybrid search.
     const orClauses = terms
-      .flatMap((t) => [`content.ilike.%${t}%`, `title.ilike.%${t}%`])
+      .flatMap((t) => [`content.ilike.*${t}*`, `title.ilike.*${t}*`])
       .join(",");
 
     let q = supabase
