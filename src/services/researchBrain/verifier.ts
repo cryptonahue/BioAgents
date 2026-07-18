@@ -85,11 +85,10 @@ export async function verifyHypothesisAgainstEvidence(params: {
   const scopeDocId = params.evidencePack.scope?.docId;
   const { llm, model } = resolveResearchBrainLLM();
   if (!llm || !model) {
-    // No LLM available — fall back to the raw hypothesis, but still convert its
-    // DOI citations to internal paper links when scoped, so the hypothesis panel
-    // matches the body and the insights instead of being the one place that
-    // still points at doi.org.
-    return rewriteDoiToPaperLink(params.hypothesis, scopeDocId);
+    // No LLM available — fall back to the raw hypothesis, but still strip its
+    // DOIs (and convert to internal links when scoped) so the hypothesis panel
+    // is never the one place that leaks a doi.org citation.
+    return stripAllDois(rewriteDoiToPaperLink(params.hypothesis, scopeDocId));
   }
 
   const prompt = `You are a hypothesis grounding checker for a strict scientific assistant.
@@ -334,8 +333,16 @@ export async function verifyKeyInsightsAgainstEvidence(params: {
   evidencePack: EvidencePack;
 }): Promise<string[]> {
   const scopeDocId = params.evidencePack.scope?.docId;
+  // Even the fallback must strip DOIs. It used to only rewriteDoiToPaperLink,
+  // which is a no-op on a broad (unscoped) query — so whenever the verifier fell
+  // back (unparseable rerank JSON, no LLM, no evidence), the reflection agent's
+  // raw doi.org citations leaked into the Key Insights while the body stayed
+  // clean. A fabricated/misattributed DOI is exactly what stripAllDois exists to
+  // remove, on every path.
   const fallback = () =>
-    params.insights.map((i) => rewriteDoiToPaperLink(i, scopeDocId));
+    params.insights.map((i) =>
+      stripAllDois(rewriteDoiToPaperLink(i, scopeDocId)),
+    );
 
   if (!params.insights || params.insights.length === 0) return [];
 
