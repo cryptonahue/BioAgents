@@ -13,7 +13,7 @@ const FEATURES = [
     eyebrow: 'Verifiable evidence',
     title: 'Grounded answers you can verify to the pixel',
     body: 'Every extracted claim links back to the exact passage, table, or figure in the source PDF. Claims are marked SUPPORTED or REFUTED, and clicking a citation highlights the evidence right next to the paper. No hand-waving — see exactly where each answer comes from.',
-    image: '/images/landing/viewer.jpg',
+    image: '/images/landing/provenance-viewer.jpg',
     alt: 'CoralGPT provenance viewer showing a paper PDF beside an evidence panel of claims, each with a SUPPORTED badge',
     reverse: false,
   },
@@ -21,7 +21,7 @@ const FEATURES = [
     eyebrow: 'Grounded RAG',
     title: 'A paper library that talks back',
     body: 'Chat with any single paper and get answers grounded only in its content. Each card surfaces the evidence count, extracted facts, taxa, geography, and DOI at a glance — so you know what a paper contains before you open it.',
-    image: '/images/landing/library.jpg',
+    image: '/images/landing/paper-library.jpg',
     alt: 'CoralGPT paper library cards showing evidence pills, extracted fact counts, italic taxa chips, geography chips, and DOIs',
     reverse: true,
   },
@@ -29,7 +29,7 @@ const FEATURES = [
     eyebrow: 'Bioprospecting intelligence',
     title: 'Turn the literature into a discovery map',
     body: 'CoralGPT automatically extracts the organisms, compounds, and locations studied across the papers you feed it. The result is a living map of marine natural products — a head start for anyone prospecting reefs for new biology and chemistry.',
-    image: '/images/landing/brain.jpg',
+    image: '/images/landing/research-brain.jpg',
     alt: 'CoralGPT research brain page mapping organisms, compounds, and geographies extracted from the literature',
     reverse: false,
   },
@@ -279,7 +279,7 @@ export function LandingPage() {
       <div className="landing-hero-shot-wrap">
         <figure className="landing-shot landing-hero-shot">
           <img
-            src="/images/landing/library.jpg"
+            src="/images/landing/paper-library.jpg"
             alt="CoralGPT paper library showing evidence pills, extracted fact counts, taxa and geography chips, and DOIs on each paper card"
             loading="lazy"
           />
