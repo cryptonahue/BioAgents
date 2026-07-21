@@ -372,7 +372,11 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
               agent uses it as the first source of truth.
             </p>
           </div>
-          <label className="btn library-link-btn brain-upload-btn" data-variant="outline">
+          {/* Upload paper moved to the Library page (/library) — it now lives
+              only there via <UploadPaperDialog />. Un-comment this label and the
+              uploadError banner below (plus handleUpload / isUploading /
+              uploadError) to bring inline upload back to the Research Brain. */}
+          {/* <label className="btn library-link-btn brain-upload-btn" data-variant="outline">
             <Icon name="upload" size={16} className={BUTTON_ICON_CLASS} />
             <span>{isUploading ? "Loading…" : "Upload paper"}</span>
             <input
@@ -383,14 +387,14 @@ export function ResearchBrainPage({ coralGptMode = false }: Props) {
                 handleUpload((e.target as HTMLInputElement).files?.[0])
               }
             />
-          </label>
+          </label> */}
         </div>
 
-        {uploadError && (
+        {/* {uploadError && (
           <div className="alert" data-tone="danger" role="alert">
             <strong>{uploadError}</strong>
           </div>
-        )}
+        )} */}
         {reviewError && (
           <div className="alert" data-tone="danger" role="alert">
             <strong>{reviewError}</strong>
