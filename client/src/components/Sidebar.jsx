@@ -169,8 +169,10 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
                 )}
               </div>
               <div className="sidebar-header-actions">
-                {/* Appearance control, grouped with the other view controls */}
-                <ThemeToggle />
+                {/* Appearance control, grouped with the other view controls.
+                    Hidden while light mode is disabled (dark-only); see
+                    LIGHT_MODE_ENABLED in contexts/ThemeContext.tsx. */}
+                {/* <ThemeToggle /> */}
                 {/* Close button for mobile */}
                 <IconButton
                   icon="close"
@@ -305,7 +307,9 @@ export function Sidebar({ sessions, currentSessionId, onSessionSelect, onNewSess
               variant="ghost"
               className="toggle-sidebar-btn"
             />
-            <ThemeToggle />
+            {/* Hidden while light mode is disabled (dark-only); see
+                LIGHT_MODE_ENABLED in contexts/ThemeContext.tsx. */}
+            {/* <ThemeToggle /> */}
           </div>
         )}
       </div>

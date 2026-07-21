@@ -455,8 +455,10 @@ export function LandingPage() {
             page root — before that it would have flipped the rest of the app
             while the landing stayed frozen dark. It carries its own aria-label
             (naming the ACTION, not the state) and the house focus ring, both
-            from ThemeToggle. */}
-        <ThemeToggle />
+            from ThemeToggle.
+            Hidden while light mode is disabled (dark-only); see
+            LIGHT_MODE_ENABLED in contexts/ThemeContext.tsx. */}
+        {/* <ThemeToggle /> */}
       </footer>
     </div>
   );

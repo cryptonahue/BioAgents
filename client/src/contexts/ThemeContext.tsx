@@ -47,6 +47,20 @@ export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "bioagents.theme";
 
+/**
+ * Light mode is temporarily disabled — the app is dark-only for now.
+ *
+ * While this is `false`: `resolveTheme()` ignores the stored preference and the
+ * OS, and forces dark; the `<ThemeToggle />` renders are also commented out at
+ * their call sites, and the pre-paint script in `public/index.html` is disabled
+ * so `<html class="dark">` stays put.
+ *
+ * TO BRING LIGHT MODE BACK: flip this to `true`, un-comment the `<ThemeToggle />`
+ * renders (Sidebar.jsx, LandingPage.tsx, AccessPendingPage.tsx), and re-enable
+ * the bootstrap script in `public/index.html`.
+ */
+const LIGHT_MODE_ENABLED = false;
+
 /** The theme a browser that can tell us nothing gets. */
 const FALLBACK_THEME: Theme = "dark";
 
@@ -101,6 +115,9 @@ export interface ResolvedTheme {
 
 /** The whole resolution order in one place: stored -> OS -> dark. */
 export function resolveTheme(): ResolvedTheme {
+  // Light mode disabled: force dark, and mark it explicit so the OS listener is
+  // never wired up. Remove this guard to restore stored -> OS -> dark.
+  if (!LIGHT_MODE_ENABLED) return { theme: "dark", explicit: true };
   const stored = readStoredTheme();
   if (stored) return { theme: stored, explicit: true };
   return { theme: systemTheme(), explicit: false };

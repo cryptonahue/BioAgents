@@ -195,7 +195,9 @@ export function AccessPendingPage() {
         <div className="landing-footer-legal">
           © 2026 CoralGPT · BioAgent powered by $CRLAI
         </div>
-        <ThemeToggle />
+        {/* Hidden while light mode is disabled (dark-only); see
+            LIGHT_MODE_ENABLED in contexts/ThemeContext.tsx. */}
+        {/* <ThemeToggle /> */}
       </footer>
     </div>
   );

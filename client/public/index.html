@@ -27,7 +27,13 @@
       (prefers-color-scheme), then dark — and the storage key and that order
       must stay in sync with it. The <html> element ships with class="dark", so
       the only work here is removing it when the resolution comes out light.
+
+      LIGHT MODE IS TEMPORARILY DISABLED — the app is dark-only for now, so this
+      script is commented out and <html class="dark"> stays put. To restore
+      light/dark support: un-comment the script below and flip LIGHT_MODE_ENABLED
+      back to true in client/src/contexts/ThemeContext.tsx.
     -->
+    <!--
     <script>
       (function () {
         var theme = null;
@@ -51,6 +57,7 @@
         document.documentElement.classList.toggle('dark', theme === 'dark');
       })();
     </script>
+    -->
     <!-- Self-hosted IBM Plex Sans @font-face rules. Kept out of the bundled
          CSS because Bun base64-inlines every font it sees in a url(); see
          client/public/fonts/fonts.css. Preconnect is unnecessary — same origin. -->
