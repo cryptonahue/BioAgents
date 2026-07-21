@@ -242,7 +242,7 @@ EMBEDDING_DIMENSIONS=2560
 
 A single chat request can be answered by two completely different engines depending on two independent env flags. This is critical to document because the behavior is asymmetric.
 
-- **`JOB_QUEUE_ENABLED`** chooses the delivery mode: queue mode (returns `202` + a `pollUrl`, processed by a worker) vs in-process mode (handled inline in the request).
+- **`USE_JOB_QUEUE`** chooses the delivery mode: queue mode (returns `202` + a `pollUrl`, processed by a worker) vs in-process mode (handled inline in the request). Read through `isJobQueueEnabled()` in `src/services/queue/connection.ts`.
 - **`CHAT_AGENT_QUEUE_ENABLED`** only matters INSIDE the worker. It chooses the agent loop vs the legacy `planning / hypothesis / reflection` pipeline.
 
 The asymmetry: in-process mode ALWAYS uses the chat-agent loop — `src/routes/chat.ts` calls `runChatAgent` unconditionally (line ~598). Queue mode uses the agent loop ONLY if `CHAT_AGENT_QUEUE_ENABLED=true` (`src/services/queue/workers/chat.worker.ts`, `useAgentLoop = process.env.CHAT_AGENT_QUEUE_ENABLED === "true"`); otherwise it runs the legacy pipeline.
@@ -268,7 +268,7 @@ The asymmetry: in-process mode ALWAYS uses the chat-agent loop — `src/routes/c
 | `UI_PASSWORD` | Legacy dev password gate for `POST /api/auth/login`. Unset → no-password dev token. |
 | `CHAT_AGENT_LLM_PROVIDER` | Provider for the chat-agent loop (`anthropic` default, or `openrouter`). Also consulted by the Library LLM resolver. |
 | `CHAT_AGENT_QUEUE_ENABLED` | Inside the worker: `true` → chat-agent loop, else legacy pipeline. Ignored in in-process mode. |
-| `JOB_QUEUE_ENABLED` | `true` → queue mode (`202` + pollUrl), else in-process inline handling. |
+| `USE_JOB_QUEUE` | `true` → queue mode (`202` + pollUrl), else in-process inline handling. |
 | `OPENROUTER_API_KEY` | API key for OpenRouter (chat-agent OpenRouter loop and OpenRouter embeddings). |
 | `OPENROUTER_BASE_URL` | OpenRouter base URL (default `https://openrouter.ai/api/v1`). |
 | `EMBEDDING_PROVIDER` | `openai` (default) or `openrouter`. |

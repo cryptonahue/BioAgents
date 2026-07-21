@@ -187,8 +187,8 @@ CoralGPT is a product skin built on top of the BioAgents engine, living on the `
 
 **Dual-engine flag matrix** — a chat request is answered by different engines depending on two flags:
 
-| `JOB_QUEUE_ENABLED` | `CHAT_AGENT_QUEUE_ENABLED` | Engine |
-| ------------------- | -------------------------- | ------ |
+| `USE_JOB_QUEUE` | `CHAT_AGENT_QUEUE_ENABLED` | Engine |
+| --------------- | -------------------------- | ------ |
 | `false` (in-process) | any | chat-agent loop (always) |
 | `true` (queue) | `false` | legacy planning/hypothesis/reflection pipeline |
 | `true` (queue) | `true` | chat-agent loop (in worker) |
