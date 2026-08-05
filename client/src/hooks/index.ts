@@ -37,6 +37,12 @@ export type {
   AccessRequest,
   EmailOutcome,
 } from './useWhitelist';
+export { usePrivyUsers } from './usePrivyUsers';
+export type {
+  PrivyUserEntry,
+  PrivyUsersResponse as PrivyUsersResponseData,
+  UsePrivyUsersParams,
+} from './usePrivyUsers';
 export {
   useLibraryList,
   useLibraryFacets,

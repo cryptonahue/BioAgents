@@ -9,6 +9,7 @@ import {
   useAdminStats,
   useBulkResolveContradictions,
   useDedupEvents,
+  usePrivyUsers,
   useResolveContradiction,
   useSetWhitelistAccess,
   useUnmergeFact,
@@ -17,12 +18,13 @@ import {
   type AdminContradiction,
   type AdminContradictionStatus,
   type DedupEventWindow,
+  type PrivyUserEntry,
   type ReasonCategory,
   type RecentDedupEvent,
   type WhitelistUser,
 } from "../hooks";
 
-type TabId = "contras" | "dedup" | "stats" | "whitelist";
+type TabId = "contras" | "dedup" | "stats" | "whitelist" | "privy-users";
 
 /** Namespaces the generated `id`s that wire each tab to its panel. */
 const ADMIN_TABS_ID = "admin";
@@ -32,6 +34,7 @@ const ADMIN_TABS: TabItem<TabId>[] = [
   { value: "dedup", label: "Dedup" },
   { value: "stats", label: "Stats" },
   { value: "whitelist", label: "Whitelist" },
+  { value: "privy-users", label: "Privy Users" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -116,6 +119,11 @@ export function AdminPage() {
           {tab === "whitelist" && (
             <TabPanel idPrefix={ADMIN_TABS_ID} value="whitelist">
               <WhitelistTab />
+            </TabPanel>
+          )}
+          {tab === "privy-users" && (
+            <TabPanel idPrefix={ADMIN_TABS_ID} value="privy-users">
+              <PrivyUsersTab />
             </TabPanel>
           )}
         </Tabs>
@@ -1048,6 +1056,191 @@ function WhitelistTab() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div class="admin-pagination">
+        <button
+          class="btn"
+          data-variant="outline"
+          disabled={page === 0}
+          onClick={() => setPage(Math.max(0, page - 1))}
+        >
+          Prev
+        </button>
+        <span>
+          Page {page + 1} of {totalPages} ({total} total)
+        </span>
+        <button
+          class="btn"
+          data-variant="outline"
+          disabled={page + 1 >= totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Privy Users Tab — view all Privy-authenticated users with local cross-reference
+// ---------------------------------------------------------------------------
+
+/**
+ * Shows ALL Privy users alongside their local whitelist status.
+ * Useful for seeing users who registered via Privy but never completed
+ * login in BioAgents (they exist in Privy but not in local users table).
+ */
+function PrivyUsersTab() {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [actionMessage, setActionMessage] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const { data, isLoading, error, refetch } = usePrivyUsers({
+    search,
+    page,
+  });
+  const { mutate: setAccess, error: mutateError } = useSetWhitelistAccess();
+
+  useEffect(() => {
+    setPage(0);
+  }, [search]);
+
+  const users: PrivyUserEntry[] = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / (data?.limit || 50)));
+
+  const toggle = async (user: PrivyUserEntry) => {
+    if (!user.localUserId) {
+      setActionMessage(`Cannot toggle access for user without local account`);
+      return;
+    }
+    setActionMessage("");
+    setBusyId(user.id);
+    try {
+      await setAccess(user.localUserId, !user.whitelisted);
+      setActionMessage(
+        user.whitelisted
+          ? `Revoked access for ${user.email || user.id}`
+          : `Granted access to ${user.email || user.id}`,
+      );
+      await refetch();
+    } catch (err: any) {
+      setActionMessage(err?.message || "Failed to update access");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div>
+      {error && (
+        <div class="alert" data-tone="danger" role="alert">
+          <strong>{error}</strong>
+        </div>
+      )}
+      {mutateError && (
+        <div class="alert" data-tone="danger" role="alert">
+          <strong>{mutateError}</strong>
+        </div>
+      )}
+      {actionMessage && (
+        <div class="alert" data-tone="info" role="status">
+          <strong>{actionMessage}</strong>
+        </div>
+      )}
+
+      <div class="admin-toolbar">
+        <input
+          class="input admin-whitelist-search"
+          type="search"
+          placeholder="Search by email, wallet, or Privy ID…"
+          aria-label="Search Privy users"
+          value={search}
+          onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
+        />
+      </div>
+
+      {isLoading && <div class="admin-loading">Loading Privy users...</div>}
+
+      {!isLoading && users.length === 0 && (
+        <div class="empty">
+          <header>
+            <p>No Privy users match this filter.</p>
+          </header>
+        </div>
+      )}
+
+      {!isLoading && users.length > 0 && (
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Joined</th>
+                <th>App Status</th>
+                <th>Access</th>
+                <th style={{ width: 160 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    {user.email || "—"}
+                    <div class="admin-whitelist-id">
+                      <code>{shortId(user.id)}</code>
+                    </div>
+                    {user.walletAddress && (
+                      <div class="admin-whitelist-wallet" title={user.walletAddress}>
+                        <code>{user.walletAddress}</code>
+                      </div>
+                    )}
+                  </td>
+                  <td>{formatTimestamp(user.createdAt)}</td>
+                  <td>
+                    <span
+                      class="badge admin-status-badge"
+                      data-tone={user.hasAccount ? "success" : "neutral"}
+                    >
+                      {user.hasAccount ? "registered" : "not registered"}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      class="badge admin-status-badge"
+                      data-tone={user.whitelisted ? "success" : "neutral"}
+                    >
+                      {user.whitelisted ? "whitelisted" : "pending"}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      class="btn"
+                      data-variant="outline"
+                      data-tone={user.whitelisted ? undefined : "success"}
+                      disabled={busyId === user.id || !user.localUserId}
+                      title={
+                        !user.localUserId
+                          ? "User must have a local account to manage access"
+                          : undefined
+                      }
+                      onClick={() => toggle(user)}
+                    >
+                      {busyId === user.id
+                        ? "Saving…"
+                        : user.whitelisted
+                          ? "Revoke"
+                          : "Grant"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
