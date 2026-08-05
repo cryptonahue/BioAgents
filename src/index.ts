@@ -40,6 +40,7 @@ import { createQueueDashboard } from "./routes/admin/queue-dashboard";
 import { adminJobsRoute } from "./routes/admin/jobs";
 import { costTotalsRoute } from "./routes/admin/cost-totals";
 import { whitelistRoute } from "./routes/admin/whitelist";
+import { privyUsersRoute } from "./routes/admin/privy-users";
 import { versionRoute } from "./routes/version";
 import { settingsRoute } from "./routes/settings";
 
@@ -509,6 +510,9 @@ app.use(costTotalsRoute);
 // Mount admin whitelist manager. Grants/revokes CoralGPT access
 // (users.access_type). Admin-only — see the header of the route.
 app.use(whitelistRoute);
+
+// Mount admin privy-users endpoint. Lists all Privy users with local cross-reference.
+app.use(privyUsersRoute);
 
 // Continue with catch-all route
 app

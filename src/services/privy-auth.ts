@@ -3,7 +3,7 @@ import logger from "../utils/logger";
 
 let privyClient: PrivyClient | null = null;
 
-function getPrivyClient(): PrivyClient | null {
+export function getPrivyClient(): PrivyClient | null {
   const appId = process.env.PRIVY_APP_ID;
   const appSecret = process.env.PRIVY_APP_SECRET;
 
