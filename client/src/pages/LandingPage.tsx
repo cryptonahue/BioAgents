@@ -386,14 +386,7 @@ export function LandingPage() {
             >
               Learn about $CRLAI
             </ExternalLink>
-            <ExternalLink
-              href="https://bioagents.xyz"
-              className="btn btn-marketing"
-              data-variant="outline"
-              label="View on bioagents.xyz"
-            >
-              View on BioAgents
-            </ExternalLink>
+
           </div>
         </div>
       </section>
@@ -447,8 +440,11 @@ export function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-footer-legal">
           © 2026 CoralGPT · BioAgent powered by $CRLAI ·{' '}
-          <ExternalLink href="https://bioagents.xyz" label="BioAgents">
-            BioAgents
+          <ExternalLink
+            href="https://github.com/MesoReefDAO/BioAgents"
+            label="GitHub"
+          >
+            GitHub
           </ExternalLink>
         </div>
         {/* The toggle only became meaningful once the pin was narrowed off the
