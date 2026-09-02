@@ -133,6 +133,28 @@ export async function getUserByPrivyId(privyUserId: string) {
 /**
  * Get or create a user from Privy authentication
  */
+/**
+ * Get user by email (case-insensitive). Used to re-link when a user
+ * comes back under a new Privy DID (e.g. after recreating the Privy app).
+ */
+export async function getUserByEmail(email: string) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("email", email)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    logger.error(
+      `[getUserByEmail] Error getting user by email: ${error.message}`,
+    );
+    throw error;
+  }
+  return data;
+}
+
 export async function getOrCreatePrivyUser(params: {
   privyUserId: string;
   email?: string;
@@ -169,6 +191,48 @@ export async function getOrCreatePrivyUser(params: {
     }
 
     return { user: existing, isNew: false };
+  }
+
+  // Privy DID is unknown — try to recover an existing account by email so
+  // rotating the Privy app does not drop whitelist / admin / history.
+  if (params.email) {
+    const byEmail = await getUserByEmail(params.email);
+    if (byEmail) {
+      const relink: Record<string, string> = {
+        user_id: params.privyUserId,
+      };
+      if (
+        params.walletAddress &&
+        params.walletAddress.toLowerCase() !==
+          byEmail.wallet_address?.toLowerCase()
+      ) {
+        relink.wallet_address = params.walletAddress.toLowerCase();
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .update(relink)
+        .eq("id", byEmail.id)
+        .select("*")
+        .single();
+
+      if (error) {
+        logger.error(
+          `[getOrCreatePrivyUser] Error re-linking Privy DID by email: ${error.message}`,
+        );
+        // Fall through to insert — worst case they get a pending row again.
+      } else {
+        logger.info(
+          {
+            userId: data.id,
+            email: params.email,
+            privyUserId: params.privyUserId,
+          },
+          "privy_user_relinked_by_email",
+        );
+        return { user: data, isNew: false };
+      }
+    }
   }
 
   const usernameBase = params.email
