@@ -64,10 +64,28 @@ function extractWalletFromPrivyUser(user: any): string | undefined {
 }
 
 function extractEmailFromPrivyUser(user: any): string | undefined {
-  const emailAccount = user.linkedAccounts?.find(
-    (account: any) => account.type === "email",
-  );
-  return emailAccount?.address || user.email?.address;
+  // Privy stores email on several linked-account shapes depending on login
+  // method (email OTP, Google, Apple, etc.). Prefer the top-level email,
+  // then walk linked accounts.
+  const topLevel =
+    (typeof user.email === "string" ? user.email : user.email?.address) ||
+    undefined;
+  if (topLevel) return topLevel;
+
+  const accounts: any[] = user.linkedAccounts || [];
+  for (const account of accounts) {
+    if (
+      account?.type === "email" ||
+      account?.type === "google_oauth" ||
+      account?.type === "apple_oauth" ||
+      account?.type === "discord_oauth" ||
+      account?.type === "github_oauth"
+    ) {
+      const addr = account.address || account.email;
+      if (typeof addr === "string" && addr.includes("@")) return addr;
+    }
+  }
+  return undefined;
 }
 
 export const authRoute = new Elysia({ prefix: "/api/auth" })
