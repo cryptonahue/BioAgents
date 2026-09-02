@@ -31,7 +31,7 @@ type RequestState = 'checking' | 'needs-request' | 'under-review';
 
 export function AccessPendingPage() {
   useLandingScroll();
-  const { userEmail, isAuthenticated } = useAuth();
+  const { userEmail, isAuthenticated, exchangePrivyToken } = useAuth();
   const { user, ready, authenticated, getAccessToken, logout } = usePrivy();
   const [state, setState] = useState<RequestState>('checking');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -45,22 +45,37 @@ export function AccessPendingPage() {
   /**
    * Ask the server where we stand.
    *
-   * `/api/auth/privy` is the ONE call that knows: it reports
-   * `{ whitelisted, hasRequest, email, walletAddress }` on its 403. Re-asking it
-   * here (rather than trusting state handed over by the landing) is what makes a
-   * RELOAD of this URL work — a user who bookmarks it, or refreshes after
-   * submitting, still gets the right screen.
+   * Uses exchangePrivyToken so a successful whitelist response also stores the
+   * JWT — a bare fetch + route('/chat') left isAuthenticated false and bounced
+   * the user straight back out. If Privy is ready but not signed in (stale
+   * bookmark / cleared session), send them home instead of spinning forever.
    */
   useEffect(() => {
-    if (!ready || !authenticated) return;
+    if (!ready) return;
+    if (!authenticated) {
+      route('/', true);
+      return;
+    }
 
     let cancelled = false;
 
     (async () => {
       try {
         const accessToken = await getAccessToken();
-        if (!accessToken) return;
+        if (!accessToken) {
+          if (!cancelled) setState('needs-request');
+          return;
+        }
 
+        const result = await exchangePrivyToken(accessToken);
+        if (cancelled) return;
+
+        if (result.whitelisted) {
+          route('/chat', true);
+          return;
+        }
+
+        // Not whitelisted: re-query for hasRequest / prefill context only.
         const res = await fetch('/api/auth/privy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -68,11 +83,6 @@ export function AccessPendingPage() {
         });
         const data = await res.json();
         if (cancelled) return;
-
-        if (data.whitelisted) {
-          route('/chat', true);
-          return;
-        }
 
         if (data.email) setEmail(data.email);
         if (data.walletAddress) setWalletAddress(data.walletAddress);
