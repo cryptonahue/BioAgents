@@ -155,11 +155,14 @@ export function LandingPage() {
     }
   }, [isAuthenticated]);
 
+  // Privy session restored (or login just finished): exchange for our JWT
+  // without forcing another click on "Get started".
   useEffect(() => {
-    if (pendingLogin && ready && authenticated) {
-      handleExchange();
-    }
-  }, [pendingLogin, ready, authenticated]);
+    if (!ready || !authenticated || isAuthenticated || connecting) return;
+    // pendingLogin covers the post-login() path; the bare authenticated
+    // branch covers a returning session after refresh / reopen.
+    handleExchange();
+  }, [pendingLogin, ready, authenticated, isAuthenticated, connecting]);
 
   const handleExchange = async () => {
     setConnecting(true);
